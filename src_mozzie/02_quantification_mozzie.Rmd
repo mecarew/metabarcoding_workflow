@@ -53,7 +53,7 @@ suppressPackageStartupMessages({
 xaringanExtra::use_panelset()
 
 # Load workspace from the previous notebook
-load(here::here("cache/01.RData"))
+load(here::here("results/cache/01.RData"))
 ```
 
 ```{r}
@@ -64,14 +64,50 @@ Sys.setenv(PATH=paste0("/mnt/galaxy/gvl/software/shared_envs/qiime2/bin:",
 Sys.setenv(PYTHONNOUSERSITE="/mnt/galaxy/gvl/software/shared_envs/qiime2/lib/python*/site-packages/")
 ```
 
+#### If running files transfered from water-prod###
+```{r}
+# You can use the here::here function to define a path relative to the project 
+#  directory or use an absolute path
+results_dir <- here::here("results")
+
+# Log files will be stored inside the logs directory inside the results directory
+logs_dir <- file.path(results_dir, "logs")
+
+# set cwl path
+cwl_path <- here("param/cwl")
+
+# re-set combined, dada2 path
+combined_dir <- file.path(results_dir, "combined")
+dada2_dir <- file.path(results_dir, "dada2")
+demux_dir <- file.path(results_dir, "demux")
+import_data_dir <- file.path(results_dir, "import_data")
+lib_dir <- file.path(results_dir, "lib")
+lulu_dir <- file.path(results_dir, "lulu")
+
+targets <- data.frame(FileName=import_targets,
+                      SampleName=basename(import_targets),
+                      Factor=basename(import_targets),
+                      output=paste0(import_targets, ".qza"))
+import_targets <- here("tmp/import_targets.txt")
+write.table(targets, file=import_targets, sep="\t", row.names=FALSE, quote=FALSE)
+cwl_path <- here("param/cwl")
+
+# use_slurm <- FALSE
+use_slurm <- TRUE
+
+# Settings for slurm (you can ignore these if `use_slurm` is set to FALSE)
+slurm_conffile <- here::here("src/.batchtools.conf.R")
+slurm_template <- here::here("src/batchtools.slurm.tmpl")
+slurm_resources <- list(partition="main", ntasks=1, ncpus=1, memory=4096)
+slurm_n_jobs <- 10
+```
+
 ```{r}
 use_slurm <- TRUE
 slurm_threads <- 8
 slurm_resources <- list(partition="main", ntasks=1, ncpus=slurm_threads, memory=4096)
 slurm_n_jobs <- 10
 ```
-
-
 # Combine into amplicon groups
 
 ### Extract step
@@ -418,7 +454,7 @@ p_abundance <- "0.000001"
 
 # The minimum portion of samples that a feature must have a relative abundance of at least 
 # `abundance` to be retained
-p_prevalence <- "0.012"
+p_prevalence <- "0.006"
 ```
 
 
@@ -631,27 +667,30 @@ Save output so it can be loaded in subsequent notebooks.
 save.image(here("results/cache/02.RData"))
 ```
 
+-----
+# Filtering checks
 ```{r}
 ##checking filering_asvs that are kept after filtering
 short_curated_otus <- short_lulu$curated_otus
 short_curated_otus_df <- if (!is.data.frame(short_curated_otus)) {
-  short_curated_otus <- as.data.frame(short_curated_otus)
+short_curated_otus <- as.data.frame(short_curated_otus)
 }
 short_curated_otus_df <- short_curated_otus_df %>% rename(curated_otus = short_curated_otus)
 
 right_curated_otus <- right_lulu$curated_otus
 right_curated_otus_df <- if (!is.data.frame(right_curated_otus)) {
- curated_otus <- as.data.frame(right_curated_otus)
+
+right_curated_otus <- as.data.frame(right_curated_otus)
 }
-right_curated_otus_df <- right_curated_otus_df %>% rename(curated_otus = right_curated_otus)
+names(right_curated_otus_df)[names(all_curated_otus) == "right_curated_otus"] <- "all_filter_asvs"
+names(short_curated_otus_df)[names(all_curated_otus) == "short_curated_otus"] <- "all_filter_asvs"
 
 all_curated_otus <- rbind(right_curated_otus_df, short_curated_otus_df)
 
-write.csv(all_curated_otus, file = here("results/all_curated_asvs_filtered.csv"), row.names = FALSE)
+
+write.csv(all_curated_otus, file = here("results/MiSeq17_all_curated_asvs_filtered_008.csv"), row.names = FALSE)
  
 ```
-
------
 
 # Session Info
 
