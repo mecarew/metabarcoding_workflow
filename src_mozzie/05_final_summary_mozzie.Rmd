@@ -15,7 +15,11 @@ This final section enables data to be arranged into a final table for future ana
 
 Starting from here will need the thershold list and the sample_df from Cache03
 ```{r}
+<<<<<<< HEAD
 load(here::here("cache/03.RData"))
+=======
+load(here::here("results/cache/03.RData"))
+>>>>>>> 02e13fc155206c85d19797d5d42f0aae68654e42
 #save(thresholds_list, file = here("cache/thresholds_list.RData"))
 #saveRDS(samples_df, file = here("cache/samples_df.rds"))
 
@@ -163,12 +167,12 @@ sample_groups
 
 ```{r}
 # Need to rename columns to get rid of the prefix X character if sample names start with a digit
-if (all(! colnames(all_tables[[1]]) %in% names(sample_groups))) {
-  all_tables <- lapply(all_tables, function(x) {
-    colnames(x) <- str_remove(colnames(x), "^X")
-    return(x)
-  })
-}
+#if (all(! colnames(all_tables[[1]]) %in% names(sample_groups))) {
+#  all_tables <- lapply(all_tables, function(x) {
+#    colnames(x) <- str_remove(colnames(x), "^X")
+#   return(x)
+#  })
+#}
 
 ```
 
@@ -207,8 +211,8 @@ print(names_only_in_right_read_tab)
 # write scripts to add a blank column to align data for all amplicons
 ```{r}
 # align data set by adding blank column for columns not present in one amplicon but not the other (Cont3rep1, Cont1rep2). 
-short_read_tab <- mutate(short_read_tab, Cont3rep1 = c(0))
-right_read_tab <- mutate(right_read_tab, Cont1rep2 = c(0))
+#short_read_tab <- mutate(short_read_tab, Cont3rep1 = c(0))
+#right_read_tab <- mutate(right_read_tab, Cont1rep2 = c(0))
 ```
 
 ```{r}
@@ -276,6 +280,7 @@ final_df <- separate(final_df, Taxon, into = c("kingdom", "phylum", "class", "or
 final_df[is.na(final_df)] <- ""
 names(final_df) <- sub("X", "", names(final_df))
 head(final_df)
+<<<<<<< HEAD
 ```
 
 ```{r}
@@ -383,32 +388,14 @@ sapply(f2_filtered, dim)
 
 # Check dimensions of non-zero ASVs
 sapply(f2_filtered, function(x) {x[rowSums(x) > 0,] %>% dim})
+=======
+>>>>>>> 02e13fc155206c85d19797d5d42f0aae68654e42
 ```
-
-
-
-
 
 
 ```{r}
-# Sanity check ASVs that changed
-diff <- lapply(names(all_tables), function(l) {
-  diff <- rowMeans(all_tables[[l]] == f2_filtered[[l]]) != 1
-  names(diff)[diff]
-})
-
-# e.g.
-all_tables[[1]][diff[[1]],]
-f2_filtered[[1]][diff[[1]],]
+# save final dataframe
+write.csv(final_df, file = "~/git/metabarcoding_workflow/results/XXXXX_final_data_summaryX_XXX_24.csv", row.names = FALSE)
 ```
-
-
-
-# Truncate Taxonomy?
-
-```
-Generally, any DNA barcode sequence match to the above 97% would be considered a species level match. At present, I truncate matches of >96%->95% to genus, <95% to >92% to family
-```
-
 
 
