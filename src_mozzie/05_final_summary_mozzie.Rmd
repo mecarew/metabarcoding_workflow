@@ -15,7 +15,7 @@ This final section enables data to be arranged into a final table for future ana
 
 Starting from here will need the thershold list and the sample_df from Cache03
 ```{r}
-#load(here::here("cache/03.RData"))
+load(here::here("cache/03.RData"))
 #save(thresholds_list, file = here("cache/thresholds_list.RData"))
 #saveRDS(samples_df, file = here("cache/samples_df.rds"))
 
@@ -111,7 +111,7 @@ short_search_results <- read_tsv(here("results/classification/preliminary/short_
 ```
 
 ```{r}
-short_search_results$data %>% dim
+#short_search_results$data %>% dim
 ```
 
 ```{r}
@@ -276,9 +276,11 @@ final_df <- separate(final_df, Taxon, into = c("kingdom", "phylum", "class", "or
 final_df[is.na(final_df)] <- ""
 names(final_df) <- sub("X", "", names(final_df))
 head(final_df)
+```
 
+```{r}
 # save dataframe
-write.csv(final_df, file = "~/git/metabarcoding_workflow/results/final_data_summary4_Mar_24.csv", row.names = FALSE)
+write.csv(final_df, file = "~/git/metabarcoding_workflow/results/final_data_summary_Jul_24.csv", row.names = FALSE)
 
 ```
 

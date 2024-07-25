@@ -413,7 +413,7 @@ write_targets(targets, file=dada2_filtered_targets)
 # (keep these parameters as strings so they don't get converted to scientific notation further down)
 
 # The minimum relative abundance for a feature to be retained
-p_abundance <- "0.00001"
+p_abundance <- "0.000001"
 # p_abundance <- "0.001" # Lower threshold for testing purposes
 
 # The minimum portion of samples that a feature must have a relative abundance of at least 
@@ -632,14 +632,19 @@ save.image(here("results/cache/02.RData"))
 ```
 
 ```{r}
+##checking filering_asvs that are kept after filtering
 short_curated_otus <- short_lulu$curated_otus
-short_curated_otus_df <- if (!is.data.frame(curated_otus)) {
+short_curated_otus_df <- if (!is.data.frame(short_curated_otus)) {
   short_curated_otus <- as.data.frame(short_curated_otus)
 }
+short_curated_otus_df <- short_curated_otus_df %>% rename(curated_otus = short_curated_otus)
+
 right_curated_otus <- right_lulu$curated_otus
-right_curated_otus_df <- if (!is.data.frame(curated_otus)) {
-  right_curated_otus <- as.data.frame(right_curated_otus)
+right_curated_otus_df <- if (!is.data.frame(right_curated_otus)) {
+ curated_otus <- as.data.frame(right_curated_otus)
 }
+right_curated_otus_df <- right_curated_otus_df %>% rename(curated_otus = right_curated_otus)
+
 all_curated_otus <- rbind(right_curated_otus_df, short_curated_otus_df)
 
 write.csv(all_curated_otus, file = here("results/all_curated_asvs_filtered.csv"), row.names = FALSE)
