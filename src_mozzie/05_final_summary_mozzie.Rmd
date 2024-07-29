@@ -9,18 +9,26 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This notebook arranges the data from the bioinformatic pipeline into a final table for data filling and filtering.
+This notebook arranges the data from the bioinformatic pipeline into a final table for data filling and filtering (in notebaook '06_filling_taxonomy_PCR_rep_filtering'.
+
+```{r}
+library(dplyr)
+```
 
 # producing data summary table
 
-Starting from here will need the thershold list and the sample_df from cache03
+Starting from here will need the thersholds list and the sample_df from cache03. If it was not saved individually you will need to load the entire cache
 ```{r}
-load(here::here("results/cache/03.RData"))
+# load all of cahche03
+#load(here::here("results/cache/03.RData"))
 
-#load(here::here("cache/thresholds_list.RData"))
+# load thresholds_list form cahche03 
+thresholds_list <- readRDS(here::here("results/cache/thresholds_list.rds"))
+samples_df <- readRDS(here::here("results/cache/samples_df.rds"))
 ```
 
 # load results files from previuos steps
+These tables are required for assembling final data table
 ```{r}
 short_lulu <- readRDS(here("results/lulu/short_lulu.rds"))
 right_lulu <- readRDS(here("results/lulu/right_lulu.rds"))
@@ -44,22 +52,16 @@ right_classifications$data %>% head(100)
 ```{r}
 # Pull out table of read counts with LULU filter applied
 short_lulu$curated_table
-
-#short_lulu <- data.frame(short_lulu$curated_table)
-#short_class <- data.frame(short_classifications$data)
 ```
 
 
 ```{r}
 # Pull out table of read counts with LULU filter applied
 right_lulu$curated_table
-
-#right_lulu <- data.frame(right_lulu$curated_table)
-#right_class <- data.frame(right_classifications$data)
 ```
 
 ```{r}
-# merge short_classifications with tHersholds
+# merge short_classifications with thersholds
 short_df <- merge(short_classifications$data, thresholds_list[["short"]], by.x="Feature.ID", by.y="feature-id")
 
 right_df <- merge(right_classifications$data, thresholds_list[["right"]], by.x="Feature.ID", by.y="feature-id")
@@ -99,48 +101,19 @@ right_df %>% filter(Taxon == "Unassigned") %>% pull(max_p_identity) %>% table
 
 
 ```{r}
-#short_search_results <- read_qza(here("results/classification/preliminary/short_prelim_search_results.qza"))
-
-# for big dataset
+# load classification results for short amplicon
 short_search_results <- read_tsv(here("results/classification/preliminary/short_vsearch.tsv"))
-
 ```
 
 ```{r}
-#short_search_results$data %>% dim
-```
-
-```{r}
-# right_search_results <- read_qza(here("results/classification/preliminary/right_prelim_search_results.qza"))
-
-# for big dataset
+# # load classification results for right amplicon
 right_search_results <- read_tsv(here("results/classification/preliminary/right_vsearch.tsv"))
-
-```
-
-```{r}
-#right_search_results$data %>% dim
-```
-
-```{r}
-# ncbi_cois <- read.table(db_coi_ids[["short"]], sep="\t")
-# colnames(ncbi_cois) <- c("id", "taxonomy")
-```
-
-
-```{r}
-# short_hits <- merge(short_search_results$data, ncbi_cois, by.x="V2", by.y="id", all.x=TRUE)
 ```
 
 ## Combine workflow outputs
 
-# fix sample names
-
-This can be changed with future feedback.  
-
-We could use https://docs.qiime2.org/2023.5/plugins/available/feature-table/filter-features-conditionally/
-if we want simple filtering, but if we want to do something complex, better to do it manually.
-
+# fix sample names (if they have 'X' at the start)
+This is the case for sampled from the 10 sites study as the names start with numbers
 
 ```{r}
 all_tables <- list(
@@ -158,14 +131,14 @@ sample_groups
 ```
 
 ```{r}
+##THIS CHUNK ONLY IS NEEDED FOR THE 10 SITE STUDY##
 # Need to rename columns to get rid of the prefix X character if sample names start with a digit
 #if (all(! colnames(all_tables[[1]]) %in% names(sample_groups))) {
-#  all_tables <- lapply(all_tables, function(x) {
-#    colnames(x) <- str_remove(colnames(x), "^X")
-#   return(x)
-#  })
+#all_tables <- lapply(all_tables, function(x) {
+# colnames(x) <- str_remove(colnames(x), "^X")
+#return(x)
+#})
 #}
-
 ```
 
 # combining read tables for the short and right amplicons
@@ -215,7 +188,7 @@ all_read_df <-  rbind(short_read_tab, right_read_tab)
 all_read_df <- rownames_to_column(all_read_df, var = "asv_code")
 ```
 
-#Combining read classification tables for the short and right amplicons
+# combining read classification tables for the short and right amplicons
 ```{r}
 # bind short and right classification data
 all_classif_df <-  rbind(short_df, right_df)

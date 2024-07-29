@@ -18,7 +18,7 @@ library(readxl)
 
 ## SECTION 1: Filling in missing/incorrect taxonomic classifications
 
-A file based on analysis of Miseq datasets was constructed ('asv_library_97_jun24.xlsx'). This file captures ASVs (amplicon sequence variants) from the DADA2 step (where the metabarcoding data is reduced into a series of sequence groups with high sequence similarity i.e. ASVs) and:
+A file based on analysis of Miseq datasets was constructed ('asv_library_97_jun24.xlsx'). This file captures ASVs (amplicon sequence variants) from the DADA2 step (where the metabarcoding data is reduced into a series of sequence groups with high sequence similarity i.e. ASVs) and this file:
 -   fills truncated taxonomy assignments from the vsearch step (sheet 1)
 -   groups unclassified sequences into 'OTUs' (sheet 2)
 -   updates/corrects any missing identifications or errors in classification (sheet 3)
@@ -61,7 +61,7 @@ final_df <-  final_df %>%
 ```
 
 
-# Fill in truncated taxonomic assigments (using sheet 1: truncated_fills_df )
+# Fill in truncated taxonomic assigments (using sheet 1: truncated_fills_df)
 ```{r}
 # Find common IDs
 common_ids <- intersect(truncated_fills_df$asv_code, final_df$asv_code)
@@ -214,13 +214,14 @@ print(df7)
 # combine all filled dataframe into a single dataframe
 ```{r}
 final_data_filled <- rbind(df1, df4, df7, df9)
+# note the "final_data_filled" and "final_df" should be the same size 
 
-# Find duplicates in the asv_code column
+# Check if there are any duplicates in the asv_code column (there should NOT be)
 duplicates <- final_data_filled %>%
   filter(duplicated(asv_code) | duplicated(asv_code, fromLast = TRUE))
 
 # Print the duplicate rows
-print(duplicates)
+print(duplicates) # You should not get a table
 ```
 
 # check 'final_filled_df' for any species complexes and add this information (from sheet 4)
@@ -234,38 +235,21 @@ final_data_filled <- final_data_filled %>%
 # Print the modified dataframe
 print(final_data_filled)
 ```
-# combine all filled dataframe into a single dataframe
-```{r}
-final_data_filled <- rbind(df1, df4, df7, df9)
-
-# Find duplicates in the asv_code column
-duplicates <- final_data_filled %>%
-  filter(duplicated(asv_code) | duplicated(asv_code, fromLast = TRUE))
-
-# Print the duplicate rows
-print(duplicates) # there should be no duplicates
-```
 
 ```{r}
 # save filled dataframe
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
-# Create the file name with the timestamp
-file_name <- paste0("~/git/metabarcoding_workflow/results/MiSeq13_final_data_summary_filled", timestamp, ".csv")
-
-# Save the dataframe with the new file name
-write.csv(final_df, file = file_name, row.names = FALSE)
-
-# saved filled dataframe
-#write.csv(final_data_filled, "~/git/metabarcoding_workflow/results/miseq13_raw_data_filled_25_jul_24.csv", row.names = FALSE)
+# Create the file name with the timestamp (NOTE:Change the MiSeq number to the dataset you are working with)
+file_name <- paste0("~/git/metabarcoding_workflow/results/MiSeq13_final_data_summary_filled_", timestamp, ".csv")
 ```
 ______________________________
 
 ## SECTION 2: PCR filtering
-This section is designed to format data and filter it for 'mistagging'. Mistagging our tag switchig can occur causing ASVs to be assigned to the wrong sample. This occurs at a low frequency and is usually random. PCR replicates included in the study design help detect and remove these errors. We use three PCR replicates and filter out any species/ASV detections that occur in only one PCR replicate (which are most likely from mistagging). We also add a second flitering step for the five most common ASV (those with the highest number of reads/sequences). These are more likely to be involved in mistagging and can appear in multiple PCR replicate we add a reads threshold for these detections.
+This section is designed to format data and filter it for 'mistagging'. Mistagging or 'tag switching' can occur causing ASVs to be assigned to the wrong sample. This occurs at a low frequency and is usually random. PCR replicates included in the study design help detect and remove these errors. We use three PCR replicates and filter out any species/ASV detections that occur in only one PCR replicate (which are most likely from mistagging). We also add a second flitering step for the five most common ASV (those with the highest number of reads/sequences). These are more likely to be involved in mistagging and can appear in multiple PCR replicate we add a reads threshold for removing these detections.
 
 # Change data to long formmat (list) for PCR replicate filtering 
-Not this code will need to be configured for each dataset, so that the rows containing the read counts are specified (e.g. pivot_longer(cols = X10BNY29042rep1:Cont3rep1), the 'X10BNY29042rep1:Cont3rep1' will need to be changed to the first and last column name
+Note: This code will need to be configured for each dataset, so that the rows containing the read counts are specified (e.g. pivot_longer(cols = X10BNY29042rep1:Cont3rep1), the 'X10BNY29042rep1:Cont3rep1' will need to be changed to the first and last column name with the reads data
 ```{r}
 # Pivot longer to transform columns 13 to 40 into rows 
 metab_long <- final_data_filled %>%
@@ -353,7 +337,6 @@ counts_asv <- metab_long_empty_species %>% group_by(asv_code, site) %>% summaris
 
 # Filter out rows where the count is 1 (i.e., only one occurrence)
 asv_fil_metab_long <- metab_long_empty_species %>% filter(!(asv_code %in% counts_asv$asv_code[counts$count == 1] & site %in% counts$site[counts_asv$count == 1]))
-
 ```
 
 # bind filtered dataframes
@@ -390,6 +373,7 @@ print(filtered_dataframe)
 ```
 
 # convert long form back to full data summary with data filled and filtered
+Note: This code will need to be configured for each dataset, so that the rows containing the read counts are specified (e.g. pivot_longer(cols = X10BNY29042rep1:Cont3rep1), the 'X10BNY29042rep1:Cont3rep1' will need to be changed to the first and last column name
 ```{r}
 # Assuming final_data_filled is your dataframe
 # Step 1: Pivot longer
@@ -409,9 +393,6 @@ metab_wide <- metab_long %>%
     values_from = value
   )
 
-# Remove 'X' at the start of column headings
-colnames(metab_wide) <- sub("^X", "", colnames(metab_wide))
-
 # List of columns to modify
 cols_to_modify <- c('kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species')
 
@@ -421,16 +402,29 @@ metab_wide[cols_to_modify] <- lapply(metab_wide[cols_to_modify], as.character)
 # Replace NA values with empty strings in specified columns
 metab_wide[cols_to_modify][is.na(metab_wide[cols_to_modify])] <- ""
 
+# Remove 'X' at the start of column headings
+colnames(metab_wide) <- sub("^X", "", colnames(metab_wide))
+
 # Print the first few rows of the resulting dataframe
 print(head(metab_wide))
 
-
-#write_csv(metab_wide, here("results/miseq13_wide.csv"))
 ```
-## There are a number of options 
-# Summarize values by site name ()
+# save the filtered filled dataframe with the PCR replcate seperate
 ```{r}
-# Assuming flitered_dataframe is your dataframe
+# save dataframe of filtered and filled data with PCR replicate 
+timestamp <- format(Sys.time(), "%d_%m_%Y")
+
+# Create the file name with the timestamp
+file_name <- paste0("~/git/metabarcoding_workflow/results/MiSeq13_final_filt_filled_PCR_rep_data_summary_", timestamp, ".csv")
+
+# Save the dataframe with the new file name
+write.csv(metab_wide, file = file_name, row.names = FALSE)
+```
+
+## There are a number of options for exporting data for further analysis
+
+# OPTION 1: Summarize values by site (with PCR replicates combined)
+```{r}
 summarized_df <- filtered_dataframe %>%
   group_by(site, kingdom, phylum, class, order, family, genus, species, max_p_identity) %>%  # Group by specified columns including max_p_identity
   summarise(reads = sum(reads, na.rm = TRUE), .groups = 'drop') %>%  # Sum the reads for each group
@@ -441,15 +435,59 @@ summarized_df <- filtered_dataframe %>%
     .groups = 'drop'
   )
 
+# Convert specified columns to character type
+wide_summarised_site_per_df[cols_to_modify] <- lapply(wide_summarised_site_per_df[cols_to_modify], as.character)
+
+# Replace NA values with empty strings in specified columns
+wide_summarised_df[cols_to_modify][is.na(wide_summarised_df[cols_to_modify])] <- ""
+
 # Pivot wider to transform the site names into columns
-wide_df <- summarized_df %>%
+wide_summarised_df <- summarized_df %>%
   pivot_wider(names_from = site, values_from = reads, values_fill = 0)  # Fill missing values with 0
 ```
 
-
+# save file
 ```{r}
-# saved filled dataframe
-write.csv(final_data_filled, "~/git/metabarcoding_workflow/results/miseq13_raw_data_filled_filtered_9_jul_24.csv", row.names = FALSE)
+# save filled dataframe
+timestamp <- format(Sys.time(), "%d_%m_%Y")
 
+# Create the file name with the timestamp (NOTE:Change the MiSeq number to the dataset you are working with)
+ wide_summarised_df <- paste0("~/git/metabarcoding_workflow/results/MiSeq13_final_data_summary_filled_filter_sites_", timestamp, ".csv", row.names = FALSE)
+ 
+ write.csv(final_df, file =  wide_summarised_df, row.names = FALSE)
+```
+ 
+ 
+# FOR 10 STIE STUDY (with site_per) 
+```{r}
+summarized_site_per_df <- filtered_dataframe %>%
+  group_by(site_per, kingdom, phylum, class, order, family, genus, species, max_p_identity) %>%  # Group by specified columns including max_p_identity
+  summarise(reads = sum(reads, na.rm = TRUE), .groups = 'drop') %>%  # Sum the reads for each group
+  group_by(site_per, kingdom, phylum, class, order, family, genus, species) %>%  # Group by the main columns again
+  summarise(
+    reads = sum(reads, na.rm = TRUE),  # Sum the reads for each group
+    max_p_identity = ifelse(all(is.na(max_p_identity)), NA, max(max_p_identity, na.rm = TRUE)),  # Handle all NA case
+    .groups = 'drop'
+  )
+
+# Convert specified columns to character type
+wide_summarised_site_per_df[cols_to_modify] <- lapply(wide_summarised_site_per_df[cols_to_modify], as.character)
+
+# Replace NA values with empty strings in specified columns
+wide_summarised_site_per_df[cols_to_modify][is.na(wide_summarised_site_per_df[cols_to_modify])] <- ""
+
+# Pivot wider to transform the site names into columns
+wide_summarised_site_per_df <- summarized_site_per_df %>%
+  pivot_wider(names_from = site_per, values_from = reads, values_fill = 0)  # Fill missing values with 0
 ```
 
+# save file
+```{r}
+# save filled dataframe
+timestamp <- format(Sys.time(), "%d_%m_%Y")
+
+# Create the file name with the timestamp (NOTE:Change the MiSeq number to the dataset you are working with)
+wide_summarised_site_per_df <- paste0("~/git/metabarcoding_workflow/results/MiSeq13_final_data_summary_filled_filter_sites_per_", timestamp, ".csv", row.names = FALSE)
+
+write.csv(final_df, file =  wide_summarised_site_per_df, row.names = FALSE)
+```

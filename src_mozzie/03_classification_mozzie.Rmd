@@ -548,10 +548,9 @@ save.image(here("results/cache/03.RData"))
 
 
 ```{r}
-# save 'thresholds_list' for the next notebook
-thresholds_list <- here::here("results/classification/thresholds_list.RData")
-
-save(thresholds_list, file = thresholds_list)
+# save 'thresholds_list' and 'samples_df' for the next notebook
+saveRDS(thresholds_list, here::here("results/cache/thresholds_list.rds"))
+saveRDS(samples_df, here::here("results/cache/samples_df.rds"))
 ```
 
 
