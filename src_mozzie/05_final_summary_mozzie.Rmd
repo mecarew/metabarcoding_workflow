@@ -17,12 +17,7 @@ Starting from here will need the thershold list and the sample_df from cache03
 ```{r}
 load(here::here("results/cache/03.RData"))
 
-#save(thresholds_list, file = here("cache/thresholds_list.RData"))
-#saveRDS(samples_df, file = here("cache/samples_df.rds"))
-
-# clear Global environment
 #load(here::here("cache/thresholds_list.RData"))
-#load(here::here("cache/samples_df.rds"))
 ```
 
 # load results files from previuos steps
