@@ -19,7 +19,7 @@ library(dplyr)
 
 Starting from here will need the thersholds list and the sample_df from cache03. If it was not saved individually you will need to load the entire cache
 ```{r}
-# load all of cahche03
+#load all of cahche03
 #load(here::here("results/cache/03.RData"))
 
 # load thresholds_list form cahche03 
@@ -30,12 +30,12 @@ samples_df <- readRDS(here::here("results/cache/samples_df.rds"))
 # load results files from previuos steps
 These tables are required for assembling final data table
 ```{r}
-short_lulu <- readRDS(here("results/lulu/short_lulu.rds"))
-right_lulu <- readRDS(here("results/lulu/right_lulu.rds"))
-short_classifications <- read_qza(here("results/classification/short_classification.qza"))
-right_classifications <- read_qza(here("results/classification/right_classification.qza"))
-short_seq <- read_qza(here("results/dada2/short_representative_sequences.qza"))
-right_seq <- read_qza(here("results/dada2/right_representative_sequences.qza"))
+short_lulu <- readRDS(here::here("results/lulu/short_lulu.rds"))
+right_lulu <- readRDS(here::here("results/lulu/right_lulu.rds"))
+short_classifications <- qiime2R::read_qza(here::here("results/classification/short_classification.qza"))
+right_classifications <- qiime2R::read_qza(here::here("results/classification/right_classification.qza"))
+short_seq <- qiime2R::read_qza(here::here("results/dada2/short_representative_sequences.qza"))
+right_seq <- qiime2R::read_qza(here::here("results/dada2/right_representative_sequences.qza"))
 ```
 
 # check classification data for short amplicon
@@ -102,12 +102,12 @@ right_df %>% filter(Taxon == "Unassigned") %>% pull(max_p_identity) %>% table
 
 ```{r}
 # load classification results for short amplicon
-short_search_results <- read_tsv(here("results/classification/preliminary/short_vsearch.tsv"))
+short_search_results <- readr::read_tsv(here::here("results/classification/preliminary/short_vsearch.tsv"))
 ```
 
 ```{r}
 # # load classification results for right amplicon
-right_search_results <- read_tsv(here("results/classification/preliminary/right_vsearch.tsv"))
+right_search_results <- readr::read_tsv(here::here("results/classification/preliminary/right_vsearch.tsv"))
 ```
 
 ## Combine workflow outputs
@@ -185,7 +185,7 @@ print(names_only_in_right_read_tab)
 all_read_df <-  rbind(short_read_tab, right_read_tab)
 
 # covert row headers to column and then name column 1
-all_read_df <- rownames_to_column(all_read_df, var = "asv_code")
+all_read_df <- tibble::rownames_to_column(all_read_df, var = "asv_code")
 ```
 
 # combining read classification tables for the short and right amplicons
@@ -207,16 +207,16 @@ short_asvseq <- data.frame(short_seq$data)
 right_asvseq <- data.frame(right_seq$data)
 
 # covert row headers to column and then name column 1
-short_asvseq <- rownames_to_column(short_asvseq, var = "asv_code")
-right_asvseq <- rownames_to_column(right_asvseq, var = "asv_code")
+short_asvseq <- tibble::rownames_to_column(short_asvseq, var = "asv_code")
+right_asvseq <- tibble::rownames_to_column(right_asvseq, var = "asv_code")
 
 # add amplicon information
 short_asvseq  <- mutate(short_asvseq, amplicon = "short")
 right_asvseq <- mutate(right_asvseq, amplicon = "right")
 
 # align column names for merging
-short_asvseq <- short_asvseq %>% rename(asv_seq = short_seq.data)
-right_asvseq <- right_asvseq %>% rename(asv_seq = right_seq.data)
+short_asvseq <- short_asvseq %>% dplyr::rename(asv_seq = short_seq.data)
+right_asvseq <- right_asvseq %>% dplyr::rename(asv_seq = right_seq.data)
 
 
 # merge data into a single dataframe
@@ -239,7 +239,7 @@ final_df$Taxon <- gsub("g__", "", final_df$Taxon)
 final_df$Taxon <- gsub("s__", "", final_df$Taxon)
 
 # place taxonomic data in separate columns
-final_df <- separate(final_df, Taxon, into = c("kingdom", "phylum", "class", "order", "family", "genus","species"), sep = ";",  fill = "right")
+final_df <- tidyr::separate(final_df, Taxon, into = c("kingdom", "phylum", "class", "order", "family", "genus","species"), sep = ";",  fill = "right")
 
 # final tidy up (remove 'NA' and X from start of sample names)
 final_df[is.na(final_df)] <- ""
@@ -255,7 +255,7 @@ head(final_df)
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
 # Create the file name with the timestamp
-file_name <- paste0("~/git/metabarcoding_workflow/results/MiSeq13_final_data_summary_", timestamp, ".csv")
+file_name <- paste0("~/git/metabarcoding_workflow_Miseq15/results/MiSeq15_final_data_summary_", timestamp, ".csv")
 
 # Save the dataframe with the new file name
 write.csv(final_df, file = file_name, row.names = FALSE)
