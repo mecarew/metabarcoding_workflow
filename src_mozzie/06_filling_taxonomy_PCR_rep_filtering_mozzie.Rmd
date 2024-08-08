@@ -48,7 +48,7 @@ max_p_update_df <- max_p_update_df %>%
 
 #read in raw dataframe (if starting with a clear global environment)
 #final_df <- read.csv(here("results/MiSeq13_final_data_summary.csv"))
-#final_df <- read.csv(here("results/MiSeq16_final_data_summary13_Jun_24_not_fil.csv"))
+final_df <- read.csv(here("results/MiSeq16_final_data_summary13_Jun_24_not_fil.csv"))
 ```
 
 # remove identifications below thresholds for species species, genus, family and order
@@ -374,18 +374,18 @@ print(filtered_dataframe_top_sp)
 ```{r}
 # Remove the count column as it is no longer needed
 # Step 1: Create the counts data frame
-counts <- filtered_dataframe_top_sp %>%
+counts_sp <- filtered_dataframe_top_sp %>%
   group_by(site, species) %>%
   summarise(count = n(), .groups = 'drop')
 
 # Step 2: Filter out rows where the combination of 'site' and 'species' appears only once
 sp_fil_metab_long_with_species <- filtered_dataframe_top_sp %>%
-  left_join(counts, by = c("site", "species")) %>%
+  left_join(counts_sp, by = c("site", "species")) %>%
   filter(count > 1) %>%
   select(-count)  # Remove the count column as it is no longer needed
 
 # Check samples removed from dataframe
-sp_fil_metab_long_rem <- filtered_dataframe_top_sp %>% filter((species %in% counts$species[counts$count == 1] & site %in% counts$site[counts$count == 1]))
+sp_fil_metab_long_rem <- filtered_dataframe_top_sp %>% filter((species %in% counts$species[counts_sp$count == 1] & site %in% counts_sp$site[counts$count == 1]))
 
 # Verify the number of records before and after filtering
 original_count <- nrow(filtered_dataframe_top_sp)
@@ -431,51 +431,17 @@ filtered_dataframe <- rbind(sp_fil_metab_long_with_species, asv_fil_metab_long)
 ```
 
 
-```{r}
-# Step 1: Group by species and summarize the total reads
-species_reads <- filtered_dataframe %>%
-  group_by(species) %>%
-  summarise(total_reads = sum(reads, na.rm = TRUE)) %>%
-  arrange(desc(total_reads))
-
-# Print species_reads to verify the summarized data
-print(species_reads)
-
-# Step 2: Extract the top 10 species detections based on 'total_reads' values
-top_species <- species_reads %>%
-  top_n(10, wt = total_reads) %>%
-  pull(species)
-
-# Print top_species to verify the top species
-print(top_species)
-
-# Step 3: Filter out reads below 10 for the top 10 species in filtered_dataframe
-filtered_dataframe_top <- filtered_dataframe %>%
-  filter(!(species %in% top_species & reads < 10))
-
-# Verify the number of records before and after filtering
-original_count <- nrow(filtered_dataframe)
-filtered_count <- nrow(filtered_dataframe_top)
-
-cat("Original number of records:", original_count, "\n")
-cat("Number of records after filtering:", filtered_count, "\n")
-cat("Number of records removed:", original_count - filtered_count, "\n")
-
-# Print the filtered dataframe to verify the result
-print(filtered_dataframe_top)
-```
-
 # convert long form back to full data summary with data filled and filtered
 Note: This code will need to be configured for each dataset, so that the rows containing the read counts are specified (e.g. pivot_longer(cols = X10BNY29042rep1:Cont3rep1), the 'X10BNY29042rep1:Cont3rep1' will need to be changed to the first and last column name
 ```{r}
 # Step 1: Replace empty cells with 0 before pivoting
 final_data_filled_clean <- final_data_filled %>%
-  mutate(across(Cont8:S21WAY30960rep3, ~ replace_na(.x, 0)))  # Replace NA with 0 in specified columns
+  mutate(across(Cont1:S21WAY30960rep3, ~ replace_na(.x, 0)))  # Replace NA with 0 in specified columns
 
 # Step 2: Pivot longer
 metab_long <- final_data_filled_clean %>%
   pivot_longer(
-    cols = Cont8:S21WAY30960rep3,  # Specify the range or individual column names
+    cols = Cont1:S21WAY30960rep3,  # Specify the range or individual column names
     names_to = "sample",
     values_to = "value"
   ) %>%
@@ -515,7 +481,7 @@ print(head(metab_wide))
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
 # Create the file name with the timestamp
-file_name <- paste0("~/git/metabarcoding_workflow_Miseq16/results/Miseq16_final_filt_filled_PCR_rep_data_summary_", timestamp, ".csv")
+file_name <- paste0("~/git/metabarcoding_workflow_Miseq16/results/Miseq16_final_filt_filled_PCR_rep_data_summary2_", timestamp, ".csv")
 
 # Save the dataframe with the new file name
 write.csv(metab_wide, file = file_name, row.names = FALSE)
