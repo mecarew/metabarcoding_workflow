@@ -564,15 +564,13 @@ print(collapsed_wide_summarised_df)
 
 # save file
 ```{r}
-
-
 # save filled dataframe
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
 # Create the file name with the timestamp (NOTE:Change the MiSeq number to the dataset you are working with)
-file_name1 <- paste0(here::here("results/Miseq19_final_data_summary_", timestamp, ".csv"))
+file_name1 <- paste0(here::here("results/Miseq19_final_data_summary_"), timestamp, ".csv")
  
- write.csv(wide_summarised_df, file =  file_name1, row.names = FALSE)
+ write.csv(wide_summarised_df, file = file_name1, row.names = FALSE)
 ```
  
 # DATA SUMMARY FOR 10 STIE STUDY (with site_per) 
