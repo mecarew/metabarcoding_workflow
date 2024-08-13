@@ -26,7 +26,7 @@ A file based on analysis of Miseq datasets was constructed ('asv_library_97_jun2
 
 ```{r}
 # read in flies
-file_path <- "~/Documents/asv_library_97_jun24.xlsx"
+file_path <- "~/Documents/asv_library_97_aug24.xlsx"
 
 # Get the names of the sheets
 sheet_names <- excel_sheets(file_path)
