@@ -30,7 +30,7 @@ A file based on analysis of Miseq datasets was constructed ('asv_library_97_jun2
 file_path <- "~/Documents/asv_library_97_aug24.xlsx"
 
 # Get the names of the sheets
-sheet_names <- excel_sheets(file_path)
+sheet_names <- readxl::excel_sheets(file_path)
 
 # Read the sheets into as dataframes
 truncated_fills_df <- readxl::read_excel(file_path, sheet = sheet_names[1])  # contains full taxonomic information for classifications with truncated taxonomy
@@ -47,9 +47,7 @@ max_p_update_df <- max_p_update_df %>%
   mutate(across(everything(), ~ replace_na(., "")))
 
 #read in raw dataframe (if starting with a clear global environment)
-#final_df <- read.csv(here("results/MiSeq13_final_data_summary.csv"))
-#final_df <- read.csv(here("results/MiSeq16_final_data_summary13_Jun_24_not_fil.csv"))
-final_df <- read.csv(here("results/miseq18_final_data_summary25_Jun_24.csv"))
+final_df <- read.csv(here::here("results/final_data_summaries/MiSeq19_vsearch_data_summary_13_08_2024.csv")) # change the Miseq run number and time stamp
 ```
 
 # remove identifications below thresholds for species species, genus, family and order
@@ -248,11 +246,11 @@ print(final_data_filled)
 ```
 
 ```{r}
-# save filled dataframe
+# Save filled dataframe
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
-# Create the file name with the timestamp (NOTE:Change the MiSeq number to the dataset you are working with)
-file_name <- paste0("~/git/metabarcoding_workflow_Miseq18/results/Miseq18_final_data_summary_filled_", timestamp, ".csv")
+# Create the file name with the timestamp (NOTE: Change the MiSeq number to the dataset you are working with)
+file_name <- paste0(here::here("results/final_data_summaries/MiseqX_vsearch_data_summary_filled_"), timestamp, ".csv")
 
 # Save the dataframe with the new file name
 write.csv(final_data_filled, file = file_name, row.names = FALSE)
@@ -271,7 +269,7 @@ Note: This code will need to be configured for each dataset, so that the rows co
 
 # Pivot longer to transform columns 13 to 40 into rows 
 metab_long <- final_data_filled %>%
-  pivot_longer(cols = A22ALD26081rep1:S22YZ8202rep3, names_to = "sample", values_to = "value") %>%
+  pivot_longer(cols = A22BF3373rep1:S22YPB224rep3, names_to = "sample", values_to = "value") %>%
   filter(value != 0) %>%  # Filter out rows where value is zero
   select(-matches("^X(\\.\\d+)?$"))  # Remove columns named X, X.1, ..., X.11
 
@@ -437,12 +435,12 @@ Note: This code will need to be configured for each dataset, so that the rows co
 ```{r}
 # Step 1: Replace empty cells with 0 before pivoting
 final_data_filled_clean <- final_data_filled %>%
-  mutate(across(A22ALD26081rep1:S22YZ8202rep3, ~ replace_na(.x, 0)))  # Replace NA with 0 in specified columns
+  mutate(across(A22BF3373rep1:S22YPB224rep3, ~ replace_na(.x, 0)))  # Replace NA with 0 in specified columns
 
 # Step 2: Pivot longer
 metab_long <- final_data_filled_clean %>%
   pivot_longer(
-    cols = A22ALD26081rep1:S22YZ8202rep3,  # Specify the range or individual column names
+    cols = A22BF3373rep1:S22YPB224rep3,  # Specify the range or individual column names
     names_to = "sample",
     values_to = "value"
   ) %>%
@@ -481,8 +479,8 @@ print(head(metab_wide))
 # Generate a timestamp
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
-# Create the file name with the timestamp
-file_name <- paste0("~/git/metabarcoding_workflow_Miseq18/results/Miseq18_final_filt_filled_PCR_rep_data_summary2_", timestamp, ".csv")
+# Create the file name with the timestamp (set Miseq run number)
+file_name <- paste0(here::here("results/final_data_summaries/MiseqX_vsearch_summary_filled_filt_PCR rep_"), timestamp, ".csv")
 
 # Save the dataframe with the new file name
 write.csv(metab_wide, file = file_name, row.names = FALSE)
@@ -529,42 +527,56 @@ wide_summarised_df[cols_to_modify][is.na(wide_summarised_df[cols_to_modify])] <-
 print(wide_summarised_df)
 
 ```
+#  Now aggregate species data so that the same species identification do not occur multiple times
 ```{r}
+library(dplyr)
+
+# List of columns to modify
+cols_to_modify <- c('kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species')
+
+# Convert specified columns to character type
+wide_summarised_df[cols_to_modify] <- lapply(wide_summarised_df[cols_to_modify], as.character)
+
+# Replace NA values with empty strings in specified columns
+wide_summarised_df[cols_to_modify][is.na(wide_summarised_df[cols_to_modify])] <- ""
+
+# Print the resulting wide summarized data frame
+print(wide_summarised_df)
+
 # List of columns to group by
 group_cols <- c('kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species')
 
 # Identify the columns that are site_per (excluding group columns and max_p_identity)
 site_cols <- setdiff(colnames(wide_summarised_df), c(group_cols, 'max_p_identity'))
 
-# Print columns for debugging
-print(site_cols)
-
 # Collapse rows by kingdom, phylum, class, order, family, genus, species
 collapsed_wide_summarised_df <- wide_summarised_df %>%
   group_by(across(all_of(group_cols))) %>%
   summarise(
     max_p_identity = max(max_p_identity, na.rm = TRUE),  # Get max value of max_p_identity
-    across(all_of(site_cols), sum, na.rm = TRUE),  # Sum the values for the site_per columns
+    across(all_of(site_cols), function(x) sum(x, na.rm = TRUE)),  # Sum the values for the site_per columns
     .groups = 'drop'
   )
 
-# Print the resulting collapsed data frame
+# Print the collapsed data frame
 print(collapsed_wide_summarised_df)
 ```
 
 # save file
 ```{r}
+
+
 # save filled dataframe
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
 # Create the file name with the timestamp (NOTE:Change the MiSeq number to the dataset you are working with)
-file_name1 <- paste0("~/git/metabarcoding_workflow_Miseq16/results/Miseq16_final_data_summary_filled_filter_sites_", timestamp, ".csv")
+file_name1 <- paste0(here::here("results/Miseq19_final_data_summary_", timestamp, ".csv"))
  
  write.csv(wide_summarised_df, file =  file_name1, row.names = FALSE)
 ```
  
 # DATA SUMMARY FOR 10 STIE STUDY (with site_per) 
-```{r}
+#```{r}
 summarized_per_df <- filtered_dataframe %>%
   group_by(site_per, kingdom, phylum, class, order, family, genus, species, max_p_identity) %>%  # Group by specified columns including max_p_identity
   summarise(reads = sum(reads, na.rm = TRUE), .groups = 'drop') %>%  # Sum the reads for each group
