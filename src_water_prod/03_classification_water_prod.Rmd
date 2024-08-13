@@ -394,7 +394,7 @@ get_thresholds <- function(file_path, offset=3, max_threshold=80) {
     summarise(max_p_identity=max(V3)) %>%
     mutate(threshold=max_p_identity - offset) %>%
     mutate(threshold=ifelse(threshold < max_threshold, max_threshold, threshold)) %>%
-    rename(`feature-id`=V1)
+    dplyr::rename(`feature-id`=V1)
   return(thresholds)
 }
 ```
