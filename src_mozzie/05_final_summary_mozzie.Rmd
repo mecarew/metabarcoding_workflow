@@ -250,16 +250,15 @@ head(final_df)
 
 
 ```{r}
-# save dataframe
+# save dataframe create a directory for results
+dir.create(here::here("results/final_data_summaries"))
 
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
-# Create the file name with the timestamp
-file_name <- paste0("~/git/metabarcoding_workflow_Miseq15/results/MiSeq15_final_data_summary_", timestamp, ".csv")
+# Create the file name with the timestamp 
+file_name <- paste0(here::here("results/final_data_summaries/MiSeqXX_vsearch_data_summary_"), timestamp, ".csv")
 
 # Save the dataframe with the new file name
 write.csv(final_df, file = file_name, row.names = FALSE)
-
-#write.csv(final_df, file = "~/git/metabarcoding_workflow/results/MiSeqXXfinal_data_summary.csv", row.names = FALSE)
 ```
 
