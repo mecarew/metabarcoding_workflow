@@ -40,33 +40,33 @@ complexes_df <- readxl::read_excel(file_path, sheet = sheet_names[4])# identifie
 
 # remove 'NA' from blank cell
 truncated_fills_df <- truncated_fills_df %>%
-  mutate(across(everything(), ~ replace_na(., "")))
+  dplyr::mutate(across(everything(), ~ replace_na(., "")))
 otu_groups_df <- otu_groups_df %>%
-  mutate(across(everything(), ~ replace_na(., "")))
+  dplyr::mutate(across(everything(), ~ replace_na(., "")))
 max_p_update_df <- max_p_update_df %>%
-  mutate(across(everything(), ~ replace_na(., "")))
+  dplyr::mutate(across(everything(), ~ replace_na(., "")))
 
 #read in raw dataframe (if starting with a clear global environment)
-final_df <- read.csv(here::here("results/final_data_summaries/MiSeq15_vsearch_data_summary_13_08_2024.csv")) # change the Miseq run number and time stamp
+final_df <- read.csv(here::here("results/final_data_summaries/MiSeq16_vsearch_data_summary_14_08_2024.csv")) # change the Miseq run number and time stamp
 ```
 
 # remove identifications below thresholds for species species, genus, family and order
 ```{r}
 # Update 'species' column to only include names if max threshold is above 97
 final_df <-  final_df %>%
-  mutate(species = if_else(max_p_identity < 97, "", species))
+  dplyr::mutate(species = if_else(max_p_identity < 97, "", species))
 
 # Update 'genus' column to only include names if max threshold is above 95
 final_df <-  final_df %>%
-  mutate(genus = if_else(max_p_identity < 95, "", genus))
+  dplyr::mutate(genus = if_else(max_p_identity < 95, "", genus))
 
 # Update 'family' column to only include names if max threshold is above 90
 final_df <-  final_df %>%
-  mutate(family = if_else(max_p_identity < 90, "", family))
+  dplyr::mutate(family = if_else(max_p_identity < 90, "", family))
 
 # Update 'order' column to only include names if max threshold is above 80
 final_df <-  final_df %>%
-  mutate(order = if_else(max_p_identity < 85, "",order))
+  dplyr::mutate(order = if_else(max_p_identity < 85, "",order))
 ```
 
 

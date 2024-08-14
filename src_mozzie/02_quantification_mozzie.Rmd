@@ -675,15 +675,16 @@ short_curated_otus <- short_lulu$curated_otus
 short_curated_otus_df <- if (!is.data.frame(short_curated_otus)) {
 short_curated_otus <- as.data.frame(short_curated_otus)
 }
-#short_curated_otus_df <- short_curated_otus_df %>% rename(curated_otus = short_curated_otus)
+
+names(short_curated_otus_df)[names(short_curated_otus_df) == "short_curated_otus"] <- "all_filter_asvs"
 
 right_curated_otus <- right_lulu$curated_otus
 right_curated_otus_df <- if (!is.data.frame(right_curated_otus)) {
-
-#right_curated_otus <- as.data.frame(right_curated_otus)
+right_curated_otus <- as.data.frame(right_curated_otus)
 }
-names(right_curated_otus_df)[names(all_curated_otus) == "right_curated_otus"] <- "all_filter_asvs"
-names(short_curated_otus_df)[names(all_curated_otus) == "short_curated_otus"] <- "all_filter_asvs"
+
+names(right_curated_otus_df)[names(right_curated_otus_df) == "right_curated_otus"] <- "all_filter_asvs"
+
 
 all_curated_otus <- rbind(right_curated_otus_df, short_curated_otus_df)
 
