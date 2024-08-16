@@ -609,7 +609,8 @@ colnames(wide_summarised_per_df) <- gsub("^X", "", colnames(wide_summarised_per_
 
 print(wide_summarised_per_df)
 ```
-#Now aggregate species data so that the same species identification do not occur multiple times
+
+# now aggregate species data so that the same species identification do not occur multiple times
 #```{r}
 library(dplyr)
 
