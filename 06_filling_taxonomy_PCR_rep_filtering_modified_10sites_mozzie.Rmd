@@ -1,11 +1,16 @@
 ---
-title: "Adding_additonal_taxonomic_information and replicate filtering"
+title: "10_site_study_data_filtering"
 author: "Melissa Carew"
-date: "06/06/2024"
+date: "21/08/2024"
 output: html_document
 ---
 
-This notebook is designed to filling missing taxonomic assignments from the vsearch step (in 03_classification) in the metabarcoding workflow and make corrections to taxonomic assignments that are incorrectly assigned by vsearch due to errors in the DNA barcode reference libraries (SECTION 1).It also performs a final flitering to detect and remove species detections that have most likely arisen from 'mistagging' (SECTION 2)
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+This notebook is designed to filling missing taxonomic assignments from the vsearch step (in 03_classification) in the metabarcoding workflow and make corrections to taxonomic assignments that are incorrectly assigned by vsearch due to errors in the DNA barcode reference libraries (SECTION 1).It also performs a final flitering to detect and remove species detections that have most likely arisen from 'mistagging' (SECTION 2). It has been modified to produce a final dataset for the 10 site study.
 
 
 ```{r}
@@ -16,6 +21,90 @@ library(stringr)
 library(readxl)
 library(here)
 ```
+
+# reading in data
+The MiSeq13 runs contains the bulk of the data for the 10 site study. However, a few samples require re-running therefore the data need to be retrieved and combined into a final dataset prior to filtering.
+
+Samples requiring re-running
+40BNY29042 <- re-run in MiSeq15 (3 replicates 40BNY29042rep3, 40BNY29042rep4 and 40BNY29042rep5 (only need 2 reps))
+
+10FEH41841 <- re-run in MiSeq15 (3 replicates labelled 10FEH41841rep3, 10FEH41841rep4 and 10FEH41841rep5 (only need 2 reps))
+
+30DNG75620 <- re-run in MiSeq16 (3 replicates labelled Elut30DNG79574rep1, Elut1030DNG79574rep2 and Elut30DNG75620rep3 (only need 2 reps))
+
+```{r}
+#read in final vsearh data summaries
+miseq13_vsearch_sum <- read.csv("~/git/metabarcoding_workflow_Miseq13/results/final_data_summaries/MiSeq13_vsearch_data_summary_14_08_2024.csv")
+miseq15_vsearch_sum <- read.csv("~/git/metabarcoding_workflow_Miseq15/results/final_data_summaries/MiSeq15_vsearch_data_summary_13_08_2024.csv")
+miseq16_vsearch_sum <- read.csv("~/git/metabarcoding_workflow_Miseq16/results/final_data_summaries/MiSeq16_vsearch_data_summary_14_08_2024.csv")
+
+# remove columns to be replaced re-run data from MiSeq13                               
+miseq13_vsearch_sum_mod <- miseq13_vsearch_sum[, !(names(miseq13_vsearch_sum) %in% c("X10FEH41843rep1", "X10FEH41843rep2", "X40BNY29042rep1", "X40BNY29042rep2", "X30DNG79574rep1", "x30DNG79574rep2"))]
+
+# subset rerun data from Miseq15 and Miseq16 to merge with miseq13_vsearch_sum_mod
+miseq15_vsearch_reruns <- miseq15_vsearch_sum %>% select(asv_code, kingdom, phylum, class, order, family, genus, species, Consensus, max_p_identity, threshold, X40BNY29042rep3, X40BNY29042rep4, X10FEH41841rep3, X10FEH41841rep4, asv_seq, amplicon)
+
+miseq16_vsearch_reruns <- miseq16_vsearch_sum %>% select(asv_code, kingdom, phylum, class, order, family, genus, species, Consensus, max_p_identity, threshold, Elut30DNG79574rep1, Elut30DNG79574rep2, asv_seq, amplicon)
+# rename sample name to site name
+miseq16_vsearch_reruns <- miseq16_vsearch_reruns %>% dplyr::rename(`X30DNG79574rep1` = Elut30DNG79574rep1, `X30DNG79574rep2` = Elut30DNG79574rep2)
+
+# merge all data into a final vsearch data frame for the 10 site study
+# Pivot data so it can be bound
+miseq13_vsearch_sum_mod_long <- miseq13_vsearch_sum_mod %>%
+  pivot_longer(
+    cols = X10BNY29042rep1:Cont3rep1,  # Specify the range or individual column names
+    names_to = "sample",
+    values_to = "value"
+  ) %>%
+  # Ensure that the 'value' column is numeric and any empty strings are replaced with 0
+  mutate(value = as.numeric(value)) %>%
+  filter(value != 0) %>%  # Optionally filter out rows where value is zero
+  select(-matches("^X(\\.\\d+)?$"))  # Remove columns named X, X.1, ..., X.11
+
+miseq15_vsearch_long <- miseq15_vsearch_reruns %>%
+  pivot_longer(
+    cols = X40BNY29042rep3:X10FEH41841rep4,  # Specify the range or individual column names
+    names_to = "sample",
+    values_to = "value"
+  ) %>%
+  # Ensure that the 'value' column is numeric and any empty strings are replaced with 0
+  mutate(value = as.numeric(value)) %>%
+  filter(value != 0) %>%  # Optionally filter out rows where value is zero
+  select(-matches("^X(\\.\\d+)?$"))  # Remove columns named X, X.1, ..., X.11
+ 
+miseq16_vsearch_long <- miseq16_vsearch_reruns %>%
+  pivot_longer(
+    cols = X30DNG79574rep1:X30DNG79574rep2,  # Specify the range or individual column names
+    names_to = "sample",
+    values_to = "value"
+  ) %>%
+  # Ensure that the 'value' column is numeric and any empty strings are replaced with 0
+  mutate(value = as.numeric(value)) %>%
+  filter(value != 0) %>%  # Optionally filter out rows where value is zero
+  select(-matches("^X(\\.\\d+)?$"))  # Remove columns named X, X.1, ..., X.11
+
+#bind datasets back together
+final_10sites_long <- rbind(miseq13_vsearch_sum_mod_long, miseq15_vsearch_long, miseq16_vsearch_long)
+
+#pivot back to wide dataframe for next steps
+final_10sites_long <- final_10sites_long %>%
+  group_by(asv_code, kingdom, phylum, class, order, family, genus, species, Consensus,
+           max_p_identity, threshold, asv_seq, amplicon, sample) %>%
+  summarise(value = sum(value, na.rm = TRUE), .groups = 'drop')
+
+final_10sites <- final_10sites_long %>%
+  pivot_wider(
+    names_from = sample,
+    values_from = value,
+    values_fill = list(value = 0)
+  )
+
+# asv_seq, amplicon to the end of the dataframe
+final_df <- final_10sites %>%
+  select(-asv_seq, -amplicon, everything(), asv_seq, amplicon)
+```
+
+
 
 ## SECTION 1: Filling in missing/incorrect taxonomic classifications
 
@@ -34,20 +123,9 @@ sheet_names <- readxl::excel_sheets(file_path)
 
 # Read the sheets into as dataframes
 truncated_fills_df <- readxl::read_excel(file_path, sheet = sheet_names[1])  # contains full taxonomic information for classifications with truncated taxonomy
-otu_groups_df <- readxl::read_excel(file_path, sheet = sheet_names[2])# groups unclassified sequences into 'OTUs'
+otu_groups_df <- readxl::read_excel(file_path, sheet = sheet_names[2], col_types = "text") # groups unclassified sequences into 'OTUs'
 max_p_update_df <- readxl::read_excel(file_path, sheet = sheet_names[3])#updates/corrects any missing identifications or errors in classification
 complexes_df <- readxl::read_excel(file_path, sheet = sheet_names[4])# identifies any ambiguous taxonomic assignments that should be considered as complexes
-
-# remove 'NA' from blank cell
-truncated_fills_df <- truncated_fills_df %>%
-  dplyr::mutate(across(everything(), ~ replace_na(., "")))
-otu_groups_df <- otu_groups_df %>%
-  dplyr::mutate(across(everything(), ~ replace_na(., "")))
-max_p_update_df <- max_p_update_df %>%
-  dplyr::mutate(across(everything(), ~ replace_na(., "")))
-
-#read in raw dataframe (if starting with a clear global environment)
-final_df <- read.csv(here::here("results/final_data_summaries/MiSeqXX_vsearch_data_summary_14_08_2024.csv")) # change the Miseq run number and time stamp
 ```
 
 # remove identifications below thresholds for species species, genus, family and order
@@ -276,7 +354,7 @@ Miseq20:
 
 # Pivot longer to transform columns 13 to 40 into rows 
 metab_long <- final_data_filled %>%
-  pivot_longer(cols = A22ALD26081rep1:S22YZ8202rep3, names_to = "sample", values_to = "value") %>%
+  pivot_longer(cols = X10BNY29042rep2:X40TOO42700rep1, names_to = "sample", values_to = "value") %>%
   filter(value != 0) %>%  # Filter out rows where value is zero
   select(-matches("^X(\\.\\d+)?$"))  # Remove columns named X, X.1, ..., X.11
 
@@ -442,12 +520,12 @@ Note: This code will need to be configured for each dataset, so that the rows co
 ```{r}
 # Step 1: Replace empty cells with 0 before pivoting
 final_data_filled_clean <- final_data_filled %>%
-  mutate(across(A22ALD26081rep1:S22YZ8202rep3, ~ replace_na(.x, 0)))  # Replace NA with 0 in specified columns
+  mutate(across(X10BNY29042rep2:X40TOO42700rep1, ~ replace_na(.x, 0)))  # Replace NA with 0 in specified columns
 
 # Step 2: Pivot longer
 metab_long <- final_data_filled_clean %>%
   pivot_longer(
-    cols = A22ALD26081rep1:S22YZ8202rep3,  # Specify the range or individual column names
+    cols = X10BNY29042rep2:X40TOO42700rep1,  # Specify the range or individual column names
     names_to = "sample",
     values_to = "value"
   ) %>%
@@ -487,7 +565,7 @@ print(head(metab_wide))
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
 # Create the file name with the timestamp (set Miseq run number)
-file_name <- paste0(here::here("results/final_data_summaries/MiseqXX_vsearch_summary_filled_filt_PCR rep_"), timestamp, ".csv")
+file_name <- paste0(here::here("results/final_data_summaries/ten_sites_vsearch_summary_filled_filt_PCR rep_"), timestamp, ".csv")
 
 # Save the dataframe with the new file name
 write.csv(metab_wide, file = file_name, row.names = FALSE)
@@ -581,7 +659,7 @@ file_name1 <- paste0(here::here("results/MiseqXX_final_data_summary_"), timestam
 ```
  
 # DATA SUMMARY FOR 10 STIE STUDY (with site_per) 
-#```{r}
+```{r}
 summarized_per_df <- filtered_dataframe %>%
   group_by(site_per, kingdom, phylum, class, order, family, genus, species, max_p_identity) %>%  # Group by specified columns including max_p_identity
   summarise(reads = sum(reads, na.rm = TRUE), .groups = 'drop') %>%  # Sum the reads for each group
@@ -608,7 +686,7 @@ print(wide_summarised_per_df)
 
 ```
 
-#```{r}
+```{r}
 # List of columns to group by
 group_cols <- c('kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species')
 
@@ -631,7 +709,7 @@ collapsed_wide_summarised_per_df <- wide_summarised_per_df %>%
 print(collapsed_wide_summarised_per_df)
 ```
 # save file
-#```{r}
+```{r}
 # save filled dataframe
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
