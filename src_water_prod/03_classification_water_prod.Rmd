@@ -46,7 +46,7 @@ options(width=120)
 #miseq_folder <- "miseq13"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name)
-uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow/")
+uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
 
 water_prod <- "~/git/metabarcoding_workflow"
 ```
@@ -68,7 +68,7 @@ suppressPackageStartupMessages({
 xaringanExtra::use_panelset()
 
 # Load workspace from the previous notebook
-load(paste0(uomshare,"cache/02.RData"))
+load(paste0(uomshare,"/cache/02.RData"))
 ```
 
 ```{r}
@@ -387,7 +387,6 @@ dir_tree(classification_dir)
 Process the search results to get % identity match thresholds. Currently we use the top % identity match minus 3 for the threshold of matches to consider, but this can be changed using the `offset` parameter in the `get_thresholds` function.
 
 ```{r}
-
 classification_thresholds_dir <- "/home/unimelb.edu.au/mecarew/git/metabarcoding_workflow/thresholds"
 mkdir(classification_thresholds_dir)
 ```
