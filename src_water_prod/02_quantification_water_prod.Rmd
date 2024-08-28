@@ -35,7 +35,11 @@ This notebook performs quantification for your metabarcoding analysis. This note
 ```{r}
 #reset directory 
 #***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working inT****
-uomshare <- "/mnt/uomShare/wergStaff/MelCarew/git-data/miseq15/metabarcoding_workflow/"
+#miseq_folder <- "miseqXX"
+
+# Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name
+
+uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
 ```
 
 # Load
@@ -55,7 +59,7 @@ suppressPackageStartupMessages({
 xaringanExtra::use_panelset()
 
 # Load workspace from the previous notebook
-load(paste0(uomshare,"cache/01.RData"))
+load(paste0(uomshare,"/cache/01.RData"))
 ```
 
 ```{r}
@@ -105,7 +109,7 @@ targets <- targets %>%
          output_r2=file.path(combined_dir, amplicon_group, 
                              paste0(Factor, "_X_L001_R2_001.fastq.gz")))
 
-combine_1_targets <- paste0(uomshare, "tmp/combine_1_targets.txt")
+combine_1_targets <- paste0(uomshare, "/tmp/combine_1_targets.txt")
 write_targets(targets, file=combine_1_targets)
 ```
 
@@ -125,6 +129,7 @@ combine_1 <- renderWF(combine_1, inputvars=c(FileName="_INPUT_PATH_",
                                              amplicon_group="_AMPLICON_GROUP_",
                                              Factor="_SAMPLE_NAME_"))
 run_jobs(combine_1)
+# check for any empty files and delete them and then re-run chunk run_jobs(combine_2) will not work if there are files not written (i.e., zero bytes)
 ```
 :::
 
@@ -161,7 +166,7 @@ targets <- unique(targets)
 targets <- targets %>% 
   mutate(output=file.path(combined_dir, paste0(amplicon_group, ".qza")))
 
-combine_2_targets <- paste0(uomshare, "tmp/combine_2_targets.txt")
+combine_2_targets <- paste0(uomshare, "/tmp/combine_2_targets.txt")
 write_targets(targets, file=combine_2_targets)
 ```
 
@@ -217,7 +222,8 @@ paged_table(truncation_lengths)
 Now we'll run DADA2 to quantify ASVs.
 
 ```{r}
-dada2_dir <- file.path(results_dir, "dada2")
+dada2_dir <- "/home/unimelb.edu.au/mecarew/git/metabarcoding_workflow/dada2"
+#dada2_dir <- file.path(results_dir, "dada2")
 mkdir(dada2_dir)
 
 # Setup targets
@@ -239,7 +245,7 @@ targets <- targets %>%
 # targets <- targets %>% filter(SampleName == "short")
 targets <- targets %>% filter(SampleName %in% c("short", "right"))
 
-dada2_targets <- paste0(uomshare, "tmp/dada2_targets.txt")
+dada2_targets <- here("/tmp/dada2_targets.txt")
 write_targets(targets, file=dada2_targets)
 ```
 
@@ -337,11 +343,11 @@ dir_tree(dada2_dir)
 # View DADA2 stats
 
 ```{r}
-paged_table(read_qza(paste0(uomshare,"dada2/short_denoising_stats.qza"))$data)
+paged_table(read_qza(paste0(uomshare,"results/dada2/short_denoising_stats.qza"))$data)
 ```
 
 ```{r}
-paged_table(read_qza(paste0(uomshare, "dada2/right_denoising_stats.qza"))$data)
+paged_table(read_qza(paste0(uomshare, "results/dada2/right_denoising_stats.qza"))$data)
 ```
 
 ------------------------------------------------------------------------
@@ -540,7 +546,7 @@ dim(short_lulu$curated_table)
 ```
 
 ```{r}
-saveRDS(short_lulu, file=paste0(uomshare, "lulu/short_lulu.rds"))
+saveRDS(short_lulu, file=paste0(uomshare, "results/lulu/short_lulu.rds"))
 ```
 
 ```{r}
@@ -556,7 +562,7 @@ dim(right_lulu$curated_table)
 ```
 
 ```{r}
-saveRDS(right_lulu, file=paste0(uomshare, "lulu/right_lulu.rds"))
+saveRDS(right_lulu, file=paste0(uomshare, "results/lulu/right_lulu.rds"))
 ```
 
 ```{r, attr.output='style="max-height: 400px; overflow: auto !important;"'}

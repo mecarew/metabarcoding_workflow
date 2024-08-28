@@ -10,7 +10,7 @@ title: "Metabarcoding Preprocessing"
 description: |
   A QIIME2-based metabarcoding workflow. Part 1.
 author:
-  - name: Your Name Here
+  - name: Your Name here
     url: https://example.com/
     affiliation: Example Organisation
     affiliation_url: https://example.com/
@@ -49,29 +49,28 @@ The first thing we'll do is set the directory that stores the workflow outputs.
 #  directory or use an absolute path
 #results_dir <- here::here("results")
 
-#***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME****
+#***NOTE: Change the miseq folder name starting from this point****
+miseq_folder <- "test"
 
-results_dir <- "/mnt/uomShare/wergStaff/MelCarew/git-data/miseq15/metabarcoding_workflow"
+uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
 
-# Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name)
-uomshare <- "/mnt/uomShare/wergStaff/MelCarew/git-data/miseq15/metabarcoding_workflow/"
+#adjusting directory paths to use Jess's mozzie code
+results_dir <- paste0(uomshare)
 
 # Log files will be stored inside the logs directory inside the results directory
-logs_dir <- file.path(results_dir, "logs")
 
-tmp_dir <- "/mnt/uomShare/wergStaff/MelCarew/git-data"
+logs_dir <- file.path(results_dir,"logs")
+
+tmp_dir <- file.path(results_dir,"tmp")
 ```
-
-The outputs of this workflow will be stored in:\
-**`r results_dir`**.
 
 We also have the option to run the jobs in this workflow using SLURM if you're working on a cluster that uses it.
 
 ```{r class.source='fold-show'}
 use_slurm <- FALSE
-# use_slurm <- TRUE
+#use_slurm <- TRUE
 
-# Settings for slurm (you can ignore these if `use_slurm` is set to FALSE)
+#Settings for slurm (you can ignore these if `use_slurm` is set to FALSE)
 #slurm_conffile <- here::here("src/.batchtools.conf.R")
 #slurm_template <- here::here("src/batchtools.slurm.tmpl")
 #slurm_resources <- list(partition="main", ntasks=1, ncpus=1, memory=4096)
@@ -167,7 +166,7 @@ A file containing sample information is required. We'll read in `data/metadata/s
 -   `factor`: a factor of interest for your dataset (if you don't have a factor of interest, you can set the values as the same as the sample name)
 
 ```{r}
-samples_df <- read.table(paste0(uomshare,"data/metadata/samples.tsv"), header=TRUE, stringsAsFactors=FALSE)
+samples_df <- read.table(paste0(uomshare, "/data/metadata/samples.tsv"), header=TRUE, stringsAsFactors=FALSE)
 paged_table(samples_df)
 ```
 
@@ -180,7 +179,7 @@ We also need a file that contains the primers that the metabarcoding project use
 -   `primer_rc`: the reverse complement of the primer sequence.
 
 ```{r}
-primers_filename <- here("ref/primers.tsv")
+primers_filename <- here::here("ref/primers.tsv")
 suppressMessages(
   primers_df <- read_tsv(primers_filename, col_names=c("primer", "primer_seq", "primer_rc"))
 )
@@ -199,7 +198,7 @@ Lastly, we need the group that each primer combination corresponds to. This data
 -   `reverse-sequence`: the sequence corresponding to the reverse primer
 
 ```{r}
-metadata_filename <- here("ref/metadata.tsv")
+metadata_filename <- here::here("ref/metadata.tsv")
 suppressMessages(
   metadata_df <- read_tsv(metadata_filename)
 )
@@ -215,8 +214,8 @@ To import data into QIIME, the FASTQ files for each library need to be in separa
 ```{r}
 # Check if all files exist from samples_df
 data.frame(sample_name=samples_df$sample_name,
-           r1_exists=file.exists(here(samples_df$filename_r1)),
-           r2_exists=file.exists(here(samples_df$filename_r2))) %>%
+           r1_exists=file.exists(here::here(samples_df$filename_r1)),
+           r2_exists=file.exists(here::here(samples_df$filename_r2))) %>%
   paged_table()
 ```
 
@@ -224,13 +223,11 @@ If all the files exist, we can now create a separate directory for each sample h
 
 ```{r}
 # Create some directories first
-dir.create(results_dir)
 dir.create(logs_dir)
-#dir.create(paste0(uomshare,"tmp"))
 dir.create(tmp_dir)
 
 # Create import_data directory if it doesn't exist
-import_data_dir <- file.path(results_dir, "import_data")
+import_data_dir <- file.path(results_dir,"import_data")
 if (!dir.exists(import_data_dir)) {
   dir.create(import_data_dir, recursive = TRUE)
 }
@@ -251,12 +248,12 @@ for (i in seq_len(nrow(samples_df))) {
   
   # Copy files instead of creating symlinks
   if (!file.exists(file.path(lib_dir, "forward.fastq.gz"))) {
-    file.copy(from = file.path(here(x$filename_r1)), 
+    file.copy(from = file.path(here::here(x$filename_r1)), 
               to = file.path(lib_dir, "forward.fastq.gz"))
   }
   
   if (!file.exists(file.path(lib_dir, "reverse.fastq.gz"))) {
-    file.copy(from = file.path(here(x$filename_r2)), 
+    file.copy(from = file.path(here::here(x$filename_r2)), 
               to = file.path(lib_dir, "reverse.fastq.gz"))
   }
 }
@@ -267,8 +264,8 @@ import_targets <- unlist(import_targets)
 Let's check if these files have been created using the `dir_tree` function:
 
 ```{r}
-# If there are already qza files generated, don't list them here
-dir_tree(here(import_data_dir), regexp="*qza", invert=TRUE)
+# If there::here are already qza files generated, don't list them here::here
+dir_tree(here::here(import_data_dir), regexp="*qza", invert=TRUE)
 ```
 
 Now we can import these files into a QIIME artifact file.
@@ -278,9 +275,9 @@ targets <- data.frame(FileName=import_targets,
                       SampleName=basename(import_targets),
                       Factor=basename(import_targets),
                       output=paste0(import_targets, ".qza"))
-import_targets <- paste0(uomshare, "tmp/import_targets.txt")
+import_targets <- paste0(uomshare, "/tmp/import_targets.txt")
 write.table(targets, file=import_targets, sep="\t", row.names=FALSE, quote=FALSE)
-cwl_path <- here("param/cwl")
+cwl_path <- here::here("param/cwl")
 ```
 
 And run the command to import files into QIIME2 artifact files.
@@ -334,7 +331,7 @@ targets <- data.frame(FileName=extract_targets(import, "output"),
   mutate(demux_output=file.path(demux_dir, paste0(SampleName, "_demux.qza")),
          discard_output=file.path(demux_dir, paste0(SampleName, "_discard.qza")),
          log_output=file.path(demux_dir, paste0(SampleName, "_cutadapt.log")))
-demux_targets <- paste0(uomshare,"tmp/demux_targets.txt")
+demux_targets <- paste0(uomshare, "/tmp/demux_targets.txt")
 write_targets(targets, file=demux_targets)
 ```
 
@@ -350,6 +347,8 @@ demux <- renderWF(demux, inputvars=c(FileName="_INPUT_PATH_", metadata_path="_PR
                                      demux_output="_OUTPUT_SEQUENCES_", discard_output="_OUTPUT_UNTRIMMED_",
                                      log_output="_LOG_PATH_"))
 run_jobs(demux)
+
+# if you get a '2>&1' had status warning you will need to re-run this chunk
 ```
 :::
 
@@ -396,7 +395,7 @@ for (amplicon_group in unique(metadata_df$group)) {
 }
 
 targets <- do.call(rbind, target_list)
-split_targets <- paste0(uomshare,"tmp/split_targets.txt")
+split_targets <- paste0(uomshare, "/tmp/split_targets.txt")
 write_targets(targets, file=split_targets)
 ```
 
@@ -411,7 +410,10 @@ split <- set_logs_dir(split, logs_dir)
 split <- renderWF(split, inputvars=c(FileName="_INPUT_PATH_", metadata_path="_METADATA_PATH_",
                                      condition="_CONDITION_", output="_OUTPUT_PATH_"))
 run_jobs(split)
+
+# if you get a 2>&1' had status 1 warning you will need to re-run this chunk
 ```
+
 :::
 
 ::: panel
@@ -474,7 +476,7 @@ targets <- targets %>%
          output=file.path(trimmed_dir, paste0(SampleName, ".qza")),
          log_path=file.path(trimmed_dir, paste0(SampleName, "_cutadapt_trim.log")))
 
-trimmed_targets <- paste0(uomshare,"tmp/trimmed_targets.txt")
+trimmed_targets <- paste0(uomshare, "/tmp/trimmed_targets.txt")
 write_targets(targets, file=trimmed_targets)
 ```
 
@@ -490,6 +492,7 @@ trim <- renderWF(trim, inputvars=c(FileName="_INPUT_PATH_", adapter_f="_ADAPTER_
                                    adapter_r="_ADAPTER_R_", output="_OUTPUT_PATH_",
                                    log_path="_LOG_PATH_"))
 run_jobs(trim)
+# if you get a '2>&1' had status warning you will need to re-run this chunk
 ```
 :::
 
@@ -604,7 +607,7 @@ targets <- data.frame(FileName=extract_targets(trim, "output"),
 targets <- targets %>% 
   mutate(output=file.path(summary_dir, paste0(SampleName, ".qzv")),
          output_dir=summary_dir)
-summary_targets <- paste0(uomshare,"tmp/summary_targets.txt")
+summary_targets <- paste0(uomshare, "/tmp/summary_targets.txt")
 write_targets(targets, file=summary_targets)
 
 # Setup workflow
@@ -812,8 +815,8 @@ using [QIIME 2 View](https://view.qiime2.org/), or run the `sequencing_quality_b
 Save output so it can be loaded in subsequent notebooks.
 
 ```{r}
-mkdir(paste0(uomshare,"cache"))
-save.image(paste0(uomshare,"cache/01.RData"))
+dir.create(paste0(uomshare, "/cache"))
+save.image(paste0(uomshare,"/cache/01.RData"))
 ```
 
 ------------------------------------------------------------------------

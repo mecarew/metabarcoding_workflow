@@ -40,8 +40,15 @@ options(width=120)
 ```
 
 ```{r}
-#reset directory
-uomshare <- "/home/unimelb.edu.au/uomShare/wergStaff/MelCarew/git-data/miseq17/metabarcoding_workflow/"
+#reset directory 
+#***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working inT****
+
+#miseq_folder <- "miseq13"
+
+# Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name)
+uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow/")
+
+water_prod <- "~/git/metabarcoding_workflow"
 ```
 
 
@@ -77,7 +84,8 @@ Sys.setenv(PYTHONPATH="/home/unimelb.edu.au/jessicac/shared_envs/qiime2-2024.2/l
 ```{r}
 # For the mozzie server, the root disk can run out of space, so it's safer to set the tmp directory 
 # to a different location
-Sys.setenv(TMPDIR="/home/unimelb.edu.au/uomShare/wergStaff/MelCarew")
+#Sys.setenv(TMPDIR="/home/unimelb.edu.au/uomShare/wergStaff/MelCarew")
+Sys.setenv(TMPDIR="/home/unimelb.edu.au")
 #tmp_dir_path <- "/mnt/galaxy/tmp"
 tmp_dir_path <- "/home/unimelb.edu.au/mecarew/tmp"
 ```
@@ -144,6 +152,7 @@ targets <- targets %>%
            file.path(classification_db_dir, paste0(amplicon_group, "_feature_taxonomy.qza"))
 )
 
+#database_targets <- paste0(uomshare,"tmp/database_targets.txt")
 database_targets <- paste0(uomshare,"tmp/database_targets.txt")
 
 # WIP: For the moment, only run the short/right amplicions
@@ -378,7 +387,8 @@ dir_tree(classification_dir)
 Process the search results to get % identity match thresholds. Currently we use the top % identity match minus 3 for the threshold of matches to consider, but this can be changed using the `offset` parameter in the `get_thresholds` function.
 
 ```{r}
-classification_thresholds_dir <- file.path(results_dir, "classification/thresholds")
+
+classification_thresholds_dir <- "/home/unimelb.edu.au/mecarew/git/metabarcoding_workflow/thresholds"
 mkdir(classification_thresholds_dir)
 ```
 
@@ -441,8 +451,8 @@ for (amplicon_group in amplicon_groups) {
 ```{r}
 threshold_file_list <- data.frame(
   amplicon_group=c("short", "right"),
-  file_list=c(paste0(uomshare, "classification/thresholds/short_files.txt"),
-             paste0(uomshare, "classification/thresholds/right_files.txt"))
+  file_list=c( paste0(classification_thresholds_dir,"/short_files.txt"),
+             paste0(classification_thresholds_dir,"/right_files.txt"))
 )
 paged_table(threshold_file_list)
 ```
@@ -482,7 +492,7 @@ targets <- targets %>%
 classification_targets <- paste0(uomshare,"tmp/classification_targets.txt")
 
 # WIP: For the moment, only run the short and right amplicons
-write_targets(targets %>% filter(amplicon_group %in% c("right")), file=classification_targets)
+write_targets(targets %>% filter(amplicon_group %in% c("short","right")), file=classification_targets)
 ```
 
 
@@ -515,6 +525,12 @@ classification <- renderWF(classification,
 run_jobs(classification)
 ```
 
+
+
+```{r}
+# move 'thresholds' folder to uomshare
+file.copy("/home/unimelb.edu.au/mecarew/git/metabarcoding_workflow/thresholds", paste0(uomshare,"classification"), recursive = TRUE)
+```
 
 :::
 
