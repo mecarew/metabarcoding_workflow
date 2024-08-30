@@ -1,0 +1,41 @@
+---
+title: "controls check"
+output: html_notebook
+---
+
+```{r}
+# Load the required libraries
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readxl)
+library(here)
+```
+
+Load flies
+
+```{r}
+#reset directory 
+#***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working inT****
+miseq_folder <- "miseq15"
+
+# Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name)
+uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
+
+miseq_conrols <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_controls_30_08_2024.csv")) 
+mart2_control_data <- read_excel("~/uomShare/wergStaff/MelCarew/git-data/MAR2_metabarcoding_control_site.xlsx")
+```
+
+```{r}
+common_species <- intersect(miseq_conrols$species, mart2_control_data$species)
+
+# Species unique to dataframe1
+unique_to_miseq_conrols <- setdiff(miseq_conrols$species, mart2_control_data$species)
+
+print(unique_to_miseq_conrols)                                   
+
+# Species unique to dataframe2
+unique_to_mart2_control_data <- setdiff(mart2_control_data$species, miseq_conrols$species)
+print(unique_to_mart2_control_data)  
+```
+

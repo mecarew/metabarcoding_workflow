@@ -17,7 +17,7 @@ Starting from here will need the threshold list and the sample_df from Cache03
 ```{r}
 #reset directory 
 #***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working inT****
-#miseq_folder <- "miseq13"
+miseq_folder <- "miseq15"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name)
 uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
@@ -119,10 +119,10 @@ right_search_results <- read_tsv(paste0(uomshare,"/classification/preliminary/ri
 This is the case for sampled from the 10 sites study as the names start with numbers
 
 ```{r}
-#all_tables <- list(
- # short=short_lulu$curated_table,
-#  right=right_lulu$curated_table
-#)
+all_tables <- list(
+  short=short_lulu$curated_table,
+  right=right_lulu$curated_table
+)
 ```
 
 
