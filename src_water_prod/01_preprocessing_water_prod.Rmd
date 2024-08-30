@@ -49,8 +49,8 @@ The first thing we'll do is set the directory that stores the workflow outputs.
 #  directory or use an absolute path
 #results_dir <- here::here("results")
 
-#***NOTE: Change the miseq folder name starting from this point****
-miseq_folder <- "test"
+#***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in and the directory to your own home drive***
+#miseq_folder <- "test"
 
 uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
 
@@ -68,13 +68,12 @@ We also have the option to run the jobs in this workflow using SLURM if you're w
 
 ```{r class.source='fold-show'}
 use_slurm <- FALSE
-#use_slurm <- TRUE
-
-#Settings for slurm (you can ignore these if `use_slurm` is set to FALSE)
-#slurm_conffile <- here::here("src/.batchtools.conf.R")
-#slurm_template <- here::here("src/batchtools.slurm.tmpl")
-#slurm_resources <- list(partition="main", ntasks=1, ncpus=1, memory=4096)
-#slurm_n_jobs <- 10
+# use_slurm <- TRUE
+# Settings for slurm (you can ignore these if `use_slurm` is set to FALSE)
+# slurm_conffile <- here::here("src/.batchtools.conf.R")
+# slurm_template <- here::here("src/batchtools.slurm.tmpl")
+# slurm_resources <- list(partition="main", ntasks=1, ncpus=1, memory=4096)
+# slurm_n_jobs <- 10
 ```
 
 # Load libraries and files

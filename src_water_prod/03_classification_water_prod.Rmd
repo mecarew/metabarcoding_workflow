@@ -41,14 +41,13 @@ options(width=120)
 
 ```{r}
 #reset directory 
-#***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working inT****
-
-#miseq_folder <- "miseq13"
+#***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in and the directory to your own home drive***
+miseq_folder <- "test"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name)
-uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
+uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
 
-water_prod <- "~/git/metabarcoding_workflow"
+water_prod <- "/home/unimelb.edu.au/mecarew/git/metabarcoding_workflow"
 ```
 
 
@@ -84,20 +83,17 @@ Sys.setenv(PYTHONPATH="/home/unimelb.edu.au/jessicac/shared_envs/qiime2-2024.2/l
 ```{r}
 # For the mozzie server, the root disk can run out of space, so it's safer to set the tmp directory 
 # to a different location
-#Sys.setenv(TMPDIR="/home/unimelb.edu.au/uomShare/wergStaff/MelCarew")
-Sys.setenv(TMPDIR="/home/unimelb.edu.au")
-#tmp_dir_path <- "/mnt/galaxy/tmp"
-tmp_dir_path <- "/home/unimelb.edu.au/mecarew/tmp"
+Sys.setenv(TMPDIR="/home/unimelb.edu.au/mecarew/tmp")
+tmp_dir_path <- "/home/unimelb.edu.aa/tmp"
 ```
 
 ###NEW trying to see if I can run a slurm equivalet
 ```{r}
 # Define SLURM settings
 use_slurm <- FALSE
-slurm_threads <- 4
-slurm_resources <- list(partition = "main", ntasks = slurm_threads, ncpus = slurm_threads, memory = 8192)
-slurm_n_jobs <- 10
-
+# slurm_threads <- 4
+# slurm_resources <- list(partition = "main", ntasks = slurm_threads, ncpus = slurm_threads, memory = 8192)
+# slurm_n_jobs <- 10
 ```
 
 -----
@@ -152,8 +148,7 @@ targets <- targets %>%
            file.path(classification_db_dir, paste0(amplicon_group, "_feature_taxonomy.qza"))
 )
 
-#database_targets <- paste0(uomshare,"tmp/database_targets.txt")
-database_targets <- paste0(uomshare,"tmp/database_targets.txt")
+database_targets <- paste0(uomshare,"/tmp/database_targets.txt")
 
 # WIP: For the moment, only run the short/right amplicions
 write_targets(targets %>% filter(SampleName %in% c("short", "right")), file=database_targets)
@@ -256,7 +251,7 @@ if (! big_dataset) {
              file.path(classification_prelim_dir, paste0(amplicon_group, "_prelim_search_results.qza"))
     )
   
-  prelim_classification_targets <- paste0(uomshare,"tmp/classification_prelim_targets.txt")
+  prelim_classification_targets <- paste0(uomshare,"/tmp/classification_prelim_targets.txt")
   
   # WIP: For the moment, only run the short and right amplicons
   write_targets(targets %>% filter(amplicon_group %in% c("short", "right")), file=prelim_classification_targets)
@@ -288,7 +283,7 @@ if (big_dataset) {
              file.path(classification_prelim_dir, paste0(amplicon_group, "_vsearch.tsv"))
     )
   
-  prelim_classification_targets <- paste0(uomshare,"tmp/classification_prelim_vsearch_targets.txt")
+  prelim_classification_targets <- paste0(uomshare,"/tmp/classification_prelim_vsearch_targets.txt")
   
   # WIP: For the moment, only run the short amplicons
   write_targets(targets %>% filter(amplicon_group %in% c("short", "right")), file=prelim_classification_targets)
@@ -350,6 +345,8 @@ prelim_classification <- renderWF(prelim_classification,
 
 ```{r, attr.output='style="max-height: 400px; overflow: auto !important;"'}
 run_jobs(prelim_classification)
+
+#mktemp: failed to create directory via template ‘/home/unimelb.edu.au/tmp.XXXXXXXXXX’: Permission denied delete the tmp directory in your space and remake it in the terminal (mkdir ~/tmp)
 ```
 
 
@@ -488,7 +485,7 @@ targets <- targets %>%
            file.path(classification_dir, paste0(amplicon_group, "_classification.qza"))
   )
 
-classification_targets <- paste0(uomshare,"tmp/classification_targets.txt")
+classification_targets <- paste0(uomshare,"/tmp/classification_targets.txt")
 
 # WIP: For the moment, only run the short and right amplicons
 write_targets(targets %>% filter(amplicon_group %in% c("short","right")), file=classification_targets)

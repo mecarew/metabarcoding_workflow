@@ -34,8 +34,8 @@ This notebook performs quantification for your metabarcoding analysis. This note
 
 ```{r}
 #reset directory 
-#***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working inT****
-#miseq_folder <- "miseqXX"
+#***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in and the directory to your own home drive***
+miseq_folder <- "test"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name
 uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
@@ -46,7 +46,7 @@ results_dir <- paste0(uomshare)
 #results_dir <- file.path("/home/unimelb.edu.au/mecarew/git/metabarcoding_workflow/results")
 #dir.create(results_dir)
 
-#logs_dir <- file.path(results_dir, "logs")
+#logs_dir <- file.path("/home/unimelb.edu.au/mecarew/git/metabarcoding_workflow/results", "logs")
 #mkdir(logs_dir)
 ```
 
@@ -82,9 +82,9 @@ Sys.setenv(PYTHONPATH="/home/unimelb.edu.au/jessicac/shared_envs/qiime2-2024.2/l
 
 ```{r}
 use_slurm <- FALSE
-#slurm_threads <- 8
-#slurm_resources <- list(partition="main", ntasks=1, ncpus=slurm_threads, memory=4096)
-#slurm_n_jobs <- 10
+slurm_threads <- 8
+slurm_resources <- list(partition="main", ntasks=1, ncpus=slurm_threads, memory=4096)
+slurm_n_jobs <- 10
 ```
 
 # Combine into amplicon groups
@@ -117,8 +117,8 @@ targets <- targets %>%
          output_r2=file.path(combined_dir, amplicon_group, 
                              paste0(Factor, "_X_L001_R2_001.fastq.gz")))
 
-#combine_1_targets <- paste0(uomshare, "/tmp/combine_1_targets.txt")
-combine_1_targets <- here("tmp/combine_1_targets.txt")
+combine_1_targets <- paste0(uomshare, "/tmp/combine_1_targets.txt")
+#combine_1_targets <- here("tmp/combine_1_targets.txt")
 write_targets(targets, file=combine_1_targets)
 ```
 
@@ -176,8 +176,8 @@ targets <- unique(targets)
 targets <- targets %>% 
   mutate(output=file.path(combined_dir, paste0(amplicon_group, ".qza")))
 
-#combine_2_targets <- paste0(uomshare, "/tmp/combine_2_targets.txt")
-combine_2_targets <- here("tmp/combine_2_targets.txt")
+combine_2_targets <- paste0(uomshare, "/tmp/combine_2_targets.txt")
+#combine_2_targets <- here("tmp/combine_2_targets.txt")
 write_targets(targets, file=combine_2_targets)
 ```
 
@@ -318,7 +318,7 @@ targets <- targets %>%
            file.path(dada2_dir, paste0(amplicon_group, "_denoising_stats.qzv")),
   )
 
-dada2_vis_targets <- paste0(uomshare, "tmp/dada2_vis_targets.txt")
+dada2_vis_targets <- paste0(uomshare, "/tmp/dada2_vis_targets.txt")
 
 write_targets(targets, file=dada2_vis_targets)
 ```
@@ -359,11 +359,11 @@ dir_tree(dada2_dir)
 # View DADA2 stats
 
 ```{r}
-paged_table(read_qza(paste0(uomshare,"results/dada2/short_denoising_stats.qza"))$data)
+paged_table(read_qza(paste0(uomshare,"/dada2/short_denoising_stats.qza"))$data)
 ```
 
 ```{r}
-paged_table(read_qza(paste0(uomshare, "results/dada2/right_denoising_stats.qza"))$data)
+paged_table(read_qza(paste0(uomshare, "/dada2/right_denoising_stats.qza"))$data)
 ```
 
 ------------------------------------------------------------------------
@@ -385,7 +385,7 @@ targets <- targets %>%
          filtered_seq_output=file.path(dada2_dir, paste0(amplicon_group, "_representative_sequences_filtered.qza"))
   )
 
-dada2_filtered_targets <- paste0(uomshare, "tmp/dada2_filtered_targets.txt")
+dada2_filtered_targets <- paste0(uomshare, "/tmp/dada2_filtered_targets.txt")
 write_targets(targets, file=dada2_filtered_targets)
 ```
 
@@ -497,7 +497,7 @@ targets <- targets %>%
            file.path(lulu_dir, paste0(amplicon_group, "_match_list.txt"))
   )
 
-lulu_vsearch_targets <- paste0(uomshare, "tmp/lulu_vsearch_targets.txt")
+lulu_vsearch_targets <- paste0(uomshare, "/tmp/lulu_vsearch_targets.txt")
 
 write_targets(targets, file=lulu_vsearch_targets)
 ```
@@ -562,7 +562,7 @@ dim(short_lulu$curated_table)
 ```
 
 ```{r}
-saveRDS(short_lulu, file=paste0(uomshare, "results/lulu/short_lulu.rds"))
+saveRDS(short_lulu, file=paste0(uomshare, "/lulu/short_lulu.rds"))
 ```
 
 ```{r}
@@ -578,7 +578,7 @@ dim(right_lulu$curated_table)
 ```
 
 ```{r}
-saveRDS(right_lulu, file=paste0(uomshare, "results/lulu/right_lulu.rds"))
+saveRDS(right_lulu, file=paste0(uomshare, "/lulu/right_lulu.rds"))
 ```
 
 ```{r, attr.output='style="max-height: 400px; overflow: auto !important;"'}
@@ -593,7 +593,7 @@ dir_tree(lulu_dir)
 Save output so it can be loaded in subsequent notebooks.
 
 ```{r}
-save.image(paste0(uomshare,"cache/02.RData"))
+save.image(paste0(uomshare,"/cache/02.RData"))
 ```
 
 ------------------------------------------------------------------------
