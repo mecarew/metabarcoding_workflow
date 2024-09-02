@@ -27,6 +27,7 @@ mart2_control_data <- read_excel("~/uomShare/wergStaff/MelCarew/git-data/MAR2_me
 ```
 
 ```{r}
+# Checking that taxa expected in the 
 common_species <- intersect(miseq_conrols$species, mart2_control_data$species)
 
 # Species unique to dataframe1
@@ -36,6 +37,6 @@ print(unique_to_miseq_conrols)
 
 # Species unique to dataframe2
 unique_to_mart2_control_data <- setdiff(mart2_control_data$species, miseq_conrols$species)
-print(unique_to_mart2_control_data)  
+#print(unique_to_mart2_control_data)  
 ```
 

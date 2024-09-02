@@ -41,7 +41,8 @@ complexes_df <- readxl::read_excel(file_path, sheet = sheet_names[4])# identifie
 
 
 #read in raw dataframe (if starting with a clear global environment)
-#final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_14_08_2024.csv")) # change the Miseq run number and time stamp
+#miseq_folder <- miseq15
+final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_30_08_2024.csv")) # change the Miseq run number and time stamp
 ```
 
 # remove identifications below thresholds for species species, genus, family and order
@@ -244,7 +245,7 @@ print(final_data_filled)
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
 # Create the file name with the timestamp (NOTE: Change the MiSeq number to the dataset you are working with)
-file_name <- paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_filled", timestamp, ".csv")
+file_name <- paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_filled_", timestamp, ".csv")
 
 # Save the dataframe with the new file name
 write.csv(final_data_filled, file = file_name, row.names = FALSE)
@@ -270,7 +271,7 @@ Miseq20:
 
 # Pivot longer to transform columns 13 to 40 into rows 
 metab_long <- final_data_filled %>%
-  pivot_longer(cols = X10BNY29042rep1:Cont3rep1, names_to = "sample", values_to = "value") %>%
+  pivot_longer(cols = X10FEH41841rep3:S21YAR36377rep3, names_to = "sample", values_to = "value") %>%
   filter(value != 0) %>%  # Filter out rows where value is zero
   select(-matches("^X(\\.\\d+)?$"))  # Remove columns named X, X.1, ..., X.11
 
@@ -435,12 +436,12 @@ Note: This code will need to be configured for each dataset, so that the rows co
 ```{r}
 # Step 1: Replace empty cells with 0 before pivoting
 final_data_filled_clean <- final_data_filled %>%
-  mutate(across(X10BNY29042rep1:Cont3rep1, ~ replace_na(.x, 0)))  # Replace NA with 0 in specified columns
+  mutate(across(X10FEH41841rep3:S21YAR36377rep3, ~ replace_na(.x, 0)))  # Replace NA with 0 in specified columns
 
 # Step 2: Pivot longer
 metab_long <- final_data_filled_clean %>%
   pivot_longer(
-    cols = X10BNY29042rep1:Cont3rep1,  # Specify the range or individual column names
+    cols = X10FEH41841rep3:S21YAR36377rep3,  # Specify the range or individual column names
     names_to = "sample",
     values_to = "value"
   ) %>%
@@ -521,6 +522,17 @@ wide_summarised_df[cols_to_modify] <- lapply(wide_summarised_df[cols_to_modify],
 
 # Replace NA values with empty strings in specified columns
 wide_summarised_df[cols_to_modify][is.na(wide_summarised_df[cols_to_modify])] <- ""
+
+#subset out controls
+controls <- wide_summarised_df %>% 
+  select(kingdom, phylum, class, order, family, genus, species, max_p_identity, DrosX, MAR2T)
+controls <- controls %>%
+ filter(MAR2T != 0 | DrosX != 0)
+filec <- paste0(uomshare, "/final_data_summaries/", miseq_folder, "_controls_", timestamp, ".csv")
+ write.csv(controls, file = filec, row.names = FALSE)
+
+wide_summarised_df <- wide_summarised_df %>% 
+  select(-DrosX, -MAR2T)
 
 # Print the resulting wide summarized data frame
 print(wide_summarised_df)
