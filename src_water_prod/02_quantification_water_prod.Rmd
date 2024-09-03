@@ -35,10 +35,10 @@ This notebook performs quantification for your metabarcoding analysis. This note
 ```{r}
 #reset directory 
 #***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in and the directory to your own home drive***
-miseq_folder <- "test"
+#miseq_folder <- "miseq16"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name
-uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
+uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
 
 #adjusting directory paths to use Jess's mozzie code
 results_dir <- paste0(uomshare)

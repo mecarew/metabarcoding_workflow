@@ -47,20 +47,17 @@ The first thing we'll do is set the directory that stores the workflow outputs.
 ```{r}
 # You can use the here::here function to define a path relative to the project 
 #  directory or use an absolute path
-#results_dir <- here::here("results")
 
-#***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in and the directory to your own home drive***
-#miseq_folder <- "test"
+#***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in and the directory to your own home drive if you have not started at the workbook 00***
+#miseq_folder <- "miseqXX"
 
-uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
+uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
 
 #adjusting directory paths to use Jess's mozzie code
 results_dir <- paste0(uomshare)
 
 # Log files will be stored inside the logs directory inside the results directory
-
 logs_dir <- file.path(results_dir,"logs")
-
 tmp_dir <- file.path(results_dir,"tmp")
 ```
 

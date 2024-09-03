@@ -42,6 +42,7 @@ complexes_df <- readxl::read_excel(file_path, sheet = sheet_names[4])# identifie
 
 #read in raw dataframe (if starting with a clear global environment)
 #miseq_folder <- miseq15
+uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
 final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_30_08_2024.csv")) # change the Miseq run number and time stamp
 ```
 

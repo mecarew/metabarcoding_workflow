@@ -41,11 +41,14 @@ options(width=120)
 
 ```{r}
 #reset directory 
-#***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in and the directory to your own home drive***
+#***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in ***
 miseq_folder <- "test"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name)
-uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
+uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
+
+#adjusting directory paths to use Jess's mozzie code
+results_dir <- paste0(uomshare)
 
 water_prod <- "/home/unimelb.edu.au/mecarew/git/metabarcoding_workflow"
 ```
@@ -384,7 +387,8 @@ dir_tree(classification_dir)
 Process the search results to get % identity match thresholds. Currently we use the top % identity match minus 3 for the threshold of matches to consider, but this can be changed using the `offset` parameter in the `get_thresholds` function.
 
 ```{r}
-classification_thresholds_dir <- "/home/unimelb.edu.au/mecarew/git/metabarcoding_workflow/thresholds"
+# this step will need to be run on water_prod as files are not read properly on uomshare
+classification_thresholds_dir <- paste0(water_prod, "/thresholds")
 mkdir(classification_thresholds_dir)
 ```
 
@@ -524,8 +528,27 @@ run_jobs(classification)
 
 
 ```{r}
-# move 'thresholds' folder to uomshare
-file.copy("/home/unimelb.edu.au/mecarew/git/metabarcoding_workflow/thresholds", paste0(uomshare,"classification"), recursive = TRUE)
+# Create the full paths
+source_path <- paste0(water_prod, "/thresholds")
+destination_path <- paste0(uomshare, "/classification/thresholds")
+
+# Print the full paths
+print(paste("Source path:", source_path))
+print(paste("Destination path:", destination_path))
+
+# Ensure the destination directory exists
+dir.create(destination_path, recursive = TRUE)
+
+# Step 1: Copy the contents of the source directory to the destination
+success <- file.copy(list.files(source_path, full.names = TRUE), destination_path, recursive = TRUE)
+
+# Step 2: If the copy is successful, delete the original directory
+if (all(success)) {
+  unlink(source_path, recursive = TRUE)
+  print("Directory moved successfully.")
+} else {
+  print("Failed to copy the directory.")
+}
 ```
 
 :::

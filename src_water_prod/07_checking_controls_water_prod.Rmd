@@ -20,7 +20,7 @@ Load flies
 miseq_folder <- "miseq15"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name)
-uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
+uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
 
 miseq_conrols <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_controls_30_08_2024.csv")) 
 mart2_control_data <- read_excel("~/uomShare/wergStaff/MelCarew/git-data/MAR2_metabarcoding_control_site.xlsx")

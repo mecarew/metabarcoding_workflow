@@ -42,7 +42,7 @@ Rarefraction plots allow the sequencing depth to be examined to ensure it is ade
 miseq_folder <- "test"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name
-uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
+uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
 
 #adjusting directory paths to use Jess's mozzie code
 results_dir <- paste0(uomshare)

@@ -38,14 +38,14 @@ Samples requiring re-running
 #miseq_folder <- "miseq13"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name)
-uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
+uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
 
 #read in final vsearch data summaries
 
 
 miseq13_vsearch_sum <- read.csv(paste0(uomshare, "/final_data_summaries/miseq_vsearch_data_summary_14_08_2024.csv"))
 miseq15_vsearch_sum <- read.csv(paste0(uomshare, "/final_data_summaries/miseq15_vsearch_data_summary_13_08_2024.csv"))
-miseq16_vsearch_sum <- ead.csv(paste0(uomshare, "/final_data_summaries/miseq16_vsearch_data_summary_14_08_2024.csv"))
+miseq16_vsearch_sum <- read.csv(paste0(uomshare, "/final_data_summaries/miseq16_vsearch_data_summary_14_08_2024.csv"))
 
 # remove columns to be replaced re-run data from MiSeq13                               
 miseq13_vsearch_sum_mod <- miseq13_vsearch_sum[, !(names(miseq13_vsearch_sum) %in% c("X10FEH41843rep1", "X10FEH41843rep2", "X40BNY29042rep1", "X40BNY29042rep2", "X30DNG79574rep1", "x30DNG79574rep2"))]
