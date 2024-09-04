@@ -33,15 +33,18 @@ options(width=120)
 This notebook performs quantification for your metabarcoding analysis. This notebook depends on the outputs of the previous notebook, `01_preprocessing.Rmd` where we preprocessed the sequencing data. In this notebook, first, we'll create new QIIME artifact files for each amplicon group, so each file contains all samples corresponding to that group. We'll then use DADA2 to denoise sequence data and generate feature tables and feature data. Lastly, we'll run [LULU](https://github.com/tobiasgf/lulu) to perform distribution-based post-clustering curation of the ASV sequences.
 
 ```{r}
-#reset directory 
+# reset directory if starting from this notebook 
 #***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in and the directory to your own home drive***
-#miseq_folder <- "miseq16"
+miseq_folder <- "test"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name
 uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
+#
+uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
 
 #adjusting directory paths to use Jess's mozzie code
 results_dir <- paste0(uomshare)
+logs_dir <- paste0(uomshare)
 
 #results_dir <- file.path("/home/unimelb.edu.au/mecarew/git/metabarcoding_workflow/results")
 #dir.create(results_dir)
@@ -78,6 +81,7 @@ current_path_env <- Sys.getenv("PATH")
 Sys.setenv(PATH=paste0("/home/unimelb.edu.au/jessicac/shared_envs/qiime2-2024.2/bin:/home/unimelb.edu.au/jessicac/miniconda3/condabin:", current_path_env))
 
 Sys.setenv(PYTHONPATH="/home/unimelb.edu.au/jessicac/shared_envs/qiime2-2024.2/lib/python3.8/site-packages/")
+Sys.setenv(R_LIBS_USER="/home/unimelb.edu.au/jessicac/shared_envs/qiime2-2024.2/lib/R/library/")
 ```
 
 ```{r}
@@ -389,17 +393,47 @@ dada2_filtered_targets <- paste0(uomshare, "/tmp/dada2_filtered_targets.txt")
 write_targets(targets, file=dada2_filtered_targets)
 ```
 
+# Determine the number of samples in in the Miseq run
+```{r}
+# Specify the directory
+directory_path <- paste0(uomshare, "/import_data")  # Replace with your folder path
+
+# List all items in the directory
+items <- list.files(directory_path, full.names = TRUE)
+
+# Filter for directories
+folders <- items[dir.exists(items)]
+
+# Count the number of folders
+num_folders <- length(folders)
+
+# Print the result
+cat("Number of samples in the miseq run:", num_folders, "\n")
+
+# Set the total_value equal to the number of samples
+total_value <- num_folders
+part_value <- 1
+
+# Calculate the percentage
+proportion <- (part_value / total_value)
+
+# Print the result
+cat("What percentage of", total_value, "equals", part_value, "?", "\n")
+cat("set 'p_prevalence to' :", proportion, "\n")
+
+```
+
 ```{r}
 # Set p_abundance and p_prevalence for qiime feature-table filter-features-conditionally.
 # (keep these parameters as strings so they don't get converted to scientific notation further down)
 
-# The minimum relative abundance for a feature to be retained
-p_abundance <- "0.00001"
+# The minimum relative abundance for a feature to be retained (0.0001% = 0.000001)
+p_abundance <- "0.000001"
 # p_abundance <- "0.001" # Lower threshold for testing purposes
 
 # The minimum portion of samples that a feature must have a relative abundance of at least 
 # `abundance` to be retained
-p_prevalence <- "0.08"
+p_prevalence <- proportion
 ```
 
 
@@ -473,7 +507,22 @@ dim(before_filtering$data)
 print("Post-filtering:")
 dim(after_filtering$data)
 ```
+# Check filtering
 
+Check dimensions of the table data pre and post-filtering.
+
+```{r}
+before_filtering <- read_qza(file.path(dada2_dir, "right_table.qza"))
+after_filtering <- read_qza(file.path(dada2_dir, "right_table_filtered.qza"))
+```
+
+```{r}
+print("Pre-filtering:")
+dim(before_filtering$data)
+
+print("Post-filtering:")
+dim(after_filtering$data)
+```
 
 -----
 

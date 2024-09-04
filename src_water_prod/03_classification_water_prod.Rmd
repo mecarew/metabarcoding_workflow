@@ -153,7 +153,7 @@ targets <- targets %>%
 
 database_targets <- paste0(uomshare,"/tmp/database_targets.txt")
 
-# WIP: For the moment, only run the short/right amplicions
+# WIP: For the moment, only run the short/right amplicons
 write_targets(targets %>% filter(SampleName %in% c("short", "right")), file=database_targets)
 ```
 

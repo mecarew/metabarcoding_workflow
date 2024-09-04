@@ -39,11 +39,15 @@ otu_groups_df <- readxl::read_excel(file_path, sheet = sheet_names[2])# groups u
 max_p_update_df <- readxl::read_excel(file_path, sheet = sheet_names[3])# updates/corrects any missing identifications or errors in classification
 complexes_df <- readxl::read_excel(file_path, sheet = sheet_names[4])# identifies any ambiguous taxonomic assignments that should be considered as complexes
 
+# Replace NA values with empty strings
+truncated_fills_df <- truncated_fills_df %>% mutate_all(~ ifelse(is.na(.), "", .))
+otu_groups_df <- otu_groups_df %>% mutate_all(~ ifelse(is.na(.), "", .))
+max_p_update_df <- max_p_update_df %>% mutate_all(~ ifelse(is.na(.), "", .))
 
 #read in raw dataframe (if starting with a clear global environment)
-#miseq_folder <- miseq15
+miseq_folder <- "miseq16"
 uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
-final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_30_08_2024.csv")) # change the Miseq run number and time stamp
+final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_04_09_2024.csv")) # change the Miseq run number and time stamp
 ```
 
 # remove identifications below thresholds for species species, genus, family and order
@@ -75,7 +79,7 @@ print(common_ids)
 
 df1 <- final_df[final_df$asv_code %in% common_ids, ] # asvs in common in final_df
 df2 <- truncated_fills_df[truncated_fills_df$asv_code %in% common_ids, ]  # asvs in common in truncated_fills_df
-df3 <-final_df[!final_df$asv_code %in% common_ids, ] # left data in final dataframe
+df3 <- final_df[!final_df$asv_code %in% common_ids, ] # left data in final dataframe
 
 
 # Update the 'species' value in df1 based on matching 'asv_code'
@@ -226,7 +230,14 @@ duplicates <- final_data_filled %>%
   filter(duplicated(asv_code) | duplicated(asv_code, fromLast = TRUE))
 
 # Print the duplicate rows
-print(duplicates) # You should not get a table
+#print(duplicates) # You should not get a table
+
+# Check the final vsearch and filled dataframe have the same number of rows 
+if (nrow(final_df) == nrow(final_data_filled)) {
+  cat("The data frames have the same number of rows.\n")
+} else {
+  cat("The data frames have a different number of rows.\n")
+}
 ```
 
 # check 'final_filled_df' for any species complexes and add this information (from sheet 4)
@@ -236,6 +247,20 @@ final_data_filled <- final_data_filled %>%
   left_join(complexes_df, by = c("species" = "bin_name")) %>%
   mutate(species = ifelse(!is.na(complex), complex, species)) %>%
   select(-complex)
+
+# Print the modified dataframe
+print(final_data_filled)
+```
+# adjust Cont names for flitering so that controls have the same names
+```{r}
+# List of old and new column names
+old_names <- c("Cont1", "cont1", "COICont1" ,"Cont2", "cont2", "COICont2", "Cont3", "COICont3", "Cont4", "Cont5", "Cont6", "Cont7", "Cont8")
+new_names <- c("Contrep1", "Contrep1", "Contrep1", "Contrep2", "Contrep2","Contrep2", "Contrep3", "Contrep3" ,"Contrep4", "Contrep5", "Contrep6", "Contrep7", "Contrep8") # note some controls will not exist in some datasets
+
+
+# Renaming only the columns that exist in the dataframe
+final_data_filled <- final_data_filled %>%
+  rename_at(vars(one_of(old_names)), ~ new_names[match(., old_names)])
 
 # Print the modified dataframe
 print(final_data_filled)
@@ -260,11 +285,11 @@ This section is designed to format data and filter it for 'mistagging'. Mistaggi
 Note: This code will need to be configured for each dataset, so that the rows containing the read counts are specified (e.g. pivot_longer(cols = X10BNY29042rep1:Cont3rep1), the 'X10BNY29042rep1:Cont3rep1' will need to be changed to the first and last column name with the reads data for each dataset
 Miseq13:X10BNY29042rep1:Cont3rep1 
 Miseq15:X10FEH41841rep3:S21YAR36377rep3
-Miseq16:Cont1:S21WAY30960rep3
+Miseq16:Contrep1:S21WAY30960rep3
 Miseq17:A22BNY29042rep1:S21YZJ1175rep6
 Miseq18:A22ALD26081rep1:S22YZ8202rep3
 Miseq19:A22BF3373rep1:S22YPB224rep3
-Miseq20:
+Miseq20:A23BNY29042rep1:S22SPL263rep6
 ```{r}
 # Modify column names to prefix 'X' if they start with a number
 #final_data_filled <- final_data_filled %>%
@@ -272,7 +297,7 @@ Miseq20:
 
 # Pivot longer to transform columns 13 to 40 into rows 
 metab_long <- final_data_filled %>%
-  pivot_longer(cols = X10FEH41841rep3:S21YAR36377rep3, names_to = "sample", values_to = "value") %>%
+  pivot_longer(cols = Contrep1:S21WAY30960rep3, names_to = "sample", values_to = "value") %>%
   filter(value != 0) %>%  # Filter out rows where value is zero
   select(-matches("^X(\\.\\d+)?$"))  # Remove columns named X, X.1, ..., X.11
 
@@ -282,7 +307,7 @@ metab_long <- metab_long %>%
 
 # Create a new column "replace" by pasting the final character if string ends in 'rep1', 'rep2', or 'rep3'
 metab_long <- metab_long %>%
-  mutate(replicate = ifelse(grepl("rep[123456]$", sample), paste0(substr(sample, nchar(sample), nchar(sample)), ""), ""))
+  mutate(replicate = ifelse(grepl("rep[12345678]$", sample), paste0(substr(sample, nchar(sample), nchar(sample)), ""), ""))
 
 # Move the "replace" column to be the second column
 metab_long <- metab_long %>%
@@ -296,7 +321,7 @@ metab_long$site_per <- substr(metab_long$sample, 1, nchar(metab_long$sample))
 
 # remove replicate data
 metab_long <- metab_long %>%
-   dplyr::mutate(site_per = sub("(rep1|rep2|rep3|rep4|rep5|rep6)$", "", site_per))
+   dplyr::mutate(site_per = sub("(rep1|rep2|rep3|rep4|rep5|rep6|rep7|rep8)$", "", site_per))
 
 # Move the "replace" column to be the second column
 metab_long <- metab_long %>%
@@ -322,6 +347,24 @@ metab_long <- metab_long %>% dplyr::rename(`reads` = value)
 # Print the transformed data frame
 print(metab_long)
 ```
+# remove low frequency detections < 5 reads
+```{r}
+metab_long_hf <- metab_long %>%
+  filter(reads >= 5)
+
+metab_long_lf <- metab_long %>%
+  filter(reads < 5)  # Corrected this line
+
+# Verify the number of records before and after filtering
+original_count <- nrow(metab_long)
+hf_count <- nrow(metab_long_hf)
+lf_count <- nrow(metab_long_lf)
+
+cat("Original number of records:", original_count, "\n")
+cat("Number of records with reads >= 5:", hf_count, "\n")
+cat("Number of records with reads < 5:", lf_count, "\n")
+```
+
 # Filtering single PCR replicate detections
 
 # filtering by 'species' subset out data with species ids
@@ -352,12 +395,12 @@ top_species <- species_reads %>%
 # Print top_species to verify the top species
 print(top_species)
 
-# Step 3: Filter out reads below 10 for the top 10 species in filtered_dataframe
+# Step 3: Filter out reads below 50 for the top 10 species in filtered_dataframe
 filtered_dataframe_top_sp <- metab_long_with_species %>%
-  filter(!(species %in% top_species & reads < 10))
+  filter(!(species %in% top_species & reads < 50))
 
 filtered_dataframe_top_sp_rem <- metab_long_with_species %>%
-  filter((species %in% top_species & reads < 10))
+  filter((species %in% top_species & reads < 50))
 
 # Verify the number of records before and after filtering
 original_count <- nrow(metab_long_with_species)
@@ -371,7 +414,8 @@ cat("Number of records removed:", original_count - filtered_count, "\n")
 print(filtered_dataframe_top_sp)
 ```
 
-# remove single species occurences (one PCR replicate)
+
+# remove single species occurences (species detection that occur in only one PCR replicate)
 ```{r}
 # Remove the count column as it is no longer needed
 # Step 1: Create the counts data frame
@@ -429,20 +473,51 @@ cat("Number of records removed:", original_count - filtered_count, "\n")
 ```{r}
 #rejoin_dataframes
 filtered_dataframe <- rbind(sp_fil_metab_long_with_species, asv_fil_metab_long)
+
+# Define the values to be removed
+values_to_remove <- c('DrosX', 'MAR2T', 'Cont')
+
+# Create the new data frame with the rows to be removed
+controls_long <- filtered_dataframe[filtered_dataframe$site %in% values_to_remove, ]
+
+# Update the original data frame to keep only the remaining rows
+filtered_dataframe_samples <- filtered_dataframe[!filtered_dataframe$site %in% values_to_remove, ]
 ```
+
+# save data for modeling in long format (includes PCR replicates)
+```{r}
+# Generate a timestamp
+timestamp <- format(Sys.time(), "%d_%m_%Y")
+
+# Create the file name with the timestamp (set Miseq run number)
+file_name <- paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_filled_filt_PCR_long_format_", timestamp, ".csv")
+# Save the dataframe with the new file name
+write.csv(filtered_dataframe_samples, file = file_name, row.names = FALSE)
+```
+
+
+
+
 
 
 # convert long form back to full data summary with data filled and filtered
 Note: This code will need to be configured for each dataset, so that the rows containing the read counts are specified (e.g. pivot_longer(cols = X10BNY29042rep1:Cont3rep1), the 'X10BNY29042rep1:Cont3rep1' will need to be changed to the first and last column name
+Miseq13:X10BNY29042rep1:Cont3rep1 
+Miseq15:X10FEH41841rep3:S21YAR36377rep3
+Miseq16:Contrep1:S21WAY30960rep3
+Miseq17:A22BNY29042rep1:S21YZJ1175rep6
+Miseq18:A22ALD26081rep1:S22YZ8202rep3
+Miseq19:A22BF3373rep1:S22YPB224rep3
+Miseq20:A23BNY29042rep1:S22SPL263rep6
 ```{r}
 # Step 1: Replace empty cells with 0 before pivoting
-final_data_filled_clean <- final_data_filled %>%
-  mutate(across(X10FEH41841rep3:S21YAR36377rep3, ~ replace_na(.x, 0)))  # Replace NA with 0 in specified columns
+final_data_filled_clean <- filtered_dataframe %>%
+  mutate(across(, ~ replace_na(.x, 0)))  # Replace NA with 0 in specified columns
 
 # Step 2: Pivot longer
 metab_long <- final_data_filled_clean %>%
   pivot_longer(
-    cols = X10FEH41841rep3:S21YAR36377rep3,  # Specify the range or individual column names
+    cols = Contrep1:S21WAY30960rep3,  # Specify the range or individual column names
     names_to = "sample",
     values_to = "value"
   ) %>%
@@ -470,6 +545,12 @@ metab_wide[cols_to_modify][is.na(metab_wide[cols_to_modify])] <- ""
 
 # Remove 'X' at the start of column headings
 colnames(metab_wide) <- sub("^X", "", colnames(metab_wide))
+
+new_order <- c(setdiff(names(metab_wide), c("asv_seq", "amplicon")), "asv_seq", "amplicon")
+
+# Reorder the columns
+metab_wide <- metab_wide[, new_order]
+
 
 # Print the first few rows of the resulting dataframe
 print(head(metab_wide))
@@ -526,14 +607,14 @@ wide_summarised_df[cols_to_modify][is.na(wide_summarised_df[cols_to_modify])] <-
 
 #subset out controls
 controls <- wide_summarised_df %>% 
-  select(kingdom, phylum, class, order, family, genus, species, max_p_identity, DrosX, MAR2T)
+  select(kingdom, phylum, class, order, family, genus, species, max_p_identity, DrosX, MAR2T, Cont)
 controls <- controls %>%
- filter(MAR2T != 0 | DrosX != 0)
+ filter(MAR2T != 0 | DrosX != 0, Cont != 0)
 filec <- paste0(uomshare, "/final_data_summaries/", miseq_folder, "_controls_", timestamp, ".csv")
  write.csv(controls, file = filec, row.names = FALSE)
 
 wide_summarised_df <- wide_summarised_df %>% 
-  select(-DrosX, -MAR2T)
+  select(-DrosX, -MAR2T, -Cont)
 
 # Print the resulting wide summarized data frame
 print(wide_summarised_df)
@@ -583,4 +664,11 @@ timestamp <- format(Sys.time(), "%d_%m_%Y")
 file_name1 <- paste0(uomshare, "/final_data_summaries/", miseq_folder, "_final_data_summary_", timestamp, ".csv")
  write.csv(wide_summarised_df, file = file_name1, row.names = FALSE)
 ```
- 
+# Save final file in LONG FORMAT
+```{r}
+# remove control samples and save in long format for final analysis (these will be checked in 07_checking_controls_water_prod.Rmd)
+
+
+filtered_dataframe
+
+```
