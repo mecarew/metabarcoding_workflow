@@ -40,15 +40,15 @@ miseq_folder <- "miseq13"
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name)
 uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
 
-uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
+#uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
 
 #read in final vsearch data summaries
-miseq13_vsearch_sum <- read.csv(paste0(uomshare, "/final_data_summaries/miseq13_vsearch_data_summary_05_09_2024.csv"))
-miseq15_vsearch_sum <-  read.csv("~/uomShare/wergStaff/MelCarew/git-data/miseq15/metabarcoding_workflow/final_data_summaries/miseq15_vsearch_data_summary_05_09_2024.csv")
+miseq13_vsearch_sum <- read.csv(paste0(uomshare, "/final_data_summaries/miseq13_vsearch_data_summary_06_09_2024.csv"))
+miseq15_vsearch_sum <-  read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/miseq15/metabarcoding_workflow/final_data_summaries/miseq15_vsearch_data_summary_06_09_2024.csv")
 # fix a small error in dataframe
 miseq15_vsearch_sum <- miseq15_vsearch_sum %>%
   mutate(Consensus = ifelse(asv_code == '956bcb88ea0e4762eefac3c2a93bbb2f', 0.857, Consensus))
-miseq16_vsearch_sum <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/miseq16/metabarcoding_workflow/final_data_summaries/miseq16_vsearch_data_summary_05_09_2024.csv")
+miseq16_vsearch_sum <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/miseq16/metabarcoding_workflow/final_data_summaries/miseq16_vsearch_data_summary_06_09_2024.csv")
 ```
 
 ```{r}
@@ -133,7 +133,7 @@ A file based on analysis of Miseq datasets was constructed ('asv_library_97_aug2
 
 ```{r}
 # read in flies
-file_path <- "~/uomShare/wergStaff/MelCarew/git-data/asv_library_97_aug24_modified.xlsx"
+file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_aug24_modified.xlsx"
 
 # Get the names of the sheets
 sheet_names <- readxl::excel_sheets(file_path)
@@ -346,11 +346,13 @@ print(final_data_filled)
 ```
 
 ```{r}
+dir.create(paste0(uomshare, "/ten_site_data_summaries/"))
+
 # Save filled dataframe
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
 # Create the file name with the timestamp
-file_name <- paste0(uomshare, "/final_data_summaries/ten_sites_vsearch_data_summary_filled", timestamp, ".csv")
+file_name <- paste0(uomshare, "/ten_site_data_summaries/ten_sites_vsearch_data_summary_filled", timestamp, ".csv")
 
 # Save the dataframe with the new file name
 write.csv(final_data_filled, file = file_name, row.names = FALSE)
@@ -574,28 +576,99 @@ if ("CONTROL SPIKE" %in% filtered_dataframe_samples$species) {
 
 # save data for modeling in long format (includes PCR replicates)
 ```{r}
-#Create directory for modeling data
-dir.create(paste0(uomshare, "/final_data_summaries/modeling_data"))
-
 # Generate a timestamp
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
-# Create the file name with the timestamp (set Miseq run number)
-file_name <- paste0(uomshare, "/final_data_summaries/modeling_data/ten_sites_vsearch_data_summary_filled_filt_PCR_long_format_", timestamp, ".csv")
+# Create the file name with the timestamp
+file_name <- paste0(uomshare, "/ten_site_data_summaries/data_for_analysis/ten_sites_long_format_", timestamp, ".csv")
 # Save the dataframe with the new file name
 write.csv(filtered_dataframe_samples, file = file_name, row.names = FALSE)
 ```
 
-# save control for checking in notebook 07
+# OPTION 1: Summarize values by site (with PCR replicates combined)
 ```{r}
-# Generate a timestamp
-timestamp <- format(Sys.time(), "%d_%m_%Y")
+# Summarize the data
+summarized_df <- filtered_dataframe_samples %>%
+  group_by(site_per, kingdom, phylum, class, order, family, genus, species, max_p_identity) %>%  # Group by specified columns including max_p_identity
+  summarise(reads = sum(reads, na.rm = TRUE), .groups = 'drop') %>%  # Sum the reads for each group
+  group_by(site_per, kingdom, phylum, class, order, family, genus, species) %>%  # Group by the main columns again
+  summarise(
+    reads = sum(reads, na.rm = TRUE),  # Sum the reads for each group
+    max_p_identity = ifelse(all(is.na(max_p_identity)), NA, max(max_p_identity, na.rm = TRUE)),  # Handle all NA case
+    .groups = 'drop'
+  )
 
-# Create the file name with the timestamp (set Miseq run number)
-cont <- paste0(uomshare, "/final_data_summaries/ten_sites_CONTROLS_long_format_", timestamp, ".csv")
-# Save the dataframe with the new file name
-write.csv(controls_long, file = cont, row.names = FALSE)
+# Collapse rows by kingdom, phylum, class, order, family, genus, species
+collapsed_df <- summarized_df %>%
+  group_by(site_per, kingdom, phylum, class, order, family, genus, species) %>%
+  summarise(
+    reads = sum(reads, na.rm = TRUE),  # Sum the reads for each group
+    max_p_identity = ifelse(all(is.na(max_p_identity)), NA, max(max_p_identity, na.rm = TRUE)),  # Get max value of max_p_identity
+    .groups = 'drop'
+  )
+
+# Pivot wider to transform the site_per names into columns
+wide_summarised_df <- collapsed_df %>%
+ pivot_wider(names_from = site_per, values_from = reads, values_fill = 0)  # Fill missing values with 0
+
+# List of columns to modify
+cols_to_modify <- c('kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species')
+
+# Convert specified columns to character type
+wide_summarised_df[cols_to_modify] <- lapply(wide_summarised_df[cols_to_modify], as.character)
+
+# Replace NA values with empty strings in specified columns
+wide_summarised_df[cols_to_modify][is.na(wide_summarised_df[cols_to_modify])] <- ""
+
+# Print the resulting wide summarized data frame
+print(wide_summarised_df)
+
 ```
 
+#Now aggregate species data so that the same species identification do not occur multiple times
+```{r}
+library(dplyr)
 
+# List of columns to modify
+cols_to_modify <- c('kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species')
+
+# Convert specified columns to character type
+wide_summarised_df[cols_to_modify] <- lapply(wide_summarised_df[cols_to_modify], as.character)
+
+# Replace NA values with empty strings in specified columns
+wide_summarised_df[cols_to_modify][is.na(wide_summarised_df[cols_to_modify])] <- ""
+
+# Print the resulting wide summarized data frame
+print(wide_summarised_df)
+
+# List of columns to group by
+group_cols <- c('kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species')
+
+# Identify the columns that are site_per_per (excluding group columns and max_p_identity)
+site_per_cols <- setdiff(colnames(wide_summarised_df), c(group_cols, 'max_p_identity'))
+
+# Collapse rows by kingdom, phylum, class, order, family, genus, species
+collapsed_wide_summarised_df <- wide_summarised_df %>%
+  group_by(across(all_of(group_cols))) %>%
+  summarise(
+    max_p_identity = max(max_p_identity, na.rm = TRUE),  # Get max value of max_p_identity
+    across(all_of(site_per_cols), function(x) sum(x, na.rm = TRUE)),  # Sum the values for the site_per columns
+    .groups = 'drop'
+  )
+ 
+
+# Print the collapsed data frame
+print(collapsed_wide_summarised_df)
+```
+
+# save file
+```{r}
+# save filled dataframe
+timestamp <- format(Sys.time(), "%d_%m_%Y")
+
+# Create the file name with the timestamp (NOTE:Change the MiSeq number to the dataset you are working with)
+file_name1 <- paste0(uomshare,"/ten_site_data_summaries/data_for_analysis/ten_sites_wide_format_", timestamp, ".csv") 
+
+ write.csv(wide_summarised_df, file = file_name1, row.names = FALSE)
+```
 
