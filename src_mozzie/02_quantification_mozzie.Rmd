@@ -444,6 +444,37 @@ dada2_filtered_targets <- here("tmp/dada2_filtered_targets.txt")
 write_targets(targets, file=dada2_filtered_targets)
 ```
 
+# Determine the number of samples in in the Miseq run
+```{r}
+# Specify the directory
+directory_path <- file.path(results_dir, "import_data") 
+
+# List all items in the directory
+items <- list.files(directory_path, full.names = TRUE)
+
+# Filter for directories
+folders <- items[dir.exists(items)]
+
+# Count the number of folders
+num_folders <- length(folders)
+
+# Print the result
+cat("Number of samples in the miseq run:", num_folders, "\n")
+
+# Set the total_value equal to the number of samples
+total_value <- num_folders
+part_value <- 1.1
+#part_value <- 2
+#part_value <- 3
+
+# Calculate the percentage
+proportion <- (part_value / total_value)
+#proportion <- round(proportion1, 4)
+
+# Print the result
+cat("Set 'p_prevalence' to:", proportion, "\n")
+```
+
 ```{r}
 # Set p_abundance and p_prevalence for qiime feature-table filter-features-conditionally.
 # (keep these parameters as strings so they don't get converted to scientific notation further down)
@@ -454,7 +485,7 @@ p_abundance <- "0.000001"
 
 # The minimum portion of samples that a feature must have a relative abundance of at least 
 # `abundance` to be retained
-p_prevalence <- "0.006"
+p_prevalence <- proportion
 ```
 
 
@@ -528,7 +559,18 @@ dim(before_filtering$data)
 print("Post-filtering:")
 dim(after_filtering$data)
 ```
+```{r}
+before_filtering <- read_qza(file.path(dada2_dir, "right_table.qza"))
+after_filtering <- read_qza(file.path(dada2_dir, "right_table_filtered.qza"))
+```
 
+```{r}
+print("Pre-filtering:")
+dim(before_filtering$data)
+
+print("Post-filtering:")
+dim(after_filtering$data)
+```
 
 -----
 

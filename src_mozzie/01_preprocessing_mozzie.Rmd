@@ -784,7 +784,6 @@ sequence_quality_plot <- function(dat, title) {
 ```
 
 Load TSV file containing quality scores.
-
 ```{r}
 # Load per-sample-fastq-counts files
 forward_files <- list.files(summary_dir, "*forward-seven-number-summaries.tsv", full.names=TRUE)
@@ -812,7 +811,6 @@ group <- forward_files %>%
 ```
 
 Plot median quality score for each sample across sequence bases:
-
 ```{r}
 # Max count
 max_count <- 10000

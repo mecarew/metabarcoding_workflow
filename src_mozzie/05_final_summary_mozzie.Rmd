@@ -13,6 +13,7 @@ This notebook arranges the data from the bioinformatic pipeline into a final tab
 
 ```{r}
 library(dplyr)
+library(here)
 ```
 
 # producing data summary table
@@ -161,10 +162,10 @@ if(identical(names(short_read_tab), names(right_read_tab))) {
 }
 ```
 
-# if column names match skip this step.
+# if 'column names match' skip this step
 ```{r}
 # if they do not match which columns are different?
-names_only_in_short_read_tab <- setdiff(names(short_read_tab), names(right_read_tab))
+# names_only_in_short_read_tab <- setdiff(names(short_read_tab), names(right_read_tab))
 print("Column names present only in short_read_tab:")
 print(names_only_in_short_read_tab)
 
@@ -178,6 +179,10 @@ print(names_only_in_right_read_tab)
 # align data set by adding blank column for columns not present in one amplicon but not the other (Cont3rep1, Cont1rep2). 
 #short_read_tab <- mutate(short_read_tab, Cont3rep1 = c(0))
 #right_read_tab <- mutate(right_read_tab, Cont1rep2 = c(0))
+# right_read_tab <- dplyr::mutate(right_read_tab, CO1Cont2 = c(0))
+# right_read_tab <- dplyr::mutate(right_read_tab, CO1Cont3 = c(0))
+# right_read_tab <- dplyr::mutate(right_read_tab, COICont1 = c(0))
+
 ```
 
 ```{r}
@@ -250,16 +255,15 @@ head(final_df)
 
 
 ```{r}
-# save dataframe
+# save dataframe create a directory for results
+dir.create(here::here("results/final_data_summaries"))
 
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
-# Create the file name with the timestamp
-file_name <- paste0("~/git/metabarcoding_workflow_Miseq15/results/MiSeq15_final_data_summary_", timestamp, ".csv")
+# Create the file name with the timestamp 
+file_name <- paste0(here::here("results/final_data_summaries/MiSeq20_vsearch_data_summary_"), timestamp, ".csv")
 
 # Save the dataframe with the new file name
 write.csv(final_df, file = file_name, row.names = FALSE)
-
-#write.csv(final_df, file = "~/git/metabarcoding_workflow/results/MiSeqXXfinal_data_summary.csv", row.names = FALSE)
 ```
 
