@@ -34,7 +34,7 @@ This notebook performs quantification for your metabarcoding analysis. This note
 
 ```{r}
 # reset directory if starting from this notebook 
-#***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in and the directory to your own home drive***
+#***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in***
 #miseq_folder <- "miseq20"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name

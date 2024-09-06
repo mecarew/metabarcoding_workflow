@@ -41,7 +41,6 @@ options(width=120)
 This notebook runs through some preprocessing steps for metabarcoding analysis. First we'll load in some sample information containing sample metadata and primer combinations, then we'll import the FASTQ sequencing files into QIIME artifact files. We'll then demultiplex sequences based on primer combinations and split the sequences into amplicon groups. Lastly, we'll trim adapters and calculate some summary statistics.
 
 # User settings
-
 The first thing we'll do is set the directory that stores the workflow outputs.
 
 ```{r}

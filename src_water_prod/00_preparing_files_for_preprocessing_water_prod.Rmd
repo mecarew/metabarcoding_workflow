@@ -10,6 +10,7 @@ output: html_document
 2.  Make a folder with your miseq run folder for your data in git folder on the uomshare, then transfer data files from the AGRF server onto into your git folder on the uomshare in a folder called 'raw' (this is the folder name which these raw data files are accessed in the workflow)
  
 3.    Format a sample.tsv file using the script below. This will be required to run the 01_preprocessing.
+
 ```{r}
 library(dplyr)
 

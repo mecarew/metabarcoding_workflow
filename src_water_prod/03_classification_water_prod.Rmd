@@ -26,12 +26,6 @@ output:
 
 This notebook performs classification for your metabarcoding analysis. This notebook depends on the outputs of the previous notebooks, `01_preprocessing.Rmd` where we preprocessed the sequencing data, and `02_quantification` where we quantified ASVs.
 
-
-```{r}
-# TODO: customise slurm n_threads if using slurm or not
-```
-
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(warning=TRUE, message=TRUE, error=TRUE, echo=TRUE, results="hold")
 knitr::opts_knit$set(root.dir = "..")
