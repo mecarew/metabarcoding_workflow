@@ -440,9 +440,6 @@ filtered_count <- nrow(sp_fil_metab_long_with_species)
 cat("Original number of records:", original_count, "\n")
 cat("Number of records after filtering:", filtered_count, "\n")
 cat("Number of records removed:", original_count - filtered_count, "\n")
-
-# Print the modified dataframe
-print(sp_fil_metab_long_with_species)
 ```
 
 # remove single ASV occurences
