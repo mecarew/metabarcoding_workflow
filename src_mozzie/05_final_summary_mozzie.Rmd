@@ -261,7 +261,8 @@ dir.create(here::here("results/final_data_summaries"))
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
 # Create the file name with the timestamp 
-file_name <- paste0(here::here("results/final_data_summaries/MiSeq20_vsearch_data_summary_"), timestamp, ".csv")
+
+file_name <- paste0(here::here("results/final_data_summaries/MiSeqXX_vsearch_data_summary_"), timestamp, ".csv")
 
 # Save the dataframe with the new file name
 write.csv(final_df, file = file_name, row.names = FALSE)
