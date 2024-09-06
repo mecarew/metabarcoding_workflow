@@ -28,7 +28,7 @@ A file based on analysis of Miseq datasets was constructed ('asv_library_97_aug2
 ```{r setup, warning=FALSE}
 # read in flies
 
-file_path <- "~/uomShare/wergStaff/MelCarew/git-data/asv_library_97_aug24.xlsx"
+file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_aug24_modified.xlsx"
 
 # Get the names of the sheets
 sheet_names <- readxl::excel_sheets(file_path)
@@ -48,7 +48,7 @@ max_p_update_df <- max_p_update_df %>% mutate_all(~ ifelse(is.na(.), "", .))
 miseq_folder <- "miseq20"
 uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
 #uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
-final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_05_09_2024.csv")) # change the Miseq run number and time stamp
+final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_06_09_2024.csv")) # change the Miseq run number and time stamp
 ```
 
 # remove identifications below thresholds for species species, genus, family and order
@@ -418,7 +418,16 @@ cat("Number of records removed:", original_count - filtered_count, "\n")
 
 # remove single species occurences (species detection that occur in only one PCR replicate)
 ```{r}
-  filter(rep_count > 1) %>%
+# Remove the count column as it is no longer needed
+# Step 1: Create the counts data frame
+counts_sp <- filtered_dataframe_top_sp %>%
+  group_by(site, species) %>%
+  summarise(rep_count = n_distinct(replicate), .groups = 'drop')  # Count distinct replicates
+
+# Step 2: Filter out rows where the combination of 'site' and 'species' appears only once
+sp_fil_metab_long_with_species <- filtered_dataframe_top_sp %>%
+  left_join(counts_sp, by = c("site", "species")) %>%
+filter(rep_count > 1) %>%
   select(-rep_count)  # Remove the rep_count column as it is no longer needed
 
 # Check samples removed from dataframe
@@ -475,7 +484,7 @@ controls_long <- filtered_dataframe[filtered_dataframe$site %in% values_to_remov
 filtered_dataframe_samples <- filtered_dataframe[!filtered_dataframe$site %in% values_to_remove, ]
 ```
 
-# check if 'CONTROL SPIKE' is in samples
+# check if 'CONTROL SPIKE' is in samples. There should be NO control spike in samples
 ```{r}
 if ("CONTROL SPIKE" %in% filtered_dataframe_samples$species) {
   print("CONTROL SPIKE found")
@@ -487,13 +496,13 @@ if ("CONTROL SPIKE" %in% filtered_dataframe_samples$species) {
 # save data for modeling in long format (includes PCR replicates)
 ```{r}
 #Create directory for modeling data
-dir.create(paste0(uomshare, "/final_data_summaries/modeling_data"))
+dir.create(paste0(uomshare,"/final_modeling_data/"))
 
 # Generate a timestamp
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
 # Create the file name with the timestamp (set Miseq run number)
-file_name <- paste0(uomshare, "/final_data_summaries/modeling_data/", miseq_folder, "_vsearch_data_summary_filled_filt_PCR_long_format_", timestamp, ".csv")
+file_name <- paste0(uomshare, "/final_modeling_data/", miseq_folder, "_final_data_long_format_", timestamp, ".csv")
 # Save the dataframe with the new file name
 write.csv(filtered_dataframe_samples, file = file_name, row.names = FALSE)
 ```
