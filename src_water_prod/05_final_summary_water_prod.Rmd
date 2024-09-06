@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This final section enables data to be arranged into a final table for future analysis.
+This final section enables data to be arranged into a final table for fileing and filtering
 
 # producing final data summary
 

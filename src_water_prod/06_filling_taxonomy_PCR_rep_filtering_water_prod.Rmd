@@ -5,6 +5,8 @@ date: "06/06/2024"
 output: html_document
 ---
 
+#Filling and Filtering notebook for all Miseq runs except MiSeq13 (this has a different experimental design)
+
 This notebook is designed to filling missing taxonomic assignments from the vsearch step (in 03_classification) in the metabarcoding workflow and make corrections to taxonomic assignments that are incorrectly assigned by vsearch due to errors in the DNA barcode reference libraries (SECTION 1).It also performs a final flitering to detect and remove species detections that have most likely arisen from 'mistagging' (SECTION 2)
 
 

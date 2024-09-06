@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This document contains scripts to correct errors in the document 'asv_library_97_aug24.xlsx'
+This document contains scripts to correct errors in the document 'asv_library_97_aug24.xlsx'. A modified version will be produced from this script
 
 # read in 'asv_library_97_aug24.xlsx' spreadsheets
 ```{r}
