@@ -35,12 +35,12 @@ This notebook performs quantification for your metabarcoding analysis. This note
 ```{r}
 # reset directory if starting from this notebook 
 #***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in and the directory to your own home drive***
-miseq_folder <- "test"
+#miseq_folder <- "miseq20"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name
 uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
-#
-uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
+
+#uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
 
 #adjusting directory paths to use Jess's mozzie code
 results_dir <- paste0(uomshare)
@@ -81,6 +81,7 @@ current_path_env <- Sys.getenv("PATH")
 Sys.setenv(PATH=paste0("/home/unimelb.edu.au/jessicac/shared_envs/qiime2-2024.2/bin:/home/unimelb.edu.au/jessicac/miniconda3/condabin:", current_path_env))
 
 Sys.setenv(PYTHONPATH="/home/unimelb.edu.au/jessicac/shared_envs/qiime2-2024.2/lib/python3.8/site-packages/")
+
 Sys.setenv(R_LIBS_USER="/home/unimelb.edu.au/jessicac/shared_envs/qiime2-2024.2/lib/R/library/")
 ```
 
@@ -99,7 +100,7 @@ Create a directory for each amplicon group.
 
 ```{r}
 # Create output directories (separate directory for each amplicon group)
-combined_dir <- file.path(results_dir, "combined")
+combined_dir <- file.path(uomshare, "combined")
 mkdir(combined_dir)
 
 for (a in amplicon_groups) {
@@ -412,14 +413,15 @@ cat("Number of samples in the miseq run:", num_folders, "\n")
 
 # Set the total_value equal to the number of samples
 total_value <- num_folders
-part_value <- 1
+part_value <- 1.1
+#part_value <- 2
 
 # Calculate the percentage
 proportion <- (part_value / total_value)
+#proportion <- round(proportion1, 4)
 
 # Print the result
-cat("What percentage of", total_value, "equals", part_value, "?", "\n")
-cat("set 'p_prevalence to' :", proportion, "\n")
+cat("Set 'p_prevalence' to:", proportion, "\n")
 
 ```
 

@@ -16,11 +16,13 @@ This final section enables data to be arranged into a final table for future ana
 Starting from here will need the threshold list and the sample_df from Cache03
 ```{r}
 #reset directory 
-#***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in****
+#***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in***
 miseq_folder <- "miseq16"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name)
 uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
+
+#uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
 
 # load thresholds_list form cahche03 
 thresholds_list <- readRDS(paste0(uomshare,"/cache/thresholds_list.rds"))
@@ -31,10 +33,10 @@ samples_df <- readRDS(paste0(uomshare,"/cache/samples_df.rds"))
 ```{r}
 short_lulu <- readRDS(paste0(uomshare,"/lulu/short_lulu.rds"))
 right_lulu <- readRDS(paste0(uomshare,"/lulu/right_lulu.rds"))
-short_classifications <- read_qza(paste0(uomshare,"/classification/short_classification.qza"))
-right_classifications <- read_qza(paste0(uomshare,"/classification/right_classification.qza"))
-short_seq <- read_qza(paste0(uomshare,"/dada2/short_representative_sequences.qza"))
-right_seq <- read_qza(paste0(uomshare,"/dada2/right_representative_sequences.qza"))
+short_classifications <- qiime2R::read_qza(paste0(uomshare,"/classification/short_classification.qza"))
+right_classifications <- qiime2R::read_qza(paste0(uomshare,"/classification/right_classification.qza"))
+short_seq <- qiime2R::read_qza(paste0(uomshare,"/dada2/short_representative_sequences.qza"))
+right_seq <- qiime2R::read_qza(paste0(uomshare,"/dada2/right_representative_sequences.qza"))
 ```
 
 # check classification data for short amplicon
@@ -101,7 +103,7 @@ right_df %>% filter(Taxon == "Unassigned") %>% pull(max_p_identity) %>% table
 
 ```{r}
 # for big dataset
-short_search_results <- read_tsv(paste0(uomshare,"/classification/preliminary/short_vsearch.tsv"))
+short_search_results <- readr::read_tsv(paste0(uomshare,"/classification/preliminary/short_vsearch.tsv"))
 ```
 
 ```{r}
@@ -110,7 +112,7 @@ short_search_results$data %>% dim
 
 ```{r}
 # for big dataset
-right_search_results <- read_tsv(paste0(uomshare,"/classification/preliminary/right_vsearch.tsv"))
+right_search_results <- readr::read_tsv(paste0(uomshare,"/classification/preliminary/right_vsearch.tsv"))
 ```
 
 ## Combine workflow outputs
@@ -248,9 +250,29 @@ final_df <- tidyr::separate(final_df, Taxon, into = c("kingdom", "phylum", "clas
 final_df[is.na(final_df)] <- ""
 head(final_df)
 ```
+```{r}
+# fix taxonomic discrepancies between BOLD and GenBank
+final_df<- final_df %>%
+  mutate(
+    class = gsub("Copeopda", "Hexanauplia", class),    # Replace 'Copeopda' with 'Hexanauplia'
+    class = gsub("Tubificida", "Haplotaxida", class)   # Replace 'Tubificida' with 'Haplotaxida'
+  )
+# Move 'Oomycota' from 'phylum' to 'class' and replace 'Oomycota' with 'Heterokontophyta' in 'phylum'
+final_df<- final_df %>%
+  mutate(
+    class = ifelse(phylum == "Oomycota", "Oomycota", class),              # Move 'Oomycota' to 'class'
+    phylum = ifelse(phylum == "Oomycota", "Heterokontophyta", phylum)     # Replace 'Oomycota' with 'Heterokontophyta'
+  )
+# Move 'Oomycota' from 'phylum' to 'class' and replace 'Oomycota' with 'Heterokontophyta' in 'phylum'
+final_df<- final_df %>%
+  mutate(
+    class = ifelse(phylum == "Discosea", "Discosea", class),              # Move 'Oomycota' to 'class'
+    phylum = ifelse(phylum == "Discosea", "Amoebozoa", phylum)     # Replace 'Oomycota' with 'Heterokontophyta'
+  )
+```
 
 
-
+# save raw data from 
 ```{r}
 # save dataframe create a directory for results
 dir.create(paste0(uomshare, "/final_data_summaries"))
