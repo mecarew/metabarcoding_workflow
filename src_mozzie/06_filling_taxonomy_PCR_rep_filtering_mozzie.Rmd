@@ -19,7 +19,7 @@ library(here)
 
 ## SECTION 1: Filling in missing/incorrect taxonomic classifications
 
-A file based on analysis of Miseq datasets was constructed ('asv_library_97_jun24.xlsx'). This file captures ASVs (amplicon sequence variants) from the DADA2 step (where the metabarcoding data is reduced into a series of sequence groups with high sequence similarity i.e. ASVs) and this file:
+A file based on analysis of Miseq datasets was constructed ('asv_library_97_aug24.xlsx'). This file captures ASVs (amplicon sequence variants) from the DADA2 step (where the metabarcoding data is reduced into a series of sequence groups with high sequence similarity i.e. ASVs) and this file:
 -   fills truncated taxonomy assignments from the vsearch step (sheet 1)
 -   groups unclassified sequences into 'OTUs' (sheet 2)
 -   updates/corrects any missing identifications or errors in classification (sheet 3)
@@ -40,33 +40,34 @@ complexes_df <- readxl::read_excel(file_path, sheet = sheet_names[4])# identifie
 
 # remove 'NA' from blank cell
 truncated_fills_df <- truncated_fills_df %>%
-  mutate(across(everything(), ~ replace_na(., "")))
+  dplyr::mutate(across(everything(), ~ replace_na(., "")))
 otu_groups_df <- otu_groups_df %>%
-  mutate(across(everything(), ~ replace_na(., "")))
+  dplyr::mutate(across(everything(), ~ replace_na(., "")))
 max_p_update_df <- max_p_update_df %>%
-  mutate(across(everything(), ~ replace_na(., "")))
+  dplyr::mutate(across(everything(), ~ replace_na(., "")))
 
 #read in raw dataframe (if starting with a clear global environment)
-#final_df <- read.csv(here::here("results/final_data_summaries/MiSeq19_vsearch_data_summary_13_08_2024.csv")) # change the Miseq run number and time stamp
+final_df <- read.csv(here::here("results/final_data_summaries/MiSeqXX_vsearch_data_summary_14_08_2024.csv")) # change the Miseq run number and time stamp
+
 ```
 
 # remove identifications below thresholds for species species, genus, family and order
 ```{r}
 # Update 'species' column to only include names if max threshold is above 97
 final_df <-  final_df %>%
-  mutate(species = if_else(max_p_identity < 97, "", species))
+  dplyr::mutate(species = if_else(max_p_identity < 97, "", species))
 
 # Update 'genus' column to only include names if max threshold is above 95
 final_df <-  final_df %>%
-  mutate(genus = if_else(max_p_identity < 95, "", genus))
+  dplyr::mutate(genus = if_else(max_p_identity < 95, "", genus))
 
 # Update 'family' column to only include names if max threshold is above 90
 final_df <-  final_df %>%
-  mutate(family = if_else(max_p_identity < 90, "", family))
+  dplyr::mutate(family = if_else(max_p_identity < 90, "", family))
 
 # Update 'order' column to only include names if max threshold is above 80
 final_df <-  final_df %>%
-  mutate(order = if_else(max_p_identity < 85, "",order))
+  dplyr::mutate(order = if_else(max_p_identity < 85, "",order))
 ```
 
 
@@ -250,7 +251,7 @@ print(final_data_filled)
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
 # Create the file name with the timestamp (NOTE: Change the MiSeq number to the dataset you are working with)
-file_name <- paste0(here::here("results/final_data_summaries/MiseqX_vsearch_data_summary_filled_"), timestamp, ".csv")
+file_name <- paste0(here::here("results/final_data_summaries/MiseqXX_vsearch_data_summary_filled_"), timestamp, ".csv")
 
 # Save the dataframe with the new file name
 write.csv(final_data_filled, file = file_name, row.names = FALSE)
@@ -262,6 +263,13 @@ This section is designed to format data and filter it for 'mistagging'. Mistaggi
 
 # Change data to long formmat (list) for PCR replicate filtering 
 Note: This code will need to be configured for each dataset, so that the rows containing the read counts are specified (e.g. pivot_longer(cols = X10BNY29042rep1:Cont3rep1), the 'X10BNY29042rep1:Cont3rep1' will need to be changed to the first and last column name with the reads data for each dataset
+Miseq13:X10BNY29042rep1:Cont3rep1 
+Miseq15:X10FEH41841rep3:S21YAR36377rep3
+Miseq16:Cont1:S21WAY30960rep3
+Miseq17:A22BNY29042rep1:S21YZJ1175rep6
+Miseq18:A22ALD26081rep1:S22YZ8202rep3
+Miseq19:A22BF3373rep1:S22YPB224rep3
+Miseq20:
 ```{r}
 # Modify column names to prefix 'X' if they start with a number
 #final_data_filled <- final_data_filled %>%
@@ -269,7 +277,7 @@ Note: This code will need to be configured for each dataset, so that the rows co
 
 # Pivot longer to transform columns 13 to 40 into rows 
 metab_long <- final_data_filled %>%
-  pivot_longer(cols = A23BNY29042rep1:S22SPL263rep6, names_to = "sample", values_to = "value") %>%
+  pivot_longer(cols = X10BNY29042rep1:Cont3rep1, names_to = "sample", values_to = "value") %>%
   filter(value != 0) %>%  # Filter out rows where value is zero
   select(-matches("^X(\\.\\d+)?$"))  # Remove columns named X, X.1, ..., X.11
 
@@ -302,13 +310,12 @@ metab_long <- metab_long %>%
 # add 'factor' column
 metab_long$site <- substr(metab_long$site_per, 1, nchar(metab_long$site_per))
 
-# remove replicate data
-#metab_long <- metab_long %>%
-#   dplyr::mutate(site = sub("(10|20|30|40|)", "", site))
+# remove replicate data (for Miseq13 only)
+#metab_long <- metab_long %>% dplyr::mutate(site = sub("(X10|X20|X30|X40|)", "", site))
 
-# Move the "replace" column to be the second column
+#Move the "replace" column to be the second column (for Miseq13 only)
 #metab_long <- metab_long %>%
-#  select(sample, replicate, site_per, site, everything())  # Move "replace" to the second column
+#select(sample, replicate, site_per, site, everything())  # Move "replace" to the second column
 
 # Move the "replace" column to be the second column
 metab_long <- metab_long %>%
@@ -435,12 +442,12 @@ Note: This code will need to be configured for each dataset, so that the rows co
 ```{r}
 # Step 1: Replace empty cells with 0 before pivoting
 final_data_filled_clean <- final_data_filled %>%
-  mutate(across(A23BNY29042rep1:S22SPL263rep6, ~ replace_na(.x, 0)))  # Replace NA with 0 in specified columns
+  mutate(across(X10BNY29042rep1:Cont3rep1, ~ replace_na(.x, 0)))  # Replace NA with 0 in specified columns
 
 # Step 2: Pivot longer
 metab_long <- final_data_filled_clean %>%
   pivot_longer(
-    cols = A23BNY29042rep1:S22SPL263rep6,  # Specify the range or individual column names
+    cols = X10BNY29042rep1:Cont3rep1,  # Specify the range or individual column names
     names_to = "sample",
     values_to = "value"
   ) %>%
@@ -480,7 +487,7 @@ print(head(metab_wide))
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
 # Create the file name with the timestamp (set Miseq run number)
-file_name <- paste0(here::here("results/final_data_summaries/MiseqX_vsearch_summary_filled_filt_PCR rep_"), timestamp, ".csv")
+file_name <- paste0(here::here("results/final_data_summaries/MiseqXX_vsearch_summary_filled_filt_PCR rep_"), timestamp, ".csv")
 
 # Save the dataframe with the new file name
 write.csv(metab_wide, file = file_name, row.names = FALSE)
@@ -527,7 +534,7 @@ wide_summarised_df[cols_to_modify][is.na(wide_summarised_df[cols_to_modify])] <-
 print(wide_summarised_df)
 
 ```
-#  Now aggregate species data so that the same species identification do not occur multiple times
+#Now aggregate species data so that the same species identification do not occur multiple times
 ```{r}
 library(dplyr)
 
@@ -597,39 +604,10 @@ wide_summarised_per_df[cols_to_modify] <- lapply(wide_summarised_per_df[cols_to_
 
 # Replace NA values with empty strings in specified columns
 wide_summarised_per_df[cols_to_modify][is.na(wide_summarised_per_df[cols_to_modify])] <- ""
+
+## Remove 'X' at the start of column headings
+colnames(wide_summarised_per_df) <- gsub("^X", "", colnames(wide_summarised_per_df))
+
 print(wide_summarised_per_df)
-
 ```
 
-#```{r}
-# List of columns to group by
-group_cols <- c('kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species')
-
-# Identify the columns that are site_per (excluding group columns and max_p_identity)
-site_per_cols <- setdiff(colnames(wide_summarised_per_df), c(group_cols, 'max_p_identity'))
-
-# Print columns for debugging
-print(site_per_cols)
-
-# Collapse rows by kingdom, phylum, class, order, family, genus, species
-collapsed_wide_summarised_per_df <- wide_summarised_per_df %>%
-  group_by(across(all_of(group_cols))) %>%
-  summarise(
-    max_p_identity = max(max_p_identity, na.rm = TRUE),  # Get max value of max_p_identity
-    across(all_of(site_per_cols), sum, na.rm = TRUE),  # Sum the values for the site_per columns
-    .groups = 'drop'
-  )
-
-# Print the resulting collapsed data frame
-print(collapsed_wide_summarised_per_df)
-```
-# save file
-#```{r}
-# save filled dataframe
-timestamp <- format(Sys.time(), "%d_%m_%Y")
-
-# Create the file name with the timestamp (NOTE:Change the MiSeq number to the dataset you are working with)
-file_name2 <- paste0("~/git/metabarcoding_workflow/results/MiSeq13_final_data_summary_filled_filter_sites_per_", timestamp, ".csv")
-
-write.csv(collapsed_wide_summarised_per_df, file = file_name2, row.names = FALSE)
-```
