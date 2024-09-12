@@ -48,7 +48,6 @@ max_p_update_df <- max_p_update_df %>%
 
 #read in raw dataframe (if starting with a clear global environment)
 final_df <- read.csv(here::here("results/final_data_summaries/MiSeqXX_vsearch_data_summary_14_08_2024.csv")) # change the Miseq run number and time stamp
-
 ```
 
 # remove identifications below thresholds for species species, genus, family and order
@@ -611,3 +610,49 @@ colnames(wide_summarised_per_df) <- gsub("^X", "", colnames(wide_summarised_per_
 print(wide_summarised_per_df)
 ```
 
+# now aggregate species data so that the same species identification do not occur multiple times
+#```{r}
+library(dplyr)
+
+# List of columns to modify
+cols_to_modify <- c('kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species')
+
+# Convert specified columns to character type
+wide_summarised_per_df[cols_to_modify] <- lapply(wide_summarised_per_df[cols_to_modify], as.character)
+
+# Replace NA values with empty strings in specified columns
+wide_summarised_per_df[cols_to_modify][is.na(wide_summarised_per_df[cols_to_modify])] <- ""
+
+# Print the resulting wide summarized data frame
+print(wide_summarised_df)
+
+# List of columns to group by
+group_cols <- c('kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species')
+
+# Identify the columns that are site_per (excluding group columns and max_p_identity)
+site_cols <- setdiff(colnames(wide_summarised_per_df), c(group_cols, 'max_p_identity'))
+
+# Collapse rows by kingdom, phylum, class, order, family, genus, species
+collapsed_wide_summarised_per_df <- wide_summarised_per_df %>%
+  group_by(across(all_of(group_cols))) %>%
+  summarise(
+    max_p_identity = max(max_p_identity, na.rm = TRUE),  # Get max value of max_p_identity
+    across(all_of(site_cols), function(x) sum(x, na.rm = TRUE)),  # Sum the values for the site_per columns
+    .groups = 'drop'
+  )
+
+# Print the collapsed data frame
+print(collapsed_wide_summarised_per_df)
+```
+
+
+
+#```{r}
+# save filled dataframe
+timestamp <- format(Sys.time(), "%d_%m_%Y")
+
+# Create the file name with the timestamp 
+file_name2 <- paste0(here::here("results/Miseq13_final_data_summary_"), timestamp, ".csv")
+ 
+ write.csv(collapsed_wide_summarised_per_df, file = file_name2, row.names = FALSE)
+```

@@ -12,9 +12,7 @@ library(readxl)
 library(here)
 ```
 
-Load flies
-
-
+These scripts check the MAR2T internal control for matching species dectections from each MiSeq runs
 
 ```{r}
 #reset directory 
@@ -28,8 +26,6 @@ uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflo
 miseq_controls_long <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder,"_CONTROLS_long_format_06_09_2024.csv")) 
 mart2_control_data <- readxl::read_excel("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/MAR2_metabarcoding_control_site.xlsx")
 ```
-
-
 
 ```{r}
 # Step 3: Pivot wider to transform back to wide format
