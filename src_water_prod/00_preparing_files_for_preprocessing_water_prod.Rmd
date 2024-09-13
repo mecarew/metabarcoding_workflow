@@ -16,11 +16,11 @@ library(dplyr)
 
 # set up metabarcoding workflow folder inside MiSeq run file for input and output data files (NOTE each new project will require the directories to be setup for your dataset, this code has input data in the folder 'test')
 
-#miseq_folder <- "miseqXX"
+#miseq_folder <- "miseqxx"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name
 
-uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow/")
+uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data//",miseq_folder,"/metabarcoding_workflow/")
 
 if (dir.exists(uomshare)) {
   warning("Directory already exists. Please change the name to the name of your Miseq folder. e.g. ~/uomShare/wergStaff/MelCarew/git-data/miseqXX/metabarcoding_workflow/ This will need to be done for each new miseq dataset at the begining of each notebook")
@@ -40,7 +40,7 @@ dir.create(metadata)
 
 # move raw data into the 'metabarcoding workflow' folder for analysis
 file.rename(
-  from = paste0("~/uomShare/wergStaff/MelCarew/git-data/", miseq_folder, "/raw"), 
+  from = paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/", miseq_folder, "/raw"), 
   to = paste0(uomshare, "data/raw")
 )
 # make the mteadata.tsv file for analysis
@@ -90,7 +90,7 @@ write.table(samples, file = paste0(uomshare, "data/metadata/samples.tsv"), sep =
 ```
 
 # Some more on using github (if you haven't before)
-Git can be added to the top rigth pane of your rstudio window using the instrutions below:
+Git can be added to the top right pane of your rstudio window using the instructions below:
 
 Configure Git in RStudio:
 Open RStudio and go to the "Tools" menu. Choose "Global Options" and then click on the "Git/SVN" tab. Here, you need to specify the path to the Git executable. If Git is installed in the default location, RStudio should automatically detect it. Otherwise, you may need to browse and select the Git executable manually.

@@ -236,7 +236,7 @@ duplicates <- final_data_filled %>%
 
 # Check the final vsearch and filled dataframe have the same number of rows 
 if (nrow(final_df) == nrow(final_data_filled)) {
-  cat("The data frames have the same number of rows. Proceed \n")
+  cat("The dataframes have the same number of rows. Proceed \n")
 } else {
   cat("The data frames have a different number of rows. Check \n")
 }
@@ -253,6 +253,7 @@ final_data_filled <- final_data_filled %>%
 # Print the modified dataframe
 print(final_data_filled)
 ```
+
 # adjust Cont names for flitering so that controls have the same names
 ```{r}
 # List of old and new column names
