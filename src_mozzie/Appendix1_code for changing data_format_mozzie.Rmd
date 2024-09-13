@@ -3,7 +3,6 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-
 Scripts for manipulating data from final long format
 
 
@@ -16,7 +15,6 @@ Miseq17:A22BNY29042rep1:S21YZJ1175rep6
 Miseq18:A22ALD26081rep1:S22YZ8202rep3
 Miseq19:A22BF3373rep1:S22YPB224rep3
 Miseq20:A23BNY29042rep1:S22SPL263rep6
-
 ```{r}
 # Step 1: Replace empty cells with 0 before pivoting
 final_data_filled_clean <- filtered_dataframe %>%
