@@ -10,6 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
+# Filling and Filtering notebook for the 10 site study MiSeq13 (this has a different experimental design to other runs) 
+
 This notebook is designed to filling missing taxonomic assignments from the vsearch step (in 03_classification) in the metabarcoding workflow and make corrections to taxonomic assignments that are incorrectly assigned by vsearch due to errors in the DNA barcode reference libraries (SECTION 1).It also performs a final flitering to detect and remove species detections that have most likely arisen from 'mistagging' (SECTION 2). It has been modified to produce a final dataset for the 10 site study.
 
 

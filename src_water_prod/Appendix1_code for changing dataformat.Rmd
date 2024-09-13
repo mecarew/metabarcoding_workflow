@@ -3,7 +3,11 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-T# convert long form back to full data summary with data filled and filtered
+
+Scripts for manipulating data from final long format
+
+
+#convert long form back to full data summary with data filled and filtered
 Note: This code will need to be configured for each dataset, so that the rows containing the read counts are specified (e.g. pivot_longer(cols = X10BNY29042rep1:Cont3rep1), the 'X10BNY29042rep1:Cont3rep1' will need to be changed to the first and last column name
 Miseq13:X10BNY29042rep1:Cont3rep1 
 Miseq15:X10FEH41841rep3:S21YAR36377rep3
@@ -12,6 +16,7 @@ Miseq17:A22BNY29042rep1:S21YZJ1175rep6
 Miseq18:A22ALD26081rep1:S22YZ8202rep3
 Miseq19:A22BF3373rep1:S22YPB224rep3
 Miseq20:A23BNY29042rep1:S22SPL263rep6
+
 ```{r}
 # Step 1: Replace empty cells with 0 before pivoting
 final_data_filled_clean <- filtered_dataframe %>%

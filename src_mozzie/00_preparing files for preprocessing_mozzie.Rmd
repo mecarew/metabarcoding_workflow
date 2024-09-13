@@ -56,7 +56,7 @@ samples$filename_r2 <- paste0("./data/raw/",samples$filename_r2)
 
 #write.table(samples, file = "~/Documents/metabarcoding_workflow/data/metadata/samples.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
 
-write.table(samples, file = here::here("data/metadata/samples.tsv"), sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(samples, file = here::here("/data/metadata/samples.tsv"), sep = "\t", row.names = FALSE, quote = FALSE)
 ```
 
 # Some more on using github (if you haven't before)
