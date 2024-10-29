@@ -5,8 +5,9 @@ date: "06/06/2024"
 output: html_document
 ---
 
-This notebook is designed to filling missing taxonomic assignments from the vsearch step (in 03_classification) in the metabarcoding workflow and make corrections to taxonomic assignments that are incorrectly assigned by vsearch due to errors in the DNA barcode reference libraries (SECTION 1).It also performs a final flitering to detect and remove species detections that have most likely arisen from 'mistagging' (SECTION 2)
+#Filling and Filtering notebook for all Miseq runs except MiSeq13 (this has a different experimental design)
 
+This notebook is designed to filling missing taxonomic assignments from the vsearch step (in 03_classification) in the metabarcoding workflow and make corrections to taxonomic assignments that are incorrectly assigned by vsearch due to errors in the DNA barcode reference libraries (SECTION 1).It also performs a final flitering to detect and remove species detections that have most likely arisen from 'mistagging' (SECTION 2)
 
 ```{r}
 # Load the required libraries
@@ -25,14 +26,10 @@ A file based on analysis of Miseq datasets was constructed ('asv_library_97_aug2
 -   updates/corrects any missing identifications or errors in classification (sheet 3)
 -   identifies any ambiguous taxonomic assignments that should be considered as complexes (sheet 4)
 
-```{r}
-#set miseq folder name
-miseq_folder <- "miseq20"
-```
-
 ```{r setup, warning=FALSE}
 # read in flies
-file_path <- "~/Documents/asv_library_97_aug24_modified.xlsx"
+
+file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_aug24_modified.xlsx"
 
 # Get the names of the sheets
 sheet_names <- readxl::excel_sheets(file_path)
@@ -40,7 +37,7 @@ sheet_names <- readxl::excel_sheets(file_path)
 # Read the sheets into as dataframes
 truncated_fills_df <- readxl::read_excel(file_path, sheet = sheet_names[1])  # contains full taxonomic information for classifications with truncated taxonomy
 otu_groups_df <- readxl::read_excel(file_path, sheet = sheet_names[2])# groups unclassified sequences into 'OTUs'
-max_p_update_df <- readxl::read_excel(file_path, sheet = sheet_names[3])#updates/corrects any missing identifications or errors in classification
+max_p_update_df <- readxl::read_excel(file_path, sheet = sheet_names[3])# updates/corrects any missing identifications or errors in classification
 complexes_df <- readxl::read_excel(file_path, sheet = sheet_names[4])# identifies any ambiguous taxonomic assignments that should be considered as complexes
 
 # Replace NA values with empty strings
@@ -49,7 +46,10 @@ otu_groups_df <- otu_groups_df %>% mutate_all(~ ifelse(is.na(.), "", .))
 max_p_update_df <- max_p_update_df %>% mutate_all(~ ifelse(is.na(.), "", .))
 
 #read in raw dataframe (if starting with a clear global environment)
-final_df <- read.csv(here::here("results/final_data_summaries/MiSeq20_vsearch_data_summary_05_09_2024.csv")) # change the Miseq run number and time stamp
+miseq_folder <- "miseq20"
+uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
+#uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
+final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_06_09_2024.csv")) # change the Miseq run number and time stamp
 ```
 
 # remove identifications below thresholds for species species, genus, family and order
@@ -81,7 +81,7 @@ print(common_ids)
 
 df1 <- final_df[final_df$asv_code %in% common_ids, ] # asvs in common in final_df
 df2 <- truncated_fills_df[truncated_fills_df$asv_code %in% common_ids, ]  # asvs in common in truncated_fills_df
-df3 <-final_df[!final_df$asv_code %in% common_ids, ] # left data in final dataframe
+df3 <- final_df[!final_df$asv_code %in% common_ids, ] # left data in final dataframe
 
 
 # Update the 'species' value in df1 based on matching 'asv_code'
@@ -171,7 +171,7 @@ for (i in 1:nrow(df4)) {
 print(df4)
 ```
 # Add in identification data for taxa missing from reference database (sheet 3)
-```{r setup, warning=FALSE}
+```{r}
 # Find common IDs
 common_ids3 <- intersect(max_p_update_df$asv_code, final_df$asv_code)
 
@@ -255,7 +255,7 @@ print(final_data_filled)
 ```
 
 # adjust Cont names for flitering so that controls have the same names
-```{r setup, warning=FALSE}
+```{r}
 # List of old and new column names
 old_names <- c("Cont1", "cont1", "COICont1" ,"Cont2", "cont2", "COICont2", "Cont3", "COICont3", "Cont4", "Cont5", "Cont6", "Cont7", "Cont8")
 new_names <- c("Contrep1", "Contrep1", "Contrep1", "Contrep2", "Contrep2","Contrep2", "Contrep3", "Contrep3" ,"Contrep4", "Contrep5", "Contrep6", "Contrep7", "Contrep8")
@@ -269,12 +269,13 @@ final_data_filled <- final_data_filled %>%
 # Print the modified dataframe
 print(final_data_filled)
 ```
+
 ```{r}
 # Save filled dataframe
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
 # Create the file name with the timestamp (NOTE: Change the MiSeq number to the dataset you are working with)
-file_name <- paste0(here::here("results/final_data_summaries/MiseqXX_vsearch_data_summary_filled_"), timestamp, ".csv")
+file_name <- paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_filled_", timestamp, ".csv")
 
 # Save the dataframe with the new file name
 write.csv(final_data_filled, file = file_name, row.names = FALSE)
@@ -288,7 +289,7 @@ This section is designed to format data and filter it for 'mistagging'. Mistaggi
 Note: This code will need to be configured for each dataset, so that the rows containing the read counts are specified (e.g. pivot_longer(cols = X10BNY29042rep1:Cont3rep1), the 'X10BNY29042rep1:Cont3rep1' will need to be changed to the first and last column name with the reads data for each dataset
 Miseq13:X10BNY29042rep1:Cont3rep1 
 Miseq15:X10FEH41841rep3:S21YAR36377rep3
-Miseq16:Cont1:S21WAY30960rep3
+Miseq16:Contrep1:S21WAY30960rep3
 Miseq17:A22BNY29042rep1:S21YZJ1175rep6
 Miseq18:A22ALD26081rep1:S22YZ8202rep3
 Miseq19:A22BF3373rep1:S22YPB224rep3
@@ -416,7 +417,8 @@ cat("Number of records after filtering:", filtered_count, "\n")
 cat("Number of records removed:", original_count - filtered_count, "\n")
 ```
 
-# remove single species occurences (one PCR replicate)
+
+# remove single species occurences (species detection that occur in only one PCR replicate)
 ```{r}
 # Remove the count column as it is no longer needed
 # Step 1: Create the counts data frame
@@ -443,6 +445,7 @@ cat("Number of records removed:", original_count - filtered_count, "\n")
 
 # Print the modified dataframe
 print(sp_fil_metab_long_with_species)
+
 ```
 
 # remove single ASV occurences
@@ -469,7 +472,6 @@ cat("Original number of records:", original_count, "\n")
 cat("Number of records after filtering:", filtered_count, "\n")
 cat("Number of records removed:", original_count - filtered_count, "\n")
 ```
-
 # bind filtered and filled dataframes
 ```{r}
 #rejoin_dataframes
@@ -497,31 +499,27 @@ if ("CONTROL SPIKE" %in% filtered_dataframe_samples$species) {
 # save data for modeling in long format (includes PCR replicates)
 ```{r}
 #Create directory for modeling data
-dir.create(here::here("results/final_modeling_data"))
+dir.create(paste0(uomshare,"/final_modeling_data/"))
 
 # Generate a timestamp
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
-# Create the file path with the timestamp and Miseq run number
-file_name <- here::here("results/final_modeling_data", 
-                        paste0(miseq_folder, "_final_data_long_format_", timestamp, ".csv"))
-
+# Create the file name with the timestamp (set Miseq run number)
+file_name <- paste0(uomshare, "/final_modeling_data/", miseq_folder, "_final_data_long_format_", timestamp, ".csv")
 # Save the dataframe with the new file name
 write.csv(filtered_dataframe_samples, file = file_name, row.names = FALSE)
-
 ```
 
 # save control for checking in notebook 07
 ```{r}
-# Create the file name with the timestamp
-cont <- here::here("results/final_data_summaries",
-                  paste0(miseq_folder, "_CONTROLS_long_format_", timestamp, ".csv"))
+# Generate a timestamp
+timestamp <- format(Sys.time(), "%d_%m_%Y")
 
+# Create the file name with the timestamp (set Miseq run number)
+cont <- paste0(uomshare, "/final_data_summaries/", miseq_folder, "_CONTROLS_long_format_", timestamp, ".csv")
 # Save the dataframe with the new file name
 write.csv(controls_long, file = cont, row.names = FALSE)
 ```
-
-
 
 
 
