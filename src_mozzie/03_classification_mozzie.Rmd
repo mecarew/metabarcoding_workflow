@@ -90,7 +90,7 @@ slurm_n_jobs <- 10
 # Create databases for classification
 
 ```{r message=FALSE, warning=FALSE}
-ref_db_dir <- "/mnt/galaxy/home/mecarew/DNA_barcode_reference_database_construction/final_library"
+ref_db_dir <- "/mnt/galaxy/home/mecarew/git/DNA_barcode_reference_database_construction/final_library"
 
 db_coi_ids=list(
   short=file.path(ref_db_dir, "short_db_2024-10.txt"),
@@ -211,7 +211,8 @@ mkdir(classification_prelim_dir)
 ```
 
 ```{r}
-if (! big_dataset) {
+if (! big_dataset) 
+  {
   # Setup targets
   targets <- data.frame(FileName=extract_targets(dada2_filtering, "filtered_seq_output"),
                         SampleName=extract_targets(dada2_filtering, "SampleName"),
@@ -240,8 +241,8 @@ if (! big_dataset) {
   prelim_classification_targets <- here("tmp/classification_prelim_targets.txt")
   
   # WIP: For the moment, only run the short and right amplicions
-  write_targets(targets %>% filter(amplicon_group %in% c("short", "right")), file=prelim_classification_targets)
-}
+  write_targets(targets %>% filter(amplicon_group %in% c("short", "right")), file=prelim_classification_targets) 
+                }
 ```
 
 
@@ -509,7 +510,7 @@ targets <- left_join(targets, threshold_file_list, by="amplicon_group")
 targets <- targets %>% filter(! is.na(file_list))
 
 # This can be changed if you want different parameters
-targets$min_consensus <- 0.51
+targets$min_consensus <- 0.7
 
 targets <- targets %>% 
   mutate(classification_output=
@@ -526,6 +527,31 @@ write_targets(targets %>% filter(amplicon_group %in% c("short", "right")), file=
 ::::: {.panelset}
 
 ::: {.panel}
+
+#### Run output {.panel-name}
+
+Note: takes 5hr 15min to run 6 samples
+
+```{r, attr.output='style="max-height: 400px; overflow: auto !important;"'}
+classification <- loadWorkflow(targets=classification_targets,
+                                           wf_file="qiime_classification_by_threshold.cwl", 
+                                           input_file="qiime_classification_by_threshold.yml", dir_path=cwl_path)
+classification <- set_logs_dir(classification, logs_dir)
+classification@yamlinput$taxonomy_wrapper$path <- 
+  file.path(cwl_path, "qiime_classification_by_threshold_wrapper.sh")
+classification@yamlinput$tmp_dir <- tmp_dir_path
+classification@yamlinput$n_threads <- slurm_threads
+classification@yamlinput$output_dir$path <- classification_dir
+classification <- renderWF(classification, 
+                           inputvars=c(FileName="_INPUT_REP_SEQ_",
+                                       sequences_db="_INPUT_SEQ_DB_",
+                                       taxonomy_db="_INPUT_TAXONOMY_DB_",
+                                       min_consensus="_MIN_CONSENSUS_",
+                                       classification_output="_CLASSIFICATION_OUTPUT_",
+                                       file_list="_FILE_LIST_"))
+
+run_jobs(classification)
+```
 
 #### Command list {.panel-name}
 
