@@ -261,6 +261,10 @@ final_df<- final_df %>%
     class = ifelse(phylum == "Discosea", "Discosea", class),              # Move 'Oomycota' to 'class'
     phylum = ifelse(phylum == "Discosea", "Amoebozoa", phylum)     # Replace 'Oomycota' with 'Heterokontophyta'
   )
+
+final_df<- final_df %>%
+  mutate(
+    family = gsub("Oceaniidae", "Cordylophoridae", family))   # Replace 'Oceaniidae' with 'Cordylophoridae'
 ```
 
 
