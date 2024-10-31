@@ -89,22 +89,22 @@ slurm_n_jobs <- 10
 
 ```{r}
 
-ref_db_dir <- "/mnt/galaxy/home/mecarew/Documents/DNA_reference_db_construction_final_libraries/final_library"
+ref_db_dir <- "/mnt/galaxy/home/mecarew/git/DNA_barcode_reference_database_construction/final_library"
 
 
 db_coi_ids=list(
-  short=file.path(ref_db_dir, "short_db_2023-07.txt"),
-  left=file.path(ref_db_dir, "left_db_2023-07.txt"),
-  right=file.path(ref_db_dir, "right_db_2023-07.txt"),
-  long=file.path(ref_db_dir, "long_db_2023-07.txt")
+  short=file.path(ref_db_dir, "short_db_2024_10.txt"),
+  left=file.path(ref_db_dir, "left_db_2024_10.txt"),
+  right=file.path(ref_db_dir, "right_db_2024_10.txt"),
+  long=file.path(ref_db_dir, "long_db_2024_10.txt")
 )
 
 # FASTA file with COI sequences
 db_fasta_files=list(
-  short=file.path(ref_db_dir, "short_db_2023-07.fasta"),
-  left=file.path(ref_db_dir, "left_db_2023-07.fasta"),
-  right=file.path(ref_db_dir, "right_db_2023-07.fasta"),
-  long=file.path(ref_db_dir, "long_db_2023-07.fasta")
+  short=file.path(ref_db_dir, "short_db_2024_10.fasta"),
+  left=file.path(ref_db_dir, "left_db_2024_10.fasta"),
+  right=file.path(ref_db_dir, "right_db_2024_10.fasta"),
+  long=file.path(ref_db_dir, "long_db_2024_10.fasta")
 )
 ```
 
