@@ -27,6 +27,21 @@ max_p_update_df <- readxl::read_excel(file_path, sheet = sheet_names[3])#updates
 complexes_df <- readxl::read_excel(file_path, sheet = sheet_names[4])# identifies any ambiguous taxonomic assignments that should be considered as complexes
 ```
 
+##Add new data 30_Oct_2024
+```{r}
+# read in flies
+file_path <- "~/uomShare/wergStaff/MelCarew/git-data/addtns_asv_library_30_Oct_24.xlsx"
+
+# Get the names of the sheets
+sheet_names <- readxl::excel_sheets(file_path)
+
+# Read the sheets into as dataframes
+truncated_fills_add_df <- readxl::read_excel(file_path, sheet = sheet_names[1])  # contains full taxonomic information for classifications with truncated taxonomy
+
+# Add new data to original data
+truncated_fills_df <- rbind(truncated_fills_df, truncated_fills_add_df)
+```
+
 ## Corrections/additions
 The following scripts implement corrections and additions to the ASV library file following 
 
@@ -121,7 +136,6 @@ asv_species_corrections <- c("70d22725893c8c5a6de91b0f5f7c1483" = "Atalophlebia 
 "41bb20f079819ba1bc999cff4264ce10" = "Atalophlebia sp. B-ABV8738",
 "a45b2f42201c473c0bda9448991f2f76" = "Austrheithrus glymma group",
 "9fa8ccb4ebacd70196bec0fe4009dbdb" = "Austrosimulium furiosum",
-"3cc32551412c73ec2b0c7966d5ae0566" = "Buchholzia sp. B-AAT8933",
 "64d1a48a6ecdf91a3302ac93abb2660b" = "Cardiocladius sp. B-AAW4309",
 "f2a4e6257cf87a30b64a0b2bae77383c" = "Chaetogaster diastrophus",
 "86b33bf13e66c6c67d3f5474293b571e" = "Cheumatopsyche alampeta",
@@ -449,23 +463,30 @@ max_p_identity_corrections <- c("9e5035bf7ec6a1f2c651ed0e98ed2da7" = "96.6",
 "50a1d897e621e2dbb170bc4a7d206319" = "96",
 "91162e539c973809dfa49f065bcb46c2" = "92")
 
+# Update the max_p_identity column in truncated_fills_df based on asv_code matching the correction vector
+truncated_fills_df  <- truncated_fills_df %>%
+  mutate(max_p_identity = ifelse(asv_code %in% names(max_p_identity_corrections),
+                                 max_p_identity_corrections[asv_code],
+                                 max_p_identity))
+
 # Identify the rows to update
 updated_rows <- truncated_fills_df %>%
   filter(asv_code %in% names(max_p_identity_corrections))
 
 # Update the max_p_identity column in truncated_fills_df based on asv_code matching the correction vector
-truncated_fills_df <- truncated_fills_df %>%
+truncated_fills_df  <- truncated_fills_df %>%
   mutate(max_p_identity = ifelse(asv_code %in% names(max_p_identity_corrections),
                                  max_p_identity_corrections[asv_code],
                                  max_p_identity))
 
 # Add the updated rows to max_p_update_df (these records need to be moved to the max_p_update_df so the max_p_identity will be updates) 
-
 max_p_update_df <- rbind(max_p_update_df, updated_rows)
 
 # Remove only the updated rows from truncated_fills_df
 truncated_fills_df <- truncated_fills_df %>%
   filter(!asv_code %in% names(max_p_identity_corrections))
+
+
 ```
 
 # delete misidentified records
