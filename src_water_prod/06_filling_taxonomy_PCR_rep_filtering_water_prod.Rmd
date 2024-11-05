@@ -29,7 +29,7 @@ A file based on analysis of Miseq datasets was constructed ('asv_library_97_aug2
 ```{r setup, warning=FALSE}
 # read in flies
 
-file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_aug24_modified.xlsx"
+file_path <- "~/uomShare/wergStaff/MelCarew/git-data/asv_library_97_aug24_modified.xlsx"
 
 # Get the names of the sheets
 sheet_names <- readxl::excel_sheets(file_path)
@@ -46,7 +46,7 @@ otu_groups_df <- otu_groups_df %>% mutate_all(~ ifelse(is.na(.), "", .))
 max_p_update_df <- max_p_update_df %>% mutate_all(~ ifelse(is.na(.), "", .))
 
 #read in raw dataframe (if starting with a clear global environment)
-miseq_folder <- "miseq20"
+miseq_folder <- "miseq15"
 uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
 #uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
 final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_06_09_2024.csv")) # change the Miseq run number and time stamp
@@ -301,7 +301,7 @@ Miseq20:A23BNY29042rep1:S22SPL263rep6
 
 # Pivot longer to transform columns 13 to 40 into rows 
 metab_long <- final_data_filled %>%
-  pivot_longer(cols = A23BNY29042rep1:S22SPL263rep6, names_to = "sample", values_to = "value") %>%
+  pivot_longer(cols = X10FEH41841rep3:S21YAR36377rep3, names_to = "sample", values_to = "value") %>%
   filter(value != 0) %>%  # Filter out rows where value is zero
   select(-matches("^X(\\.\\d+)?$"))  # Remove columns named X, X.1, ..., X.11
 
