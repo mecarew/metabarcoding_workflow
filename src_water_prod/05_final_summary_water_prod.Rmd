@@ -17,7 +17,7 @@ Starting from here will need the threshold list and the sample_df from Cache03
 ```{r}
 #reset directory 
 #***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in***
-miseq_folder <- "miseq20"
+miseq_folder <- "miseq16"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name)
 uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
@@ -244,11 +244,12 @@ head(final_df)
 ```
 ```{r}
 # fix taxonomic discrepancies between BOLD and GenBank
-final_df<- final_df %>%
+final_df <- final_df %>%
   mutate(
     class = gsub("Copeopda", "Hexanauplia", class),    # Replace 'Copeopda' with 'Hexanauplia'
-    class = gsub("Tubificida", "Haplotaxida", class)   # Replace 'Tubificida' with 'Haplotaxida'
-  )
+    order = gsub("Tubificida", "Haplotaxida", order),   # Replace 'Tubificida' with 'Haplotaxida'
+     order = gsub("Oomycota", "", order)
+   )
 # Move 'Oomycota' from 'phylum' to 'class' and replace 'Oomycota' with 'Heterokontophyta' in 'phylum'
 final_df<- final_df %>%
   mutate(
@@ -256,13 +257,13 @@ final_df<- final_df %>%
     phylum = ifelse(phylum == "Oomycota", "Heterokontophyta", phylum)     # Replace 'Oomycota' with 'Heterokontophyta'
   )
 # Move 'Oomycota' from 'phylum' to 'class' and replace 'Oomycota' with 'Heterokontophyta' in 'phylum'
-final_df<- final_df %>%
+final_df <- final_df %>%
   mutate(
     class = ifelse(phylum == "Discosea", "Discosea", class),              # Move 'Oomycota' to 'class'
     phylum = ifelse(phylum == "Discosea", "Amoebozoa", phylum)     # Replace 'Oomycota' with 'Heterokontophyta'
   )
 
-final_df<- final_df %>%
+final_df <- final_df %>%
   mutate(
     family = gsub("Oceaniidae", "Cordylophoridae", family))   # Replace 'Oceaniidae' with 'Cordylophoridae'
 ```

@@ -46,10 +46,10 @@ otu_groups_df <- otu_groups_df %>% mutate_all(~ ifelse(is.na(.), "", .))
 max_p_update_df <- max_p_update_df %>% mutate_all(~ ifelse(is.na(.), "", .))
 
 #read in raw dataframe (if starting with a clear global environment)
-miseq_folder <- "miseq15"
+miseq_folder <- "miseq16"
 uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
 #uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
-final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_06_09_2024.csv")) # change the Miseq run number and time stamp
+final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_06_11_2024.csv")) # change the Miseq run number and time stamp
 ```
 
 # remove identifications below thresholds for species species, genus, family and order
@@ -301,7 +301,7 @@ Miseq20:A23BNY29042rep1:S22SPL263rep6
 
 # Pivot longer to transform columns 13 to 40 into rows 
 metab_long <- final_data_filled %>%
-  pivot_longer(cols = X10FEH41841rep3:S21YAR36377rep3, names_to = "sample", values_to = "value") %>%
+  pivot_longer(cols = Contrep1:S21WAY30960rep3, names_to = "sample", values_to = "value") %>%
   filter(value != 0) %>%  # Filter out rows where value is zero
   select(-matches("^X(\\.\\d+)?$"))  # Remove columns named X, X.1, ..., X.11
 
