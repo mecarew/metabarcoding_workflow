@@ -45,12 +45,12 @@ uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflo
 #uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
 
 #read in final vsearch data summaries
-miseq13_vsearch_sum <- read.csv(paste0(uomshare, "/final_data_summaries/miseq13_vsearch_data_summary_06_09_2024.csv"))
-miseq15_vsearch_sum <-  read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/miseq15/metabarcoding_workflow/final_data_summaries/miseq15_vsearch_data_summary_06_09_2024.csv")
+miseq13_vsearch_sum <- read.csv(paste0(uomshare, "/final_data_summaries/miseq13_vsearch_data_summary_06_11_2024.csv"))
+miseq15_vsearch_sum <-  read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/miseq15/metabarcoding_workflow/final_data_summaries/miseq15_vsearch_data_summary_06_11_2024.csv")
 # fix a small error in dataframe
 miseq15_vsearch_sum <- miseq15_vsearch_sum %>%
   mutate(Consensus = ifelse(asv_code == '956bcb88ea0e4762eefac3c2a93bbb2f', 0.857, Consensus))
-miseq16_vsearch_sum <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/miseq16/metabarcoding_workflow/final_data_summaries/miseq16_vsearch_data_summary_06_09_2024.csv")
+miseq16_vsearch_sum <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/miseq16/metabarcoding_workflow/final_data_summaries/miseq16_vsearch_data_summary_06_11_2024.csv")
 ```
 
 ```{r}
@@ -105,6 +105,9 @@ miseq16_vsearch_long <- miseq16_vsearch_reruns %>%
 #bind datasets back together
 final_10sites_long <- rbind(miseq13_vsearch_sum_mod_long, miseq15_vsearch_long, miseq16_vsearch_long)
 
+final_10sites_long <- final_10sites_long %>%
+  mutate(sample = str_trim(sample))
+
 #pivot back to wide dataframe for next steps
 final_10sites_long <- final_10sites_long %>%
   group_by(asv_code, kingdom, phylum, class, order, family, genus, species, Consensus,
@@ -135,7 +138,7 @@ A file based on analysis of Miseq datasets was constructed ('asv_library_97_aug2
 
 ```{r}
 # read in flies
-file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_aug24_modified.xlsx"
+file_path <- "~/uomShare/wergStaff/MelCarew/git-data/asv_library_97_aug24_modified.xlsx"
 
 # Get the names of the sheets
 sheet_names <- readxl::excel_sheets(file_path)
@@ -181,7 +184,7 @@ print(common_ids)
 
 df1 <- final_df[final_df$asv_code %in% common_ids, ] # asvs in common in final_df
 df2 <- truncated_fills_df[truncated_fills_df$asv_code %in% common_ids, ]  # asvs in common in truncated_fills_df
-df3 <-final_df[!final_df$asv_code %in% common_ids, ] # left data in final dataframe
+df3 <- final_df[!final_df$asv_code %in% common_ids, ] # left data in final dataframe
 
 
 # Update the 'species' value in df1 based on matching 'asv_code'
@@ -354,7 +357,7 @@ dir.create(paste0(uomshare, "/ten_site_data_summaries/"))
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
 # Create the file name with the timestamp
-file_name <- paste0(uomshare, "/ten_site_data_summaries/ten_sites_vsearch_data_summary_filled", timestamp, ".csv")
+file_name <- paste0(uomshare, "/ten_site_data_summaries/ten_sites_vsearch_data_summary_filled_", timestamp, ".csv")
 
 # Save the dataframe with the new file name
 write.csv(final_data_filled, file = file_name, row.names = FALSE)
@@ -368,59 +371,40 @@ This section is designed to format data and filter it for 'mistagging'. Mistaggi
 Note: This code will need to be configured for each dataset, so that the rows containing the read counts are specified (e.g. pivot_longer(cols = X10BNY29042rep1:Cont3rep1), the 'X10BNY29042rep1:Cont3rep1' will need to be changed to the first and last column name with the reads data for each dataset
 X10BNY29042rep2:X40TOO42700rep1
 ```{r}
-# Modify column names to prefix 'X' if they start with a number
-#final_data_filled <- final_data_filled %>%
-  #rename_with(~ str_replace_all(., "^([0-9])", "X\\1"))
+# Step 1: Add 'X' prefix to column names if they start with a number
+final_data_filled <- final_data_filled %>%
+  rename_with(~ str_replace_all(., "^([0-9])", "X\\1"))
 
-# Pivot longer to transform columns 13 to 40 into rows 
+# Step 2: Pivot longer to transform selected columns into rows
 metab_long <- final_data_filled %>%
-  pivot_longer(cols = X40BNY29042rep3:X40TOO42700rep1, names_to = "sample", values_to = "value") %>%
-  filter(value != 0) %>%  # Filter out rows where value is zero
-  select(-matches("^X(\\.\\d+)?$"))  # Remove columns named X, X.1, ..., X.11
+  pivot_longer(cols = X10BNY29042rep2:X40TOO42700rep1, names_to = "sample", values_to = "value") %>%
+  filter(value != 0) %>%  # Remove rows where value is zero
+  select(-matches("^X(\\.\\d+)?$"))  # Remove unwanted columns named X, X.1, etc.
 
-# Reorder columns with variable as the first column
+# Step 3: Create a 'replicate' column by extracting last character if it ends in 'rep' followed by a number
 metab_long <- metab_long %>%
-  select(sample, everything())  # Move variable column to the first position
+  mutate(replicate = ifelse(grepl("rep[123456]$", sample), str_extract(sample, "rep[123456]$"), ""))
 
-# Create a new column "replace" by pasting the final character if string ends in 'rep1', 'rep2', or 'rep3'
+# Step 4: Extract the 'site_per' and 'per' columns based on 'sample'
 metab_long <- metab_long %>%
-  mutate(replicate = ifelse(grepl("rep[123456]$", sample), paste0(substr(sample, nchar(sample), nchar(sample)), ""), ""))
+  mutate(site_per = sub("(rep[123456])$", "", sample),  # Remove replicate suffix from sample to get site_per
+         per = substr(site_per, 2, 3))  # Take the first two characters of site_per for 'per' column
 
-# Move the "replace" column to be the second column
+# Remove the "X" prefix from 'sample' and 'site_per' columns
 metab_long <- metab_long %>%
-  select(sample, replicate, everything())  # Move "replace" to the second column
+  mutate(
+    sample = str_remove(sample, "^X"),
+    site_per = str_remove(site_per, "^X")
+  )
 
-#metab_long <- metab_long %>%
-#  mutate(sample = str_replace(sample, "^X", ""))
-
-# add 'factor' column
-metab_long$site_per <- substr(metab_long$sample, 1, nchar(metab_long$sample))
-
-# remove replicate data
+# Step 5: Create a 'site' column by further trimming 'site_per'
 metab_long <- metab_long %>%
-   dplyr::mutate(site_per = sub("(rep1|rep2|rep3|rep4|rep5|rep6)$", "", site_per))
+  mutate(site = sub("^X([0-9]+)", "", site_per))  # Remove initial numeric prefix from site_per for site
 
-# Move the "replace" column to be the second column
+# Step 6: Reorder and rename columns as needed
 metab_long <- metab_long %>%
-  select(sample, replicate, site_per, everything())  # Move "replace" to the second column
-
-# add 'factor' column
-metab_long$site <- substr(metab_long$site_per, 1, nchar(metab_long$site_per))
-
-# remove replicate data
-metab_long <- metab_long %>%
-   dplyr::mutate(site = sub("(X10|X20|X30|X40|)", "", site))
-
-# Move the "replace" column to be the second column
-metab_long <- metab_long %>%
-  select(sample, replicate, site_per, site, everything())  # Move "replace" to the second column
-
-# Move the "replace" column to be the second column
-metab_long <- metab_long %>%
-  select(sample, replicate, site, everything())  # Move "replace" to the second column
-
-# Rename the 'values' column to 'reads' using dplyr's rename()
-metab_long <- metab_long %>% dplyr::rename(`reads` = value)
+  select(sample, replicate, site_per, per, site, everything()) %>%  # Adjust column order
+  rename(reads = value)  # Rename 'value' to 'reads'
 
 # Print the transformed data frame
 print(metab_long)
@@ -657,7 +641,6 @@ collapsed_wide_summarised_df <- wide_summarised_df %>%
     across(all_of(site_per_cols), function(x) sum(x, na.rm = TRUE)),  # Sum the values for the site_per columns
     .groups = 'drop'
   )
- 
 
 # Print the collapsed data frame
 print(collapsed_wide_summarised_df)
@@ -671,6 +654,6 @@ timestamp <- format(Sys.time(), "%d_%m_%Y")
 # Create the file name with the timestamp (NOTE:Change the MiSeq number to the dataset you are working with)
 file_name1 <- paste0(uomshare,"/ten_site_data_summaries/data_for_analysis/ten_sites_wide_format_", timestamp, ".csv") 
 
- write.csv(wide_summarised_df, file = file_name1, row.names = FALSE)
+ write.csv(collapsed_wide_summarised_df, file = file_name1, row.names = FALSE)
 ```
 
