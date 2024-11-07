@@ -486,7 +486,9 @@ max_p_update_df <- rbind(max_p_update_df, updated_rows)
 truncated_fills_df <- truncated_fills_df %>%
   filter(!asv_code %in% names(max_p_identity_corrections))
 
-
+# change any remianinh complexes
+truncated_fills_df <- truncated_fills_df %>%
+  mutate(species = gsub("complex", "group", species))
 ```
 
 # delete misidentified records
@@ -628,12 +630,12 @@ complex <- c("Asmicridea edwardsii group",
 "Nousia sp. B-AAV4106 group",
 "Nousia sp. B-AAV4106 group",
 "Nousia sp. B-AAV4106 group",
-"Polypedilum sp. B-ABW9978 complex",
-"Polypedilum sp. B-ABW9978 complex",
-"Polypedilum sp. B-ABW9978 complex",
-"Polypedilum sp. B-ABW9978 complex",
-"Polypedilum sp. B-ABW9978 complex",
-"Polypedilum sp. B-ABW9978 complex",
+"Polypedilum sp. B-ABW9978 group",
+"Polypedilum sp. B-ABW9978 group",
+"Polypedilum sp. B-ABW9978 group",
+"Polypedilum sp. B-ABW9978 group",
+"Polypedilum sp. B-ABW9978 group",
+"Polypedilum sp. B-ABW9978 group",
 "Tamasia acuta/variegata",
 "Tamasia acuta/variegata",
 "Tamasia acuta/variegata",
@@ -643,7 +645,7 @@ complex <- c("Asmicridea edwardsii group",
 "Ferrissia sp. B-ADR3550 group",
 "Zavrelimyia sp. B-AEN0522/AEN0524",
 "Zavrelimyia sp. B-AEN0522/AEN0524",
-"Zavrelimyia sp. B-ACQ7611 complex",
+"Zavrelimyia sp. B-ACQ7611 group",
 "Scatella sp. B-ACK6288/ACZ6583",
 "Scatella sp. B-ACK6288/ACZ6583",
 "Scatella sp. B-ACK6288/ACZ6583",
