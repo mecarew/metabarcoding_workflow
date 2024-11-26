@@ -16,6 +16,7 @@ library(dplyr)
 
 # set up metabarcoding workflow folder inside MiSeq run file for input and output data files (NOTE each new project will require the directories to be setup for your dataset, this code has input data in the folder 'test')
 
+#miseq_folder <- "miseq21"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name
 
