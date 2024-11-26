@@ -35,12 +35,12 @@ This notebook performs quantification for your metabarcoding analysis. This note
 ```{r}
 # reset directory if starting from this notebook 
 #***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in***
-#miseq_folder <- "miseqXX"
+miseq_folder <- "miseq20"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name
-uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
+#uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
 
-#uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
+uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
 
 #adjusting directory paths to use Jess's mozzie code
 results_dir <- paste0(uomshare)
@@ -51,10 +51,11 @@ logs_dir <- paste0(uomshare)
 
 #logs_dir <- file.path("/home/unimelb.edu.au/mecarew/git/metabarcoding_workflow/results", "logs")
 #mkdir(logs_dir)
+
+cwl_path <- here::here("param/cwl")
 ```
 
 # Load
-
 ```{r message=FALSE, warning=FALSE}
 suppressPackageStartupMessages({
   library(systemPipeR, lib.loc = "/home/unimelb.edu.au/jessicac/R/x86_64-pc-linux-gnu-library/4.3")
@@ -262,8 +263,8 @@ targets <- targets %>%
 # targets <- targets %>% filter(SampleName == "short")
 targets <- targets %>% filter(SampleName %in% c("short", "right"))
 
-#dada2_targets <- paste0(uomshare, "/tmp/dada2_targets.txt")
-dada2_targets <- here("tmp/dada2_targets.txt")
+dada2_targets <- paste0(uomshare, "/tmp/dada2_targets.txt")
+#dada2_targets <- here("tmp/dada2_targets.txt")
 write_targets(targets, file=dada2_targets)
 ```
 

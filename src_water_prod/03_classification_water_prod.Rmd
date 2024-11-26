@@ -41,10 +41,17 @@ options(width=120)
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name)
 uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
 
+#uomshare <- paste0("/home/unimelb.edu.au/mecarew/uomShare/wergStaff/MelCarew/git-data//",miseq_folder,"/metabarcoding_workflow")
+
 #adjusting directory paths to use Jess's mozzie code
 results_dir <- paste0(uomshare)
 
 water_prod <- "/home/unimelb.edu.au/mecarew/git/metabarcoding_workflow"
+
+cwl_path <- here::here("param/cwl")
+
+#adjusting directory paths to use Jess's mozzie code
+logs_dir <- paste0(uomshare)
 ```
 
 
@@ -83,7 +90,7 @@ Sys.setenv(R_LIBS_USER="/home/unimelb.edu.au/jessicac/shared_envs/qiime2-2024.2/
 # For the mozzie server, the root disk can run out of space, so it's safer to set the tmp directory 
 # to a different location
 Sys.setenv(TMPDIR="/home/unimelb.edu.au/mecarew/tmp")
-tmp_dir_path <- "/home/unimelb.edu.aa/tmp"
+tmp_dir_path <- "/home/unimelb.edu.au/tmp"
 ```
 
 ###NEW trying to see if I can run a slurm equivalet
@@ -103,18 +110,18 @@ use_slurm <- FALSE
 ref_db_dir <- "~/uomShare/wergStaff/MelCarew/DNAbarcode_reference_databases"
 
 db_coi_ids=list(
-  short=file.path(ref_db_dir, "short_db_2024-05.txt"),
-  left=file.path(ref_db_dir, "left_db_2023-07.txt"),
-  right=file.path(ref_db_dir, "right_db_2024-05.txt"),
-  long=file.path(ref_db_dir, "long_db_2023-07.txt")
+  short=file.path(ref_db_dir, "short_db_2024-10.txt"),
+  left=file.path(ref_db_dir, "left_db_2024-10.txt"),
+  right=file.path(ref_db_dir, "right_db_2024-10.txt"),
+  long=file.path(ref_db_dir, "long_db_2024-10.txt")
 )
 
 # FASTA file with COI sequences
 db_fasta_files=list(
-  short=file.path(ref_db_dir, "short_db_2024-05.fasta"),
-  left=file.path(ref_db_dir, "left_db_2023-07.fasta"),
-  right=file.path(ref_db_dir, "right_db_2024-05.fasta"),
-  long=file.path(ref_db_dir, "long_db_2023-07.fasta")
+  short=file.path(ref_db_dir, "short_db_2024-10.fasta"),
+  left=file.path(ref_db_dir, "left_db_2024-10.fasta"),
+  right=file.path(ref_db_dir, "right_db_2024-10.fasta"),
+  long=file.path(ref_db_dir, "long_db_2024-10.fasta")
 )
 ```
 

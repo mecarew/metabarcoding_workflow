@@ -17,13 +17,14 @@ These scripts check the MAR2T internal control for matching species dectections 
 ```{r}
 #reset directory 
 #***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in****
-miseq_folder <- "miseq16"
+miseq_folder <- "miseq15"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name)
 uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow/")
 #uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow/")
 
-miseq_controls_long <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder,"_CONTROLS_long_format_06_09_2024.csv")) 
+##CHANGE DATE FOR NEW DATA
+miseq_controls_long <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder,"_CONTROLS_long_format_06_11_2024.csv")) 
 mart2_control_data <- readxl::read_excel("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/MAR2_metabarcoding_control_site.xlsx")
 ```
 

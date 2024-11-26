@@ -5,7 +5,7 @@ date: "06/06/2024"
 output: html_document
 ---
 
-#Filling and Filtering notebook for all Miseq runs except MiSeq13 (this has a different experimental design)
+# Filling and Filtering notebook for all Miseq runs except MiSeq13 (this has a different experimental design)
 
 This notebook is designed to filling missing taxonomic assignments from the vsearch step (in 03_classification) in the metabarcoding workflow and make corrections to taxonomic assignments that are incorrectly assigned by vsearch due to errors in the DNA barcode reference libraries (SECTION 1).It also performs a final flitering to detect and remove species detections that have most likely arisen from 'mistagging' (SECTION 2)
 
@@ -27,6 +27,8 @@ A file based on analysis of Miseq datasets was constructed ('asv_library_97_aug2
 -   identifies any ambiguous taxonomic assignments that should be considered as complexes (sheet 4)
 
 ```{r setup, warning=FALSE}
+library(dplyr)
+
 # read in flies
 
 file_path <- "~/uomShare/wergStaff/MelCarew/git-data/asv_library_97_aug24_modified.xlsx"
@@ -46,10 +48,12 @@ otu_groups_df <- otu_groups_df %>% mutate_all(~ ifelse(is.na(.), "", .))
 max_p_update_df <- max_p_update_df %>% mutate_all(~ ifelse(is.na(.), "", .))
 
 #read in raw dataframe (if starting with a clear global environment)
-miseq_folder <- "miseq16"
+
+miseq_folder <- "miseq20"
+
 uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
 #uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
-final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_06_11_2024.csv")) # change the Miseq run number and time stamp
+# final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_26_11_2024.csv")) # change the Miseq run number and time stamp
 ```
 
 # remove identifications below thresholds for species species, genus, family and order
@@ -255,7 +259,7 @@ print(final_data_filled)
 ```
 
 # adjust Cont names for flitering so that controls have the same names
-```{r}
+```{r message=FALSE, warning=FALSE}
 # List of old and new column names
 old_names <- c("Cont1", "cont1", "COICont1" ,"Cont2", "cont2", "COICont2", "Cont3", "COICont3", "Cont4", "Cont5", "Cont6", "Cont7", "Cont8")
 new_names <- c("Contrep1", "Contrep1", "Contrep1", "Contrep2", "Contrep2","Contrep2", "Contrep3", "Contrep3" ,"Contrep4", "Contrep5", "Contrep6", "Contrep7", "Contrep8")
@@ -301,7 +305,7 @@ Miseq20:A23BNY29042rep1:S22SPL263rep6
 
 # Pivot longer to transform columns 13 to 40 into rows 
 metab_long <- final_data_filled %>%
-  pivot_longer(cols = Contrep1:S21WAY30960rep3, names_to = "sample", values_to = "value") %>%
+  pivot_longer(cols = A23BNY29042rep1:S22SPL263rep6, names_to = "sample", values_to = "value") %>%
   filter(value != 0) %>%  # Filter out rows where value is zero
   select(-matches("^X(\\.\\d+)?$"))  # Remove columns named X, X.1, ..., X.11
 
@@ -433,7 +437,11 @@ filter(rep_count > 1) %>%
   select(-rep_count)  # Remove the rep_count column as it is no longer needed
 
 # Check samples removed from dataframe
-sp_fil_metab_long_rem <- filtered_dataframe_top_sp %>% filter((species %in% counts_sp$species[counts_sp$count == 1] & site %in% counts_sp$site[counts_sp$count == 1]))
+# sp_fil_metab_long_rem <- filtered_dataframe_top_sp %>% filter((species %in% counts_sp$species[counts_sp$count == 1] & site %in% counts_sp$site[counts_sp$count == 1]))
+
+sp_fil_metab_long_rem <- filtered_dataframe_top_sp %>%
+  filter(species %in% counts_sp$species[counts_sp$rep_count == 1] &
+           site %in% counts_sp$site[counts_sp$rep_count == 1])
 
 # Verify the number of records before and after filtering
 original_count <- nrow(filtered_dataframe_top_sp)

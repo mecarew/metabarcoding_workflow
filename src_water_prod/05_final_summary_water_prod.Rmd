@@ -17,7 +17,7 @@ Starting from here will need the threshold list and the sample_df from Cache03
 ```{r}
 #reset directory 
 #***NOTE: YOU WILL NEED TO CHANGE THE MISEQ FOLDER NAME to the directory you are working in***
-miseq_folder <- "miseq16"
+miseq_folder <- "miseq20"
 
 # Set the directory path for files to be stored on uomshare (NOTE: 'test' will need to be change to your miseq folder name)
 uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
@@ -27,6 +27,10 @@ uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflo
 # load thresholds_list form cahche03 
 thresholds_list <- readRDS(paste0(uomshare,"/cache/thresholds_list.rds"))
 samples_df <- readRDS(paste0(uomshare,"/cache/samples_df.rds"))
+
+# load packages
+library(dplyr)
+library(tidyverse)
 ```
 
 # load results files from previuos steps
@@ -265,7 +269,9 @@ final_df <- final_df %>%
 
 final_df <- final_df %>%
   mutate(
-    family = gsub("Oceaniidae", "Cordylophoridae", family))   # Replace 'Oceaniidae' with 'Cordylophoridae'
+    family = gsub("Oceaniidae", "Cordylophoridae", family),   # Replace 'Oceaniidae' with 'Cordylophoridae'
+    family = gsub("Telephlebiidae", "Aeshnidae", family))  
+
 ```
 
 
