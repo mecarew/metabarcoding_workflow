@@ -15,7 +15,7 @@ This document contains scripts to correct errors in the document 'asv_library_97
 # read in 'asv_library_97_aug24.xlsx' spreadsheets
 ```{r}
 # read in flies
-file_path <- "~/uomShare/wergStaff/MelCarew/git-data/asv_library_97_aug24.xlsx"
+file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_aug24.xlsx"
 
 # Get the names of the sheets
 sheet_names <- readxl::excel_sheets(file_path)
@@ -30,7 +30,7 @@ complexes_df <- readxl::read_excel(file_path, sheet = sheet_names[4])# identifie
 ##Add new data 30_Oct_2024
 ```{r}
 # read in flies
-file_path <- "~/uomShare/wergStaff/MelCarew/git-data/addtns_asv_library_30_Oct_24.xlsx"
+file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/additions_asv_library_oct24.xlsx"
 
 # Get the names of the sheets
 sheet_names <- readxl::excel_sheets(file_path)
@@ -368,7 +368,15 @@ asv_genus_corrections <- c("64d1a48a6ecdf91a3302ac93abb2660b" = "Cardiocladius",
 "81530c1415a28a9a62322a482d714cef" = "Sphaerium",
 "959c81957d1b849ed9c77739c0cb4085" = "Sphaerium",
 "a9a514669a42c0a26a908d6d7c977852" = "Sphaerium",
-"aa87944be7ace16e376e12531934de9e" = "Sphaerium")
+"aa87944be7ace16e376e12531934de9e" = "Sphaerium",
+"86b33bf13e66c6c67d3f5474293b571e" = "Cheumatopsyche",
+"da4d55f930d324ef809f8cb8ed9f7f92" = "Limnophyes",
+"17d370084150f91d09432df645e3a689" = "Apsectrotanypus",
+"5d99739d90edd7a4c04c039c31e5e1d4" = "Apsectrotanypus",
+"7b63fa3e6001d8dd5b1e6ed4fb5cd8d2" = "Apsectrotanypus",
+"a45b2f42201c473c0bda9448991f2f76" = "Austrheithrus",
+"3f4b5bb8f843b6231461c257d99f8411" = "Gynoplistia",
+"8ca4a080d6a6bf02b39c7ad1e83b0439" = "Apsectrotanypus")
 
 # Update the species column based on asv_code matching the correction vector
 truncated_fills_df <- truncated_fills_df %>%
@@ -746,6 +754,6 @@ writeData(wb, sheet = "max_p_update", max_p_update_df)
 writeData(wb, sheet = "complexes", complexes_df)
 
 # Save the workbook
-saveWorkbook(wb, "~/uomShare/wergStaff/MelCarew/git-data/asv_library_97_aug24_modified.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_aug24_modified.xlsx", overwrite = TRUE)
 ```
 

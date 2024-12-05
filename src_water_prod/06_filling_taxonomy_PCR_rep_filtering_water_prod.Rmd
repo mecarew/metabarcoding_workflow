@@ -31,7 +31,7 @@ library(dplyr)
 
 # read in flies
 
-file_path <- "~/uomShare/wergStaff/MelCarew/git-data/asv_library_97_aug24_modified.xlsx"
+file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_aug24_modified.xlsx"
 
 # Get the names of the sheets
 sheet_names <- readxl::excel_sheets(file_path)

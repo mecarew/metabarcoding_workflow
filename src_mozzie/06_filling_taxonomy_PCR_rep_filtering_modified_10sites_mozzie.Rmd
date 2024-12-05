@@ -33,10 +33,12 @@ Samples requiring re-running
 30DNG75620 <- re-run in MiSeq16 (3 replicates labelled Elut30DNG79574rep1, Elut1030DNG79574rep2 and Elut30DNG75620rep3 (only need 2 reps))
 
 ```{r}
-#read in final vsearch data summaries
-miseq13_vsearch_sum <- read.csv("~/git/metabarcoding_workflow_Miseq13/results/final_data_summaries/MiSeq13_vsearch_data_summary_14_08_2024.csv")
-miseq15_vsearch_sum <- read.csv("~/git/metabarcoding_workflow_Miseq15/results/final_data_summaries/MiSeq15_vsearch_data_summary_13_08_2024.csv")
-miseq16_vsearch_sum <- read.csv("~/git/metabarcoding_workflow_Miseq16/results/final_data_summaries/MiSeq16_vsearch_data_summary_14_08_2024.csv")
+file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow"
+
+# Read in final vsearch data summaries
+miseq13_vsearch_sum <- read.csv(paste0(file_path, "/miseq13/metabarcoding_workflow/final_data_summaries/miseq13_vsearch_data_summary_06_11_2024.csv"))
+miseq15_vsearch_sum <- read.csv(paste0(file_path, "/miseq15/metabarcoding_workflow/final_data_summaries/miseq15_vsearch_data_summary_06_11_2024.csv"))
+miseq16_vsearch_sum <- read.csv(paste0(file_path, "/miseq16/metabarcoding_workflow/final_data_summaries/miseq16_vsearch_data_summary_06_11_2024.csv"))
 ```
 
 ```{r}
@@ -118,16 +120,16 @@ A file based on analysis of Miseq datasets was constructed ('asv_library_97_aug2
 
 ```{r}
 # read in flies
-file_path <- "~/Documents/asv_library_97_aug24_modified.xlsx"
+asv_table <- "~/uomShare/wergStaff/MelCarew/git-data//asv_library_97_aug24_modified.xlsx"
 
 # Get the names of the sheets
-sheet_names <- readxl::excel_sheets(file_path)
+sheet_names <- readxl::excel_sheets(asv_table)
 
 # Read the sheets into as dataframes
-truncated_fills_df <- readxl::read_excel(file_path, sheet = sheet_names[1])  # contains full taxonomic information for classifications with truncated taxonomy
-otu_groups_df <- readxl::read_excel(file_path, sheet = sheet_names[2], col_types = "text") # groups unclassified sequences into 'OTUs'
-max_p_update_df <- readxl::read_excel(file_path, sheet = sheet_names[3])#updates/corrects any missing identifications or errors in classification
-complexes_df <- readxl::read_excel(file_path, sheet = sheet_names[4])# identifies any ambiguous taxonomic assignments that should be considered as complexes
+truncated_fills_df <- readxl::read_excel(asv_table, sheet = sheet_names[1])  # contains full taxonomic information for classifications with truncated taxonomy
+otu_groups_df <- readxl::read_excel(asv_table, sheet = sheet_names[2], col_types = "text") # groups unclassified sequences into 'OTUs'
+max_p_update_df <- readxl::read_excel(asv_table, sheet = sheet_names[3])#updates/corrects any missing identifications or errors in classification
+complexes_df <- readxl::read_excel(asv_table, sheet = sheet_names[4])# identifies any ambiguous taxonomic assignments that should be considered as complexes
 
 # Replace NA values with empty strings
 truncated_fills_df <- truncated_fills_df %>% mutate_all(~ ifelse(is.na(.), "", .))
@@ -164,7 +166,7 @@ print(common_ids)
 
 df1 <- final_df[final_df$asv_code %in% common_ids, ] # asvs in common in final_df
 df2 <- truncated_fills_df[truncated_fills_df$asv_code %in% common_ids, ]  # asvs in common in truncated_fills_df
-df3 <-final_df[!final_df$asv_code %in% common_ids, ] # left data in final dataframe
+df3 <- final_df[!final_df$asv_code %in% common_ids, ] # left data in final dataframe
 
 
 # Update the 'species' value in df1 based on matching 'asv_code'
@@ -305,8 +307,10 @@ for (i in 1:nrow(df7)) {
 
 print(df7)
 ```
+
 # combine all filled dataframe into a single dataframe
 ```{r}
+
 final_data_filled <- rbind(df1, df4, df7, df9)
 # note the "final_data_filled" and "final_df" should be the same size 
 
@@ -600,7 +604,7 @@ print(head(metab_wide))
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
 # Create the file name with the timestamp (set Miseq run number)
-file_name <- paste0(here::here("results/final_data_summaries/ten_sites_vsearch_summary_filled_filt_PCR rep_"), timestamp, ".csv")
+file_name <- paste0(file_path,"/miseq13/metabarcoding_workflow/final_data_summaries/ten_sites_vsearch_summary_filled_filt_PCR rep_"), timestamp, ".csv")
 
 # Save the dataframe with the new file name
 write.csv(metab_wide, file = file_name, row.names = FALSE)
@@ -747,8 +751,9 @@ print(collapsed_wide_summarised_per_df)
 ```{r}
 # save filled dataframe
 timestamp <- format(Sys.time(), "%d_%m_%Y")
+file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow"
 
 # Create the file name with the timestamp (NOTE:Change the MiSeq number to the dataset you are working with)
-file_name2 <- paste0("~/git/metabarcoding_workflow/results/MiSeq13_final_data_summary_filled_filter_sites_per_", timestamp, ".csv")
+file_name2 <- paste0("~/git/metabarcoding_workflow/miseq/MiSeq13_final_data_summary_filled_filter_sites_per_", timestamp, ".csv")
 
 write.csv(collapsed_wide_summarised_per_df, file = file_name2, row.names = FALSE)
