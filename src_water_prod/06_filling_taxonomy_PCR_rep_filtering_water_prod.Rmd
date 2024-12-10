@@ -303,7 +303,7 @@ Miseq20:A23BNY29042rep1:S22SPL263rep6
 
 # Pivot longer to transform columns 13 to 40 into rows 
 metab_long <- final_data_filled %>%
-  pivot_longer(cols = A23BNY29042rep1:S22SPL263rep6, names_to = "sample", values_to = "value") %>%
+  tidyr::pivot_longer(cols = A23BNY29042rep1:S22SPL263rep6, names_to = "sample", values_to = "value") %>%
   filter(value != 0) %>%  # Filter out rows where value is zero
   select(-matches("^X(\\.\\d+)?$"))  # Remove columns named X, X.1, ..., X.11
 

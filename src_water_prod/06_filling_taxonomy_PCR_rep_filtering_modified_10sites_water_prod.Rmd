@@ -44,12 +44,12 @@ uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflo
 #uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
 
 #read in final vsearch data summaries
-miseq13_vsearch_sum <- read.csv(paste0(uomshare, "/final_data_summaries/miseq13_vsearch_data_summary_26_11_2024.csv"))
-miseq15_vsearch_sum <-  read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/miseq15/metabarcoding_workflow/final_data_summaries/miseq15_vsearch_data_summary_26_11_2024.csv")
+miseq13_vsearch_sum <- read.csv(paste0(uomshare, "/final_data_summaries/miseq13_vsearch_data_summary_10_12_2024.csv"))
+miseq15_vsearch_sum <-  read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/miseq15/metabarcoding_workflow/final_data_summaries/miseq15_vsearch_data_summary_10_12_2024.csv")
 # fix a small error in dataframe
 miseq15_vsearch_sum <- miseq15_vsearch_sum %>%
   mutate(Consensus = ifelse(asv_code == '956bcb88ea0e4762eefac3c2a93bbb2f', 0.857, Consensus))
-miseq16_vsearch_sum <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/miseq16/metabarcoding_workflow/final_data_summaries/miseq16_vsearch_data_summary_26_11_2024.csv")
+miseq16_vsearch_sum <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/miseq16/metabarcoding_workflow/final_data_summaries/miseq16_vsearch_data_summary_10_12_2024.csv")
 ```
 
 ```{r}

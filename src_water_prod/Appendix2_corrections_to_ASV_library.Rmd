@@ -928,7 +928,7 @@ complex <- c("Asmicridea edwardsii group",
 "Tasmanocoenis tillyardi/rieki",
 "Ceratopogonidae sp. MC-12",
 "Enochrus sp. MC-5",
-"Limoniidae sp. B-AGD4712/ AGD4715)
+"Limoniidae sp. B-AGD4712/AGD4715")
 
 # Combine into a data frame
 new_complexes <- data.frame(bin_name = bin_name, complex = complex, stringsAsFactors = FALSE)
