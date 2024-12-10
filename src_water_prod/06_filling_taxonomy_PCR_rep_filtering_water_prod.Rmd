@@ -27,8 +27,6 @@ A file based on analysis of Miseq datasets was constructed ('asv_library_97_aug2
 -   identifies any ambiguous taxonomic assignments that should be considered as complexes (sheet 4)
 
 ```{r setup, warning=FALSE}
-library(dplyr)
-
 # read in flies
 
 file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_aug24_modified.xlsx"
@@ -53,7 +51,7 @@ miseq_folder <- "miseq20"
 
 uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",miseq_folder,"/metabarcoding_workflow")
 #uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/",miseq_folder,"/metabarcoding_workflow")
-# final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_26_11_2024.csv")) # change the Miseq run number and time stamp
+final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_26_11_2024.csv")) # change the Miseq run number and time stamp
 ```
 
 # remove identifications below thresholds for species species, genus, family and order
