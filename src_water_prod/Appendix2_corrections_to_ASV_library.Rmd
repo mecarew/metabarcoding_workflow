@@ -367,9 +367,11 @@ asv_species_corrections_tf <- c("70d22725893c8c5a6de91b0f5f7c1483" = "Atalophleb
 "81987c57de8c8f22484fc7fec4968faa" = "Psychoda sp. B-AAU4648",
 "91718ad5f4ac2909fc4dabf3b7f83058" = "Psychoda sp. B-AAU4648",
 "3b9fa04c8f620038fb9bace9f1512db2" = "Psychoda sp. B-AAU4648",
-"1d5760deee25f457d5f3aae91017277a" = "Riethia zeylandica",
-"f0671dc5cb44b617842a1e84dba330c0" = "Tanytarsus fuscithorax")
-
+"1d5760deee25f457d5f3aae91017277a" = "Riethia sp. B-ACG9457",
+"f0671dc5cb44b617842a1e84dba330c0" = "Tanytarsus fuscithorax",
+"741aca4ed6f6847e894d0ae837cc5032" = "Psychoda gemina",
+"e7f87bed531e9a3057d3abbc7b296f9f" = "Sigara truncatipala",
+"5b0c60ab95cf5013926f4afdd2815273" = "Sigara truncatipala")
 
 # Update the species column based on asv_code matching the correction vector
 truncated_fills_df <- truncated_fills_df %>%
@@ -467,7 +469,8 @@ asv_genus_corrections_tf <- c("64d1a48a6ecdf91a3302ac93abb2660b" = "Cardiocladiu
 "e7e0a193d3d4d87970b57d391d01e589" = "Limnophila",
 "41e26b047eedf4f0f3d3772fd10b6166" = "",
 "cd53765b72dab09daf8a3e8f90d68803" = "",
-"3f4b5bb8f843b6231461c257d99f8411" = "Gynoplistia")
+"3f4b5bb8f843b6231461c257d99f8411" = "Gynoplistia",
+"741aca4ed6f6847e894d0ae837cc5032" = "Psychoda")
 
 
 # Update the species column based on asv_code matching the correction vector
@@ -791,7 +794,12 @@ bin_name <-  c("Asmicridea edwardsii",
 "Tasmanocoenis sp. B-ACG1634",
 "Ceratopogonidae sp. 12",
 "Hydrophilidae sp. MC-5",
-"Tipulidae sp. MC-6")
+"Tipulidae sp. MC-6",
+"Centroptilum sp. B-ACM3150",
+"Micronecta sp. B-ACG1960",
+"Micronecta sp. B-ADU6789",
+"Riethia sp. B-ACG9457",
+"Riethia sp. B-ADU5431")
 
 complex <- c("Asmicridea edwardsii group",
 "Asmicridea edwardsii group",
@@ -928,7 +936,12 @@ complex <- c("Asmicridea edwardsii group",
 "Tasmanocoenis tillyardi/rieki",
 "Ceratopogonidae sp. MC-12",
 "Enochrus sp. MC-5",
-"Limoniidae sp. B-AGD4712/AGD4715")
+"Limoniidae sp. B-AGD4712/AGD4715",
+"Centroptilum elongatum",
+"Micronecta sp. B-ACG1960/ADU6789",
+"Micronecta sp. B-ACG1960/ADU6789",
+"Riethia sp. B-ACG9457/ADU5431",
+"Riethia sp. B-ACG9457/ADU5431")
 
 # Combine into a data frame
 new_complexes <- data.frame(bin_name = bin_name, complex = complex, stringsAsFactors = FALSE)
@@ -964,6 +977,8 @@ Nousia sp. B-ACM3590 bf2227414cea927a76e794da505c1e29
 Nousia sp. B-AAV4108 complex fd8e3126f07ab10a767c08e175f8017a
 
 Nousia sp. B-ACM3519 9be6f30d5f0a1e589d9f4567f01215d6
+
+Hydrobiosella waddama cf4d8b16cb64eb29dd6eb8aeff774878 
 
 Given that metabarcoding can introduce errors in and this may be the cause of these boarderline overlaps. These BIN's will not be combined at this stage
 
@@ -1022,7 +1037,7 @@ saveWorkbook(wb, "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/
 The bit of the script looking for pot_complexes turned up a few groups worth looking into further, I think.  (pot_complexes saved a csv file at "~/uomShare/wergStaff/ChrisW/temp/pot_complexes.csv"). Here's what I think, working down the not particularly long table:
 AAX5275 - is shared across two species of different genera and an unidentified Clitellata specimen (asv_code 274d742e3ee489202dab4da510b8787a). I suspect this is one you've decided is a problem with dodgy BIN codes. If that is the case, we should document that in this qmd file. It matches two different species in different genera. I suspect the Limnodrilus hoffmeisteri is the incorrect identification and identification of Bothrioneurum vejdovskyanum is correct. This is due to Bothrioneurum vejdovskyanum being identified by a taxonomic expert. Limnodrilus hoffmeisteri has many other records not associated with the BIN and the sequence was mined from GenBank  I have added this correct the asv_correction_library.Rmd.
 Atalophlebia sp. B-ABV8729 group and Atalophlebia sp. B-ABV3545 group overlap a lot. Combine? Atalophlebia sp. B-ABV8733 and Atalophlebia sp. B-ABV8739 overlap. Combine? Let’s combine I have changed ‘complexes’ so all fall under the name Atalophlebia sp. B- ABV8729 group.
-- should it just be Centroptilum elongatum or is Centroptilum sp. B-ACM3150 really a separate species or should they be a group? Separate, added name correction Centroptilum sp. B-ACM3150 = Centroptilum elongatum 
+- should it just be Centroptilum elongatum or is Centroptilum sp. B-ACM3150 really a separate species or should they be a group? same, added name correction Centroptilum sp. B-ACM3150 = Centroptilum elongatum 
 AAT8936 - two separate genera ...another BOLD problem? (if so document decision) Cognettia sphagnetorum and Cognettia chlorophila all overlap. I have this to the ‘complexes’ table as Cognettia chlorophila/sphagnetorum. Records c2fb64f0e662b5db32c11ee187a9bd0f and c4e01d5fa4513318a1be2a00899d6e1a are not Chamaedrilus varisetosus they are Cognettia chlorophila/sphagnetorum. I have added these to the corrections to tfiil species and genus
 
 ACV9482 - Cricotopus tasmania or a group with Cricotopus sp. B-ACQ6787? No. dfde7b1be822b7bc262c5802de893bef is Cricotopus tasmania not Cricotopus sp. B-ACQ6787. I have added these to the corrections to tfiil species.
