@@ -64,7 +64,7 @@ truncated_fills_df <- truncated_fills_df %>%
          species = gsub("SImsonia longipes", "Simsonia longipes", species),
          species = gsub("Ferrissia sp. B-AAY1880 complex", "Ferrissia sp. B-ADR3550 group", species),
          species = gsub("Trinotoperla sp. complex B-ABX3905", "Trinotoperla sp. B-ABX3905 group",species),
-         species = gsub("Notalina bifara complex B-ABV8023", "Notalina bifara  B-ABV8023 group", species),
+         species = gsub("Notalina bifara complex B-ABV8023", "Notalina bifaria B-ABV8023 group", species),
          species = gsub("Musculium sp. B-ADJ8477", "Sphaerium sp. B-ADJ8477", species),
          species = gsub("GB-", "G-", species),
          species = gsub("ZB-", "", species),
@@ -78,7 +78,7 @@ truncated_fills_df <- truncated_fills_df %>%
          species = gsub("Atalophlebia sp. B-ACM3545", "Atalophlebia sp. B-ABV8729 group", species),
          species = gsub("Lingora aurata", "Lingora aurata group", species),
          species = gsub("Dinotoperla aff. thwaitesi", "Dinotoperla thwaitesi group", species),
-         species = gsub("Trinotoperla sp. group B-ABX3905", "Trinotoperla sp. B-ABX3905 group", species),
+         species = gsub("austrosp", "Trinotoperla sp. B-ABX3905 group", species),
          species = gsub("Dero obtusa", "Dero obtusa/nivea", species),
          species = gsub("Nousia sp. B-ACM3590", "Nousia sp. B-AAV4108 group", species),
          species = gsub("Simuliidae sp. B-AEV0976", "Simuliidae sp. B-AEV0976/AEV6641", species),
@@ -102,7 +102,7 @@ max_p_update_df <- max_p_update_df %>%
          species = gsub("SImsonia longipes", "Simsonia longipes", species),
          species = gsub("Ferrissia sp. B-AAY1880 complex", "Ferrissia sp. B-ADR3550 group", species),
          species = gsub("Trinotoperla sp. complex B-ABX3905", "Trinotoperla sp. B-ABX3905 group", species),
-         species = gsub("Notalina bifara complex B-ABV8023", "Notalina bifara  B-ABV8023 group", species),
+         species = gsub("Notalina bifara complex B-ABV8023", "Notalina bifaria  B-ABV8023 group", species),
          species = gsub("GB-", "G-", species),
          species = gsub("ZB-", "", species),
          species = gsub("complex", "group", species),
@@ -116,18 +116,11 @@ max_p_update_df <- max_p_update_df %>%
          species = gsub("Atalophlebia sp. B-ACM3545", "Atalophlebia sp. B-ABV8729 group", species),
          species = gsub("Lingora aurata", "Lingora aurata group", species),
          species = gsub("Dinotoperla aff. thwaitesi", "Dinotoperla thwaitesi group", species),
-         species = gsub("Trinotoperla sp. group B-ABX3905", "Trinotoperla sp. B-ABX3905 group", species),
+         species = gsub("austrosp", "Trinotoperla sp. B-ABX3905 group", species),
          species = gsub("Dero obtusa", "Dero obtusa/nivea", species),
          species = gsub("Nousia sp. B-ACM3590", "Nousia sp. B-AAV4108 group", species),
          species = gsub("Simuliidae sp. B-AEV0976", "Simuliidae sp. B-AEV0976/AEV6641", species),
          species = gsub("Atalophlebia sp. B-ACM3545 group", "Atalophlebia sp. B-ABV8729 group", species))
-
-# change complex to group to reflect grouping are based on DNA metabarcoding analysis not taxonomic. Also add changes to grouping based on revised groupings
-
-complexes_df <- complexes_df %>%
-  mutate(complex = gsub("complex", "group", complex,
-                        "Cryptochironomus sp. B-ACS4478/ACS3865", "Cryptochironomus sp. ACS3865 group", complex))
-
 ```
 
 # corrections of records with incorrect species names in tfill spreadsheet
@@ -800,7 +793,29 @@ bin_name <-  c("Asmicridea edwardsii",
 "Micronecta sp. B-ACG1960",
 "Micronecta sp. B-ADU6789",
 "Riethia sp. B-ACG9457",
-"Riethia sp. B-ADU5431")
+"Riethia sp. B-ADU5431",
+"Apsectrotanypus sp. MC-4",
+"Apsectrotanypus sp. MC-1",
+"Austroargiolestes",
+"Chaetogaster sp. CEO",
+"Gyraulus sp. B-ACO7407",
+"Hydra sp. MC-O1",
+"Ilyodrilus sp. CEB",
+"Nais sp. B-ACB6665",
+"Dolichopodidae sp. B-AAW0925",
+"Oxyethira sp. B-ACN2323",
+"Physa acuta",
+"Pristina sp. CEE",
+"Pristina sp. CEF",
+"Limnodrilus claparedeanus",
+"Microvelia sp. B-ADL6764",
+"Notalina bifaria",
+"Notalina sp. B-ADF2209",
+"Notalina sp. B-AAI2529",
+"Polypedilum sp. MC-B",
+"Psychodidae sp. B-AAU4648",
+"Psychoda sp. B-AAU4648",
+"Notalina parkeri")
 
 complex <- c("Asmicridea edwardsii group",
 "Asmicridea edwardsii group",
@@ -941,8 +956,30 @@ complex <- c("Asmicridea edwardsii group",
 "Centroptilum elongatum",
 "Micronecta sp. B-ACG1960/ADU6789",
 "Micronecta sp. B-ACG1960/ADU6789",
-"Riethia sp. B-ACG9457/ADU5431",
-"Riethia sp. B-ACG9457/ADU5431")
+"Riethia sp. B-ACG9457ADU5431",
+"Riethia sp. B-ACG9457ADU5431",
+"Apsectrotanypus sp. B-AEM4866",
+"Apsectrotanypus sp. B-ACD5991",
+"Austroargiolestes sp. B-ACL1904 group",
+"Chaetogaster sp. B-AEW4333",
+"Gyraulus chinensis",
+"Hydra vulgaris group",
+"Ilyodrilus sp. B-AEV3713",
+"Nais communis group",
+"Nothorhaphium aemulans",
+"Orthotrichia sp. B-ACN2323",
+"Physella acuta",
+"Pristina sp. B-AEW1288",
+"Pristina sp. B-AEW1289",
+"Limnodrilus claparedianus",
+"Microvelia sp. B-ADH7670",
+"Notalina bifaria B-ABV8023 group",
+"Notalina bifaria B-ABV8023 group",
+"Notalina bifaria B-ABV8023 group",
+"Polypedilum sp. B-AAV5945",
+"Psychoda gemina",
+"Psychoda gemina",
+"Notalina fulva/parkeri")
 
 # Combine into a data frame
 new_complexes <- data.frame(bin_name = bin_name, complex = complex, stringsAsFactors = FALSE)
@@ -954,12 +991,17 @@ complexes_df <- rbind(complexes_df, new_complexes)
 complexes_df <- complexes_df %>%
   mutate(
     complex = gsub("complex", "group", complex),
-    complex = gsub("Cryptochironomus sp. B-ACS4478/ACS3865", "Cryptochironomus sp. ACS3865 group", complex),
+    complex = gsub("Cryptochironomus sp. B-ACS4478/ACS3865", "Cryptochironomus sp. B-ACS3865 group", complex),
     complex = gsub("Atalophlebia sp. B-ABV8733/ABV8739", "Atalophlebia sp. B-ABV8729 group", complex),
     complex = gsub("Lingora sp. B-AAY5550/ADF2103", "Lingora sp. B-AAY5550 group", complex),
     complex = gsub("Zavrelimyia sp. B-AEM5402 group", "Zavrelimyia sp. B-ACQ7611 group", complex),
-    complex = gsub("Zavrelimyia sp. B-AEN0860 group", "Zavrelimyia sp. B-ACQ7611 group", complex)
-  )
+    complex = gsub("Zavrelimyia sp. B-AEN0860 group", "Zavrelimyia sp. B-ACQ7611 group", complex),
+    complex = gsub("Dero obtusa/nivea/nivea", "Dero obtusa/nivea", complex),
+    complex = gsub("Nais group group", "Nais communis group", complex),
+    complex = gsub("Notalina bifara group B-ABV8023", "Notalina bifaria B-ABV8023 group", complex),
+    complex = gsub("Notalina B-ABV8023 group", "Notalina bifaria B-ABV8023 group", complex),
+    complex = gsub("Trinotoperla sp. group B-ABX3905", "Trinotoperla sp. B-ABX3905 group", complex),
+    complex = gsub("Notalina sp. B-AAX5636", "Notalina fulva/parkeri", complex))
 ```
 
 There are a small number of asv records that show overlap of less that 98% but greater than 97% overlap with existing BIN. In all but the exceptions below these asv's separate into discrete groups (without overlappling BINs). These asv include
