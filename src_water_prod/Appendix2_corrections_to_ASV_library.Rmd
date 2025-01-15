@@ -3,526 +3,434 @@ title: "Corrections_to_ASV_library"
 author: "MCarew"
 date: "2024-09-06"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+# Function equivalent to excel's =RIGHT() and =LEFT() functions
+right <- function(x, n) {substr(x, nchar(x) - n + 1, nchar(x))}
+left <- function(x, n) {substr(x, 1, n)}
 ```
 
+## Introduction
 
-This document contains scripts to correct errors in the document 'asv_library_97_aug24.xlsx'. A modified version will be produced from this script
+This document amends the file 'asv_library_97_aug24.xlsx' [MEL: can you describe how this file was generated? Are there scripts or was it all in excel?] by:  
 
-# read in 'asv_library_97_aug24.xlsx' spreadsheets
+- adding records from subsequent miSeq runs [MEL: is this the right way to describe the origin of the addition records?];
+
+- correcting spelling errors in taxonomic names;
+
+- looking up identifiers matching the sequences from boldsystems.org, naming un-named aquatic macroinvertebrate species using their BOLD identifiers (bin_uri), and grouping species with multiple bin_uris that overlap with >97% similarity
+
+- recompiling the worksheets of 'asv_library_97_aug24.xlsx' and saving it as ''asv_library_97_jan25.xlsx'.
+
+# Read in source data 
+
+First, primary data from 'asv_library_97_aug24.xlsx' spreadsheets
+
 ```{r}
-# read in flies
-file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_aug24.xlsx"
+# read in files
 
-# Get the names of the sheets
-sheet_names <- readxl::excel_sheets(file_path)
+## [MEL: please note I have copied the source files this script needs to the new folder asv_source_files. The should only ever be read and not edited from now on. All other asv_library files can be removed from the main metabarcoding_workflow folder, I think!, and this script creates a new asv_library file that can be further corrected/updated as we find errors in the script.  THERE IS NO NEED TO BE MAKING AND SAVING MULTIPLE VERSIONS - if the source files remain unchanged, this script will do the necessary changes to the final file]
+
+source_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/"
+source_file <- "asv_library_97_aug24.xlsx"
 
 # Read the sheets into as dataframes
-truncated_fills_df <- readxl::read_excel(file_path, sheet = sheet_names[1])  # contains full taxonomic information for classifications with truncated taxonomy
-otu_groups_df <- readxl::read_excel(file_path, sheet = sheet_names[2], col_types = "text") # groups unclassified sequences into 'OTUs'
-max_p_update_df <- readxl::read_excel(file_path, sheet = sheet_names[3])#updates/corrects any missing identifications or errors in classification
-complexes_df <- readxl::read_excel(file_path, sheet = sheet_names[4])# identifies any ambiguous taxonomic assignments that should be considered as complexes
+tf0 <- as.data.frame(readxl::read_excel(paste0(source_path,source_file), 
+                                        sheet = "truncated_fills"))  
+  # contains full taxonomic information for classifications with truncated taxonomy
+otu_groups_df <- 
+  as.data.frame(readxl::read_excel(paste0(source_path,source_file), 
+                                          sheet = "otu_groups", col_types = "text")) 
+  # groups unclassified sequences into 'OTUs'
+mp0 <- as.data.frame(readxl::read_excel(paste0(source_path,source_file), 
+                                                    sheet = "max_p_update"))
+ # remove a duplicate record
+mp0 <- mp0[!duplicated(mp0),]
+  #updates/corrects any missing identifications or errors in classification
+# [MEL: I don't really get your explanation of what max_p_update is for...can you rephrase?]
+complexes_df <- readxl::read_excel(paste0(source_path,source_file),
+                                       sheet = "complexes")
+
 ```
 
-##Add new data 30_Oct_2024
+Then, additional data from:
+
+- additions_asv_library_oct24.xlsx (additional records for truncated_fills); [MEL: can you describe where these additional records come from?]
+
+- asv_library_97_add_miseq15-20_records.csv (additional records for truncated_fills  from miSeq runs 15-20 with species identifications that match those in the above source tables for truncated_fills);
+
+- filtered_<97_data.csv;
+
 ```{r}
-# read in flies
-file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/additions_asv_library_oct24.xlsx"
+# Additional truncated_fills records
+tf1 <- as.data.frame(readxl::read_excel(paste0(source_path, 
+                                               "additions_asv_library_oct24.xlsx"), 
+                                        sheet = "trunc_fills")) 
+tf2 <- read.csv(paste0(source_path, "asv_library_97_add_miseq15-20_records.csv"))[,-1]
 
-# Get the names of the sheets
-sheet_names <- readxl::excel_sheets(file_path)
+# Combine the three truncated_fill source tables into a new table 
+# (keeping all three original tables to permit back-checking)
+truncated_fills_df <- rbind(tf0, tf1, tf2)
 
-# Read the sheets into as dataframes
-truncated_fills_add_df <- readxl::read_excel(file_path, sheet = sheet_names[1])  # contains full taxonomic information for classifications with truncated taxonomy
+# Additional max_p_update records
+mp1 <- read.csv(paste0(source_path, "filtered_97_data.csv"))
+# [MEL: see email about what I have assumed needed doing here and correct as necessary]
+# update max_p_identify for those records with a corrected value
+mp1$max_p_identity[!is.na(mp1$max_p_identity_corrected)] <- 
+  mp1$max_p_identity_corrected[!is.na(mp1$max_p_identity_corrected)]
+# [MEL: species names for those records are updated below - I have not used the 'recomended_species_name' field: see my email
+# Combine the source tables into a new table, but replace records in mp0 with those in mp1 where there are duplicates
+max_p_update_df <- rbind(mp0[!mp0$asv_code %in% mp1$asv_code,], 
+                         mp1[match(names(mp0),names(mp1))])
 
-# Add new data to original data
-truncated_fills_df <- rbind(truncated_fills_df, truncated_fills_add_df)
+# Keep max_p_update_df records and remove matching records from truncated_fills
+# [MEL: as per my email, is this the right thing to do?]
+truncated_fills_df <- truncated_fills_df[!truncated_fills_df$asv_code %in%
+                                           max_p_update_df$asv_code,]
+
+# replace "" with NA throughout
+# [MEL: perhaps this will cause a problem with your 06 script? It is more usual to 
+#  use NA for missing values....let me know if it is a problem]
+truncated_fills_df[truncated_fills_df == ""] <- NA
+max_p_update_df[max_p_update_df == ""] <- NA
+
+# Check for duplicate asv_codes/sequences
+sum(duplicated(truncated_fills_df$asv_code)) # 2 - not good
+ # Remove the one complete duplicate
+truncated_fills_df <- truncated_fills_df[!duplicated(truncated_fills_df),]
+ # [MEL: you need to decide which of the following need to be removed
+truncated_fills_df[duplicated(truncated_fills_df$asv_code) | 
+                  duplicated(truncated_fills_df$asv_code, fromLast = TRUE),]
+ # I have assumed the one with max_p_identity = 98.0 (Just change 99.3 to 98.0 if I have guessed wrong)
+truncated_fills_df <- 
+  truncated_fills_df[!(duplicated(truncated_fills_df$asv_code) & 
+                        truncated_fills_df$max_p_identity == 99.3),]
+sum(duplicated(c(truncated_fills_df$asv_code, max_p_update_df$asv_code))) # 0 - good
+
+#[MEL: this is a weird non-aquatic entry that you corrected family and genus in two different places in your script. 
+# Here I also correct the other taxonomic levels, but I really don't want to be messing around with non-aquatic species.
+# Are you sure this is right.  IT IS VERY ODD!]
+truncated_fills_df[truncated_fills_df$asv_code == "9ca9760013a77462d9c5e2c942e4d27e",
+                   c("phylum","class","order","family","genus")] <- 
+                c("Heterokontophyta","Oomycota","Peronosporales", "Peronosporaceae", "Phytophthora")
+
+#[MEL: in your Appendix 2 script, you deleted these three records. I haven't done so here - they look alright to me.  
+# If you are sure they need to go, then delete the following command and uncomment the commented out lines below
+# (this will change my reported line counts in the docment below)]
+truncated_fills_df[truncated_fills_df$asv_code %in% c("9725daabf323ef5cf9b512ee0b06f682", 
+                                                     "160985800d21d905b2e3dff1edc1bf18", 
+                                                     "238f54c32343060e69613167f345dd15"),]
+# [MEL: code for deleting them if you are sure they really should be deleted]
+# truncated_fills_df <- truncated_fills_df[!truncated_fills_df$asv_code %in% c("9725daabf323ef5cf9b512ee0b06f682", 
+#                                                      "160985800d21d905b2e3dff1edc1bf18", 
+#                                                      "238f54c32343060e69613167f345dd15"),]
 ```
 
-## Corrections/additions
-The following scripts implement corrections and additions to the ASV library file following 
+The truncated_fills_df and max_p_update_df are now complete with unique records from all source files (13613 and 1983 records respectively). To make corrections to taxonomic naming more efficient, the following combines the two tables for recompilation at the end of this document (using asv_codes to re-assemble the two tables).
 
-# general corrections to spelling of species names
+Taxonomic corrections have been made only to aquatic macroinvertebrates, excluding non-aquatic, non-macroinvertebrate species using the function only_aqu_inverts() in bug_database_functions.R from the [mwbugs database website](https:://tools.thewerg.unimelb.edu.au/mwbugs/data_dl.html). In this document, the function reads from the table of exclusions (), which is a copy of the table of the same name in the mwbugs database.
+
+Similarly to correct genus and family names in the library, we use the taxonomic tables from the mwbugs database.
+
 ```{r}
-library(dplyr)
+tfill_all <- rbind(truncated_fills_df, max_p_update_df)    # 15596 records
 
-# Find and replace in the 'species' column
-truncated_fills_df <- truncated_fills_df %>%
-  mutate(species = gsub("Aedes alboannulotus", "Aedes alboannulatus", species),
-         species = gsub("Hemianax papuensis", "Anax papuensis", species),
-         species = gsub("Limnodrilus claparedeanus", "Limnodrilus claparedianus", species),
-         species = gsub("Paracnephia orientalis", "Austrocnephia orientalis", species),
-         species = gsub("Ulmerochorema stigma", "Ulmerochorema stigmum", species),
-         species = gsub("Antiporus gilbertii", "Antiporus gilberti", species),
-         species = gsub("Asmicridea edwardsi", "Asmicridea edwardsii", species),
-         species = gsub("Austrolimnius waterhouseii", "Austrolimnius waterhousei", species),
-         species = gsub("Culicoides bundyensi", "Culicoides bundyensis", species),
-         species = gsub("Hyderodes shuckardi", "Hyderodes schuckardi", species),
-         species = gsub("SImsonia longipes", "Simsonia longipes", species),
-         species = gsub("Ferrissia sp. B-AAY1880 complex", "Ferrissia sp. B-ADR3550 group", species),
-         species = gsub("Trinotoperla sp. complex B-ABX3905", "Trinotoperla sp. B-ABX3905 group",species),
-         species = gsub("Notalina bifara complex B-ABV8023", "Notalina bifaria B-ABV8023 group", species),
-         species = gsub("Musculium sp. B-ADJ8477", "Sphaerium sp. B-ADJ8477", species),
-         species = gsub("GB-", "G-", species),
-         species = gsub("ZB-", "", species),
-         species = gsub("complex", "group", species),
-         species = gsub("  ", " ", species),
-         species = gsub("Cricptopus", "Cricotopus", species),
-         species = gsub("Asmicridea edwardsiii", "Asmicridea edwardsii group", species),
-         species = gsub("Chironomidae sp. B-ABX4803", "Chironominae sp. B-ABX4803", species),
-         species = gsub("Chironomidae sp. B-AEE9278", "Orthocladiinae sp. B-AEE9278", species),
-         species = gsub("Dero obtusa", "Dero obtusa/nivea", species),
-         species = gsub("Atalophlebia sp. B-ACM3545", "Atalophlebia sp. B-ABV8729 group", species),
-         species = gsub("Lingora aurata", "Lingora aurata group", species),
-         species = gsub("Dinotoperla aff. thwaitesi", "Dinotoperla thwaitesi group", species),
-         species = gsub("austrosp", "Trinotoperla sp. B-ABX3905 group", species),
-         species = gsub("Dero obtusa", "Dero obtusa/nivea", species),
-         species = gsub("Nousia sp. B-ACM3590", "Nousia sp. B-AAV4108 group", species),
-         species = gsub("Simuliidae sp. B-AEV0976", "Simuliidae sp. B-AEV0976/AEV6641", species),
-         species = gsub("Atalophlebia sp. B-ACM3545 group", "Atalophlebia sp. B-ABV8729 group", species),
-         species = gsub("Centroptilum sp. B-ACM3150", "Centroptilum elongatum", species),
-         species = gsub("Hydraenidae sp. B-ADK5039", "Gymnochthebius australis", species))
+source("https://tools.thewerg.unimelb.edu.au/data/mwbugs/bug_database_functions.R")
+# Record of how non_aqu_macroinvert.csv was created
+# db <- RPostgres::dbConnect(drv = RPostgres::Postgres(), dbname = "mwbugs")
+# non_aqu_macro_invert <- DBI::dbReadTable(db, "non_aqu_macro_invert")
+# write.csv(non_aqu_macro_invert, 
+#           "~/git/metabarcoding_workflow/data/non_aqu_macro_invert.csv", 
+#           row.names = FALSE)
+non_aqu_macro_invert <- read.csv("data/non_aqu_macro_invert.csv")
 
+# Record of how taxonomy.xlsx was created, noting that when complete this can be read 
+# directly from the mwbugs downloads page (not yet updated)
+# db <- RPostgres::dbConnect(drv = RPostgres::Postgres(), dbname = "mwbugs")
+# taxon_gen <- DBI::dbReadTable(db, "taxon_gen")
+# taxon_fam <- DBI::dbReadTable(db, "taxon_fam")
+# WriteXLS::WriteXLS(list(taxon_gen = taxon_gen, taxon_fam = taxon_fam),
+#           "~/git/metabarcoding_workflow/data/taxonomy.xlsx")
+taxon_gen <- readxl::read_excel("~/git/metabarcoding_workflow/data/taxonomy.xlsx", 
+                                "taxon_gen")
+taxon_fam <- readxl::read_excel("~/git/metabarcoding_workflow/data/taxonomy.xlsx", 
+                                "taxon_fam")
 
+tfill <- only_aqu_inverts(tfill_all, 
+                          non_aqu_macro_invert_already_loaded = TRUE)$include #11,975 records
+# And exclude two additional records only identified to phylum (Arthropoda and Zygomycota)
+tfill <- tfill[!is.na(tfill$species),]  #11,973 records
+#[MEL: are you also happy to leave Isopoda sp. MC-1 out of aquatic consideration?]
+tfill <- tfill[tfill$species != "Isopoda sp. MC-1",] #11,953 records
 
-max_p_update_df <- max_p_update_df %>%
-  mutate(species = gsub("Aedes alboannulotus", "Aedes alboannulatus", species),
-         species = gsub("Hemianax papuensis", "Anax papuensis", species),
-         species = gsub("Limnodrilus claparedeanus", "Limnodrilus claparedianus", species),
-         species = gsub("Paracnephia orientalis", "Austrocnephia orientalis", species),
-         species = gsub("Ulmerochorema stigma", "Ulmerochorema stigmum", species),
-         species = gsub("Antiporus gilbertii", "Antiporus gilberti", species),
-         species = gsub("Asmicridea edwardsi", "Asmicridea edwardsii", species),
-         species = gsub("Austrolimnius waterhouseii", "Austrolimnius waterhousei", species),
-         species = gsub("Culicoides bundyensi", "Culicoides bundyensis", species),
-         species = gsub("Hyderodes shuckardi", "Hyderodes schuckardi", species),
-         species = gsub("SImsonia longipes", "Simsonia longipes", species),
-         species = gsub("Ferrissia sp. B-AAY1880 complex", "Ferrissia sp. B-ADR3550 group", species),
-         species = gsub("Trinotoperla sp. complex B-ABX3905", "Trinotoperla sp. B-ABX3905 group", species),
-         species = gsub("Notalina bifara complex B-ABV8023", "Notalina bifaria  B-ABV8023 group", species),
-         species = gsub("GB-", "G-", species),
-         species = gsub("ZB-", "", species),
-         species = gsub("complex", "group", species),
-         species = gsub("  ", " ", species),
-         species = gsub("Cricptopus", "Cricotopus", species),
-         species = gsub("sp.B", "sp. B", species),
-         species = gsub("Asmicridea edwardsiii", "Asmicridea edwardsii group", species),
-         species = gsub("Chironomidae sp. B-ABX4803", "Chironominae sp. B-ABX4803", species),
-         species = gsub("Chironomidae sp. B-AEE9278", "Orthocladiinae sp. B-AEE9278", species),
-         species = gsub("Dero obtusa", "Dero obtusa/nivea", species),
-         species = gsub("Atalophlebia sp. B-ACM3545", "Atalophlebia sp. B-ABV8729 group", species),
-         species = gsub("Lingora aurata", "Lingora aurata group", species),
-         species = gsub("Dinotoperla aff. thwaitesi", "Dinotoperla thwaitesi group", species),
-         species = gsub("austrosp", "Trinotoperla sp. B-ABX3905 group", species),
-         species = gsub("Dero obtusa", "Dero obtusa/nivea", species),
-         species = gsub("Nousia sp. B-ACM3590", "Nousia sp. B-AAV4108 group", species),
-         species = gsub("Simuliidae sp. B-AEV0976", "Simuliidae sp. B-AEV0976/AEV6641", species),
-         species = gsub("Atalophlebia sp. B-ACM3545 group", "Atalophlebia sp. B-ABV8729 group", species))
 ```
 
-# corrections of records with incorrect species names in tfill spreadsheet
+Note that tfill_all records excluded from tfill will be added unchanged to the final table at the end.
+
+The term 'complex' in the asv_library is changed to 'group' to remove any implication of true taxonomic complexes in the grouping of species. Finally, spelling errors in the source data are corrected.
+
+[MEL: Note that the following is a reduced version of your code chunks that corrected spelling.
+      Note several major differences:
+      1. Having (temporarily) reduced and combined the truncated_fills and maximum_p_update tables above, there is no need to duplicated these corrections as you had in your script
+      2. The corrections are made line-by-line rather than being grouped into a single dplyr::mutate function.  This permits easier checking that each line a) is necessary and b) does what is intended.
+      3. gsub() is used sparingly - only to make partial changes that are relevant to multiple species names. 
+      4. Where a single species name is being replaced with a corrected name, it is better to use the approach I use after the gsub lines. By running the left hand side of each statement you can check if the change is necessary (several in your script weren't: the left hand side returned no records)]
+      5. Corrections to B- codes are no longer done here- they are done more systematically later in the script ]
+
 ```{r}
-asv_species_corrections_tf <- c("70d22725893c8c5a6de91b0f5f7c1483" = "Atalophlebia sp. B-ABV8739",
-"3f21ea3293d426980c0bb90cee947feb" = "Atalophlebia sp. B-ACM3545 group",
-"e78f9bda3fc0623568541c2ead24a207" = "Atalophlebia sp. B-ACM3545 group",
-"4e348190a398806a2a552afa1d9785bc" = "Atalophlebia sp. B-ACM3545 group",
-"9f0c1c87cbbb54687329685716172501" = "Atalophlebia sp. B-ACM3545 group",
-"dd3c0a3a15229d2473b6993ac29aa99a" = "Atalophlebia sp. B-ABV8738",
-"1ee6186bfdb129f48c157ca1c0c9a4eb" = "Atalophlebia sp. B-ABV8738",
-"b1a18f0dd7091e2518c1ff84ed5f84ba" = "Atalophlebia sp. B-ABV8738",
-"65a3a3575d29e7c6148d5db6026e1e2b" = "Atalophlebia sp. B-ABV8738",
-"381713edf4911d317655bbe78c03bd7c" = "Atalophlebia sp. B-ABV8738",
-"4ed3e46ae94fed01456beece28d3462a" = "Atalophlebia sp. B-ABV8738",
-"bff34b36461035f98b4a19c68585670d" = "Atalophlebia sp. B-ABV8738",
-"95a45757ca0d1b368fe8074fd74c305e" = "Atalophlebia sp. B-ABV8738",
-"6b5331b9ae4948258787c763a238337e" = "Atalophlebia sp. B-ABV8738",
-"b942a5cbd781d243a76e2c4dd69d308a" = "Atalophlebia sp. B-ABV8738",
-"a588b4d5cf19a86af46629e1079441ae" = "Atalophlebia sp. B-ABV8738",
-"a401467f0889e90831b562a7a6b76754" = "Atalophlebia sp. B-ABV8738",
-"f215cae2a2ad3fb1cb2022409008d7d7" = "Atalophlebia sp. B-ABV8738",
-"cd110aeba62b0abe376f661f202833a9" = "Atalophlebia sp. B-ABV8738",
-"d1fa9cf86fcf53138dbbb142b97f08b5" = "Atalophlebia sp. B-ABV8738",
-"cb36ab35170b2da895e9b3d037f28e1e" = "Atalophlebia sp. B-ABV8738",
-"e2a3cb032fd7259f3e5dfdd838e9ecde" = "Atalophlebia sp. B-ABV8738",
-"a14e8463b305f03290cb4bcb08592f61" = "Atalophlebia sp. B-ABV8738",
-"1322d61c1f535e021c096c299b528c06" = "Atalophlebia sp. B-ABV8738",
-"21895efd7bd1d6feba3c2953cf88a5b3" = "Atalophlebia sp. B-ABV8738",
-"9e677a3023f89ed21730330455690e16" = "Atalophlebia sp. B-ABV8738",
-"5b188bdbc5b7941c7479a2a21981064e" = "Atalophlebia sp. B-ABV8738",
-"a1431e9d360fafc2b2443de41c0c3782" = "Atalophlebia sp. B-ABV8738",
-"5c88eefaaea3ed54fa3607b40c59cae6" = "Atalophlebia sp. B-ABV8738",
-"2541e207f53779f1800ae3f512010c1f" = "Atalophlebia sp. B-ABV8738",
-"bba8aa05127e1611e543e2460f164ec5" = "Atalophlebia sp. B-ABV8738",
-"203b1c5cab85ecf7d52c3e0bcb8b0796" = "Atalophlebia sp. B-ABV8738",
-"565684b97d85973575fe6141646bb8a4" = "Atalophlebia sp. B-ABV8738",
-"d09293a1eac202f29b0e7129cfeeacd9" = "Atalophlebia sp. B-ABV8738",
-"890a8b167337ad43aea29ff52abce49a" = "Atalophlebia sp. B-ABV8738",
-"a97cbbfeab2012203000003a1adb0cc0" = "Atalophlebia sp. B-ABV8738",
-"b42084ae609f8be35664d7da75a033d5" = "Atalophlebia sp. B-ABV8738",
-"ba38db874b621f4b4b153f2029227c1e" = "Atalophlebia sp. B-ABV8738",
-"959bccfd4539922de2d81c1ac8bffc60" = "Atalophlebia sp. B-ABV8738",
-"41bb20f079819ba1bc999cff4264ce10" = "Atalophlebia sp. B-ABV8738",
-"a45b2f42201c473c0bda9448991f2f76" = "Austrheithrus glymma group",
-"9fa8ccb4ebacd70196bec0fe4009dbdb" = "Austrosimulium furiosum",
-"64d1a48a6ecdf91a3302ac93abb2660b" = "Cardiocladius sp. B-AAW4309",
-"f2a4e6257cf87a30b64a0b2bae77383c" = "Chaetogaster diastrophus",
-"86b33bf13e66c6c67d3f5474293b571e" = "Cheumatopsyche alampeta",
-"238c2c0ba0114584f6c19f0af402918d" = "Cheumatopsyche alampeta",
-"41731cb0901269ad2a332136172821e9" = "Cheumatopsyche alampeta",
-"a61411743ca3648acb6ba5515a790bac" = "Cheumatopsyche alampeta",
-"d69784b654683ffbf8c9f4b322fcceac" = "Coloburiscoides munionga",
-"6fd09aa00745f711988abb7f706f94d3" = "Cricotopus sp. B-ACQ6787",
-"70dd479dab11e6c210f1b09ee0e034ef" = "Cricotopus tasmania",
-"a63f49201a1d50046d9d30dfb66dc8ad" = "Cricotopus tasmania",
-"7a2c1044d52c83b368a156311ecebd8c" = "Dinotoperla thwaitesi",
-"73ea249cf444d566b8f16ac379050060" = "Dinotoperla thwaitesi",
-"939a96cb02f7b39f695000ed1cceb03e" = "Dinotoperla thwaitesi",
-"861e0cfb5221abdc6064db2b1926fce8" = "Dinotoperla walkeri/evansi",
-"b167c9e6e63d586c8f79138f640da0cb" = "Eusthenia sp. B-ABX4126",
-"da4d55f930d324ef809f8cb8ed9f7f92" = "Limnophyes sp. B-ABV0255",
-"a787c9445c65f9dd4c79bc70d36a6b43" = "Notriolus sp. B-ACG2297",
-"40c9a0e410636ea12e8939097e2d1e70" = "Illiesoperla mayi",
-"c1921daa3f5540925d9e5665ddd685d7" = "Illiesoperla mayi",
-"7c5030e27cdd452bca4b9f8e0053282c" = "Ferrissia sp. B-AAE6642",
-"550b713ce1a34a038a8397950a2c1e88" = "Ferrissia sp. B-AAE6642",
-"9c8d4ed11f998adb5b1d39c37ab5757a" = "Ferrissia sp. B-AAE6642",
-"d7ec6a3ffce28d814e99a0fb4bc341fc" = "Orthotrichia sp. B-ACN2323",
-"3c53818b7dba9d904b7eea8ff74da37f" = "Orthotrichia sp. B-ACN2323",
-"f7358734f527c2ee2d34faee20d698c9" = "Orthotrichia sp. B-ACN2323",
-"82d28b72c3abb370e13d65dd276f89ee" = "Rhadinosticta simplex",
-"65f7c2bfe69db19644a64586b0d58634" = "Rhadinosticta simplex",
-"caef4a0caa706750af87af8b29f76cca" = "Rhadinosticta simplex",
-"f69cda376ebfda153f279dd5a4ec0620" = "Rhadinosticta simplex",
-"2ea0943ed6a0c0226ca86b14bdba3a86" = "Koorrnonga sp. B-ABV9141",
-"2663fc79f8b9ef35a7034bbab1d17c84" = "Koorrnonga sp. B-ABV9141",
-"417a147572314eb831920593a6f855a6" = "Limnodrilus hoffmeisteri",
-"73b30f3d5ed35a60478bb40faa743103" = "Limnodrilus hoffmeisteri",
-"54c4f55ce6c085a4ae3c48b0f6cfdf85" = "Limnophila sp. B-ABX1092",
-"5891552594c69be0ce0115907b14e679" = "Limnophila sp. B-ABX1092",
-"ca0d841497e5adc77bb5c77ad6387a55" = "Limnophila sp. B-ABX1092",
-"f9f17f1fc2377cf4a3ad3af2e06b8822" = "Limnophila sp. B-ABX1092",
-"c5e9ed11cb3e54ebe7be96ab7fa4e7bb" = "Limnophila sp. B-ABX1092",
-"3ba6698641d2024757af7d454cf2f7b2" = "Limnophila sp. B-ABX1092",
-"69f0912a9f5891036280cd9ba3e42b2f" = "Limnophila sp. B-ABX1092",
-"f02ae936d610e8de0863bc9c5b4f7775" = "Limnophila sp. B-ABX1092",
-"a754f5c95f942ea3e163edc51f4c5340" = "Limnophila sp. B-ABX1092",
-"717f60174e763821a83f2a0e2ab4cbfe" = "Limnophila sp. B-ABX1092",
-"022d6c5f8ca3ddbb38862fca738ac945" = "Limnophila sp. B-ABX1092",
-"d361f81aada6a3131743d917a65ce5e0" = "Limnophila sp. B-ABX1092",
-"4b2149125b1eab4d0bf0aa4b3a3f3e33" = "Limnophila sp. B-ABX1092",
-"1bb889d6c302970481be889e8a5f072b" = "Limnophila sp. B-ABX1092",
-"e4452ccd492478fde868f344768d8805" = "Limnophila sp. B-ABX1092",
-"3dbfba4ead1a39db6b9a8dca521fe0cd" = "Limnophila sp. B-ABX1092",
-"9e43bbc1aa041afebb1729d917e2982b" = "Limnophila sp. B-ABA7043",
-"93f462dbf201410a4c974864acaa9fb0" = "Lingora aurata group",
-"6f7613ecf48108b0bca63214e95ddcca" = "Lingora aurata group",
-"fa0de3c722446253f03b74865de00718" = "Notalina sp. B-AAX5636",
-"a67b61dbe9026c95e7c3c25850c6c5b9" = "Polypedilum sp. B-ABW9978 complex",
-"d48af1b82d2eb69c5d0da945d3366ae3" = "Polypedilum sp. B-ABW9978 complex",
-"59372b4f54b83af133acd252413da311" = "Polypedilum sp. B-ABW9978 complex",
-"d519a38d28845ececf8021aea89531b8" = "Polypedilum sp. B-ABW9978 complex",
-"291cc67efd2da86187773af96c3e3f56" = "Polypedilum sp. B-ABW9978 complex",
-"511189152aa7f9d85677418faf42d06e" = "Procorticacarus victorianus",
-"52a8e64777b6f4c814c66bb5079989bb" = "Psychodidae sp. B-ABX5328",
-"974cf8d785ec14d520a28a8818ebc7b4" = "Psychodidae sp. B-ABX5328",
-"c2d4cf0d470ec12e35414a11ef0e9109" = "Psychodidae sp. B-ABX5328",
-"405998b987b936242e29741e7f0660bc" = "Psychodidae sp. B-ABA8299",
-"73027f700d0ee65d3a298efbb1f1a32f" = "Psychodidae sp. B-ABA8299",
-"88d6f6daac318409374d918f40df3ffb" = "Ptychobiosis sp. B-AAZ4433",
-"8bdc2627bd8205a94f40a831d20e1aef" = "Riethia sp. B-ADU5431",
-"1d5760deee25f457d5f3aae91017277a" = "Riethia sp. B-ADU5431",
-"ea684a894cc14c0925e5d020a9d7688c" = "Scatella sp. B-ACK6288/ACZ6583",
-"7c37484ef50b5a349f73a716e89e42c5" = "Trinotoperla sp. B-ABX3937",
-"ddcda4ff5e9b8671ad3fc3a0e9e16528" = "Trinotoperla sp. B-ABX3937",
-"a3fe86602ff20f2b783583479eb170c4" = "Trinotoperla sp. B-ABX3937",
-"220c6618187900450d1dcbb0f4d4d50d" = "Trinotoperla sp. B-ABX3937",
-"be8e76eeb23d917e56f02dee0843b7cc" = "Trinotoperla sp. B-ABX3937",
-"40fcd2e8af6ea029fdadeca338dc5c9b" = "Trinotoperla sp. B-ABX3937",
-"c9b5c5cd88d41c2d881b924ccf47ea4d" = "Ulmerochorema onychion",
-"b219d1dce6730bb64da1e45908ee8e3d" = "Ulmerophlebia sp. B-ABV8830",
-"eb8a6ac51ba6e4ec934d77dfe7093571" = "Psychoda gemina",
-"f2580e04289f1d317c72f6db321bdd9f" = "Psychoda gemina",
-"9b4fd984d9ce6d3a02d16b014004f6e6" = "Psychoda gemina",
-"c26d3a09def236ddd150bacc51117c55" = "Psychoda gemina",
-"7e51985e8eedc43b9477c0f8697ee18a" = "Psychoda gemina",
-"283e9e16054ee601d749f2f959958e1f" = "Psychoda gemina",
-"af2ad7276ba40e03989a485856d1b0b8" = "Psychoda gemina",
-"c85fa78fa52e9d30ea72015607998944" = "Psychoda gemina",
-"91718ad5f4ac2909fc4dabf3b7f83058" = "Psychoda gemina",
-"3b9fa04c8f620038fb9bace9f1512db2" = "Psychoda gemina",
-"71b7133a1e35444c1387ebce1efb9c28" = "Psychoda gemina",
-"15ad79e5f9cf6f49b71709fe727cf470" = "Psychoda gemina",
-"a88b8fa7362a69b12d30503dc0e0d40a" = "Psychoda gemina",
-"81987c57de8c8f22484fc7fec4968faa" = "Psychoda gemina",
-"4a1f3d084687a5aa80f0cd00756dfbdf" = "Ceratopogonidae sp. B-ADC4845",
-"c39071b45b2b525d469880c964415d69" = " Atalophlebia sp. B-ACM3545",
-"41ce939b84d4c7112897272755142a23" = "Coenoria sp. B-ABX6841",
-"c943023dbfdf852f96b76e2dcbd5f50d" = "Triplectides sp. B-AAE7976",
-"d2ef9058a103a1979e980e612264520e" = "Triplectides sp. B-AAE7976",
-"f5d5087598c770d95edc3439abc7289e" = "Triplectides sp. B-AAE7976",
-"17c2cab3817d9ea79ce1a0227e16aebf" = "Triplectides sp. B-AAE7976",
-"6a34b14ed40b13400ef226f0be01fba0" = "Triplectides sp. B-AAE7976",
-"6c80faf3a4ffaa4cf3c671b53794d054" = "Triplectides sp. B-AAE7976",
-"4b7764a805eac8286cc0458955f7071a" = "Triplectides sp. B-AAE7976",
-"08227125d404fb7c99e777cd0feb6e19" = "Triplectides sp. B-AAE7976",
-"beb2be3786f39b4e2b86e345bce96b9b" = "Nothocyphon serratipenis",
-"7991ada89d1e5bc6d86e0b79ebb273c9" = "Nothocyphon serratipenis",
-"a9ca6b9e0d6c2c3f69a1ab6f62227e6c" = "Nothocyphon serratipenis",
-"201cfdafcc628ccbcbd13f77928a97af" = "Nothocyphon serratipenis",
-"516cca6e694eef5726c0dbbb76dc5414" = "Nothocyphon serratipenis",
-"ba5fb41916aff499ffee8e4bb86578f0" = "Nothocyphon serratipenis",
-"3e55ecc587652697ef5db92aa60564cf" = "Nothocyphon serratipenis",
-"415f18a3295dc264a9f199cc78e101ad" = "Nothocyphon serratipenis",
-"767925f33c3613abdb2c5df758cb5633" = "Culicoides sigmoidus",
-"75f3fbd1e44caedd30cafdc7619b1668" = "Culicoides sigmoidus",
-"89002fcf8b68c4719b9b74f183b4127e" = "Culicoides sigmoidus",
-"77145e511d943073d06091b644f724b8" = "Culicoides sigmoidus",
-"25370f418fc2d7a5220655ff24fbbd6e" = "Nousia sp. B-ACM3519",
-"6abec724e4ec8d2683da63476a6e59d7" = "Cosmioperla sp. B-AEC8235",
-"51bb3b643e6c884ac72e340348a32c33" = "Ablabesmyia sp. B-AAP5135 complex",
-"d67b66092a6572d57ac7290d21ef39c4" = "Coloburiscoides munionga",
-"314b908770c6f9c296aaab2da5698807" = "",
-"81530c1415a28a9a62322a482d714cef" = "",
-"3dc52e2c7a31e2a01a84549b92911bcb" = "",
-"f0e1b9af3b6dbb9a5afc88807a33f535" = "",
-"aa465397725596f1c084e4e48197372d" = "",
-"155515de679ea3f96eb251597a8355f5" = "",
-"7e9db264fabad9a9b2ac755cc524baa3" = "",
-"66c7e7bc806cfca10de70609b1ae1117" = "",
-"7abdbe52662941a5b1d6956f74fc8ccf" = "",
-"fb92efc10fba6e13b30c4e20f3f4be70" = "",
-"d971c3c25d994549e1ab94b17048486a" = "",
-"2a8674533aa6463808dced5102f0a1e5" = "",
-"384f60818615b4dc43d21b4fde820d21" = "",
-"2a09b204ea25d3ee0c23b26d00822dcf" = "",
-"c3ef326630a4b7eee124b7f4aa844cd6" = "",
-"3ea037839cc56c6adab4409ca544f57a" = "",
-"5fa5b580d9fb1c0503c5b4d05ce567e0" = "",
-"f2700c9ffaef418a7a9823b08b2b83c9" = "",
-"6a9ea49438ba346534d213bc5fa3412e" = "",
-"693405ffa22eb11c8a4302db0e8b6b7e" = "",
-"edc9cb8e69fe75af9826b60ecbc8f39b" = "",
-"a06bcf800ab074457f826c9026d93a05" = "",
-"60b0c55b3de6bcf0a4a4d4f2485a7ff7" = "",
-"c648f0859a67b40edf948409b8a4967a" = "",
-"bb9f84db19013052915d3b1ac559f11f" = "",
-"c3a2b4cfa3238dd8f6e5bf800290fd05" = "",
-"c56010a8847101c6f955be8758ba6963" = "",
-"f4c35e10c8e86a6dcee244a349473149" = "",
-"0bcf51bb494deb438b90e3e956a645bb" = "",
-"5ec678fc07a30a88297abe1aa71a4ead" = "",
-"d32a5e240858359c1bd7d6ebde67fe5b" = "",
-"d453f558117b6d43a6d2feafbd877e0e" = "",
-"17edbbd11bdd22030c71999c0ed07036" = "",
-"2aadb65453c6df2420448394917cbc2f" = "",
-"94dda310e20d3e23a2752787a41a30f3" = "",
-"cb50aead3ff372183a06f8d09c03ef86" = "",
-"48b5d8e5472a2cf15d8acf17bfe90ccc" = "",
-"aad7ed86c3f30cfe5ee5bf4b8226d159" = "",
-"8ef04e58e9a04a7345c1310b8cc48b58" = "",
-"e64a94ea4d2c5000abac84231068b15b" = "",
-"65b850c96c49333ef25d783db98a5f9d" = "",
-"20c0f2c414bc8b2ff71a32ef4a6da942" = "",
-"4ff6a29cd87280c79d609ba2690b9b92" = "",
-"50a1d897e621e2dbb170bc4a7d206319" = "",
-"91162e539c973809dfa49f065bcb46c2" = "",
-"9e5035bf7ec6a1f2c651ed0e98ed2da7" = "",
-"c2fb64f0e662b5db32c11ee187a9bd0f" = "Cognettia chlorophila/sphagnetorum",
-"c4e01d5fa4513318a1be2a00899d6e1a" = "Cognettia chlorophila/sphagnetorum",
-"dfde7b1be822b7bc262c5802de893bef" = "Cricotopus tasmania",
-"6953883ab581308a26ff62f2c277383c" = "Spongillidae sp. B-AAJ0256",
-"7f15bdde33a25d1d333699264f073d37" = "Notriolus sp. B-ACG2297",
-"f6ba88fdb937e5c233ff1acef9dc399b" = "Notriolus sp. B-ACG2297",
-"19661209bd3d6750ef55e93b6f8f400b" = "Ferrissia sp. B-AAY1880 group",
-"2b943424b95aee577e27aa221cf57118" = "Galerucinae sp. B-ABA9962",
-"00b75095625dec00f84aaf4bd35f7561" = "Naididae sp. B-ADJ9699",
-"1995d15a2bf7a1e13a2f446c2181bd74" = "Bothrioneurum vejdovskyanum",
-"8274abe141342580cb6f742678bb269f" = "Naididae sp. B-ADJ9699",
-"93f3b3bd831f808b1c0a510df9f02167" = "Bothrioneurum vejdovskyanum",
-"99fcb0d3ffaa8726ccd9cd45fc9bf112" = "Bothrioneurum vejdovskyanum",
-"c5f8109e46eebba439317d8eabd7c043" = "Naididae sp. B-ADJ9699",
-"cfc29e6b343c7f58f485f311fa3cbb6e" = "Naididae sp. B-ADJ9699",
-"d21a7e8c0685b94466ab06d13964d5ef" = "Bothrioneurum vejdovskyanum",
-"e94b3c334cab692f4efdad397b9f116c" = "Bothrioneurum vejdovskyanum",
-"f530f2b01471bba22dff9d650ba78834" = "Bothrioneurum vejdovskyanum",
-"e7e0a193d3d4d87970b57d391d01e589" = "Limnophila sp. B-ABA7043",
-"41e26b047eedf4f0f3d3772fd10b6166" = "Naididae sp. B-AAN7517",
-"cd53765b72dab09daf8a3e8f90d68803" = "Naididae sp. B-AAN7517",
-"cdb84f89f487741e7c818ca0646fb123" = "Procladius sp. B-AEN1862",
-"eb8a6ac51ba6e4ec934d77dfe7093571" = "Psychoda sp. B-AAU4648",
-"c85fa78fa52e9d30ea72015607998944" = "Psychoda sp. B-AAU4648",
-"af2ad7276ba40e03989a485856d1b0b8" = "Psychoda sp. B-AAU4648",
-"a88b8fa7362a69b12d30503dc0e0d40a" = "Psychoda sp. B-AAU4648",
-"9b4fd984d9ce6d3a02d16b014004f6e6" = "Psychoda sp. B-AAU4648",
-"81987c57de8c8f22484fc7fec4968faa" = "Psychoda sp. B-AAU4648",
-"91718ad5f4ac2909fc4dabf3b7f83058" = "Psychoda sp. B-AAU4648",
-"3b9fa04c8f620038fb9bace9f1512db2" = "Psychoda sp. B-AAU4648",
-"1d5760deee25f457d5f3aae91017277a" = "Riethia sp. B-ACG9457",
-"f0671dc5cb44b617842a1e84dba330c0" = "Tanytarsus fuscithorax",
-"7bffac2affe628b01910829ec8b4c176" = "Centroptilum elongatum",
-"741aca4ed6f6847e894d0ae837cc5032" = "Psychoda gemina",
-"e7f87bed531e9a3057d3abbc7b296f9f" = "Sigara truncatipala",
-"5b0c60ab95cf5013926f4afdd2815273" = "Sigara truncatipala")
+# Keep a record of the original species name for checking later on.
+tfill$species_old <- tfill$species
+# Correct spelling errors
+tfill$species <- gsub("  ", " ", tfill$species)
+tfill$species <- gsub("Cricptopus", "Cricotopus", tfill$species)
+tfill$species <- gsub("sp.B", "sp. B", tfill$species)
+tfill$species <- gsub("GB-", "G-", tfill$species)
+tfill$species <- gsub("ZB-", "", tfill$species)
+tfill$species <- gsub("complex", "group", tfill$species)
+tfill$species <- gsub("Iilliesoperla","Illiesoperla",tfill$species)
 
-# Update the species column based on asv_code matching the correction vector
-truncated_fills_df <- truncated_fills_df %>%
-  mutate(species = ifelse(asv_code %in% names(asv_species_corrections_tf),
-                          asv_species_corrections_tf[asv_code],
-                          species))
+tfill$species[grep("Asmicridea edwardsi", tfill$species)] <- "Asmicridea edwardsii"
+tfill$species[tfill$species == "Chironomidae sp. B-ABX4803"] <- "Chironominae sp. B-ABX4803"
+tfill$species[tfill$species == "Chironomidae sp. B-AEE9278"] <- "Orthocladiinae sp. B-AEE9278"
+tfill$species[tfill$species == "Dero obtusa"] <- "Dero obtusa/nivea"
+tfill$species[tfill$species == "Lingora aurata"] <- "Lingora aurata group"
+tfill$species[tfill$species == "Limnodrilus claparedeanus"] <- "Limnodrilus claparedianus"
+tfill$species[tfill$species == "Antiporus gilbertii"] <- "Antiporus gilberti"
+tfill$species[tfill$species == "Austrolimnius waterhouseii"] <- "Austrolimnius waterhousei"
+tfill$species[tfill$species == "Culicoides bundyensi"] <- "Culicoides bundyensis"
+tfill$species[tfill$species == "Hyderodes shuckardi"] <- "Hyderodes schuckardi"
+tfill$species[tfill$species == "SImsonia longipes"] <- "Simsonia longipes"
+tfill$species[tfill$species == "Musculium sp. B-ADJ8477"] <- "Sphaerium sp. B-ADJ8477"
+tfill$species[tfill$species == "Dinotoperla aff. thwaitesi"] <- "Dinotoperla thwaitesi group"
+tfill$species[tfill$species == "Austropyrgus centralia group"] <- "Austropyrgus centralia/turbatus"
+tfill$species[tfill$species == "Centroptilum sp. B-ACM3150"] <- "Centroptilum elongatum"
+tfill$species[tfill$species == "Hydraenidae sp. B-ADK5039"] <- "Gymnochthebius australis"
+tfill$species[tfill$species == "Helicophida queenslandensis"] <- "Helicopha queenslandensis"
+tfill$species[tfill$species == "Riethia zeylandica"] <- "Riethia sp. B-ADU5431" 
+# [MEL: As you noted "Riethia zeylandica is not found in Australia": the above is a temporary name to be grouped below]
+tfill$species[tfill$species == "Notalina bifara group B-ABV8023"] <- "Notalina bifara"
+tfill$species[tfill$species == "Notalina sp. B-AAX5636"] <- "Notalina bifara"
+# [MEL: Perhaps you want to call this "Notalina bifara group"? (the two bin_uris overlap...you had originally called this "Notalina bifara  B-ABV8023 group"!)]
+tfill$species[tfill$species == "Ferrissia sp. MC-1"] <- "Ferrissia sp. B-AAE6642"
+# [MEL: You had renamed this "Ferrissia sp. B-AAY1880" group" but it only matches "ADR7371", "AAE6642" and "ADR3550". There is no AAY1880 in the library dataset. Are you happy for this to be called "Ferrissia sp. B-AAE6642 group"?)]
+
+# [MEL: the spelling corrections in your Appendix 2 of species with B- names are taken care of automatically below.
+#       Some have ended up using different bin_uris than their original names, but I don't think this matters (the 
+#       changes can be tracked easily using the species_old field).  One of your original changes doesn't seem right
+#       ...unless I've made a mistake somewhere...
+# tfill$species[tfill$species == "Trinotoperla sp. complex B-ABX3905"] <- "Trinotoperla sp. B-ABX3905 group"
+#  ...as far as I can tell, there is no other bin_uris overlap with ABX3905
+# ]
+```
+
+The following was run using the bold package V1.3.0 to download from the boldsystems API  before their upgrade at the end of 2024. The script thus includes steps to allow for errors arising from exceeding download quotas from bold.  It involves two steps:
+
+- First, match_list is a list of tables, each table the complete list of matching  BOLD records to the asv_sequence in the input data (using the function bold_identify).  The name of each table in the list is the asv_code.
+
+- Second, match_list_bin_uri is a list of tables with same names as those in match_list but each table is reduced to include only those records that are >=97% similar to the asv_sequence. The function bold_specimens() is then used to extract the 
+bin_uri for each BOLD ID.  
+
+It is likely that the new API will not require the steps to work around errors or the two-step process for extracting bin_uris.
+The process was error free using RStudio 2024.09.0 (Each step took ~30 h to  extract data for 10,000 asv records), but failed many times, requiring restarting of the loop in both steps, using RStudio Server 2023.03.02
+
+The following chunk is step 1, saving the full list of BOLD matches (each with name = asv_code) to "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_match_list_to_BOLD_2024-12-05.rda".
+
+[MEL: when we have finalised this, we need to place big files such as these match_list files in a repository, and then re-write this script to allow users to download and use them. I can help you do this. (Note for me later on - example code at L20 of https://github.com/cjbwalsh/urban_riffle_experiment/blob/master/urban_riffle_exp_figs_code.qmd)]
+
+The chunk is set not to evaluate, as it took ~30 h to run.
+
+[MEL: Don't run this chunk!]
+
+```{r eval:FALSE}
+
+match_list <- list()
+
+# Download all matching records from bold for each asv record 
+for(i in 1:nrow(tfill)){  
+  # ran without error on RCP server in a single process (taking ~30 h)
+  seqi <- tfill$asv_seq[i]
+  # The BOLD server returns an error if it is being overloaded
+  # Here I handle this with the retry function
+  matchi <- retry::retry(bold::bold_identify(seqi, db = "COX1"),
+                         when = "NULL", max_tries=12, interval= (5 * 60 + 1))
+  # Name each list element by asv_code (which should remain unchanged)
+  names(matchi) <- tfill$asv_code[i]
+  match_list <- c(match_list, matchi)
+  # Save a working copy and report progress every 100 iterations.
+  if(i %% 100 == 0)  
+    cat(i, as.character(Sys.time()),"\n")
+  save(match_list, file = paste0("~/temp/match_list_rerun.rda"))
+}
+
+# Saved to same folder as asv data source files with datestamp to avoid over-writing
+save(match_list, file = 
+       paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",
+              "asv_library_97_match_list_to_BOLD_", Sys.Date(), ".rda"))
+```
+
+The following chunk then reduces each match_list table to those records with >=97% similarity and extracts their bin_uris, saving them as a second list of tables with fields: ID, taxonomicidentification, similarity, specimen_country, bin_uri.
+
+The list was saved as "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_match_list_with_bin_uris2024-12-05.rda".
+
+[MEL: Note that the name of each table allows matching back to the original asv tables (via the asv_code field), and the ID field in each table allows matching back to the BOLD records saved in the match_list list tables.]
+
+As above, the chunk is set not to evaluate, as it also took ~30 h to run.
+
+[MEL: Don't run this chunk either!]
+
+```{r eval:FALSE}
+
+match_list_bin_uri <- list()
+
+system.time({
+  # ran without error on RCP server in a single process (taking ~30 h)
+  for(i in 1:length(match_list)) { 
+        matchi <- match_list[[i]][match_list[[i]]$similarity >= 0.97,
+                                  c("ID","taxonomicidentification","similarity","specimen_country")]
+        # If there are no sufficiently similar BOLD records, create a blank record
+        if(nrow(matchi) == 0){
+          matchi <- data.frame(ID = NA, taxonomicidentification = NA,
+                               similarity = NA, specimen_country = NA,
+                               bin_uri = NA)[0,]
+        }else{
+          # Otherwise use the bold_specimens function to extract the bin_uri for each record.
+          if(nrow(matchi) <= 50) {
+            bini <- bold::bold_specimens(ids = matchi$ID) #seqspec
+          }else{
+            # If there are more than 50 sufficiently similar records, break it into lots
+            # of 50 or less so as not to overload the BOLD API
+            J <- c(which(1:nrow(matchi) %% 50 == 0),nrow(matchi))
+            for(j in 1:length(J)){
+              indJ <- ifelse(j == 1, 1, J[j - 1] + 1):J[j] 
+              binj <- bold::bold_specimens(ids = matchi$ID[indJ])
+              Sys.sleep(1)
+              if(j == 1){
+                bini <- binj
+              }else{
+                bini <- rbind(bini, binj)
+              }
+            }   
+          }
+          # The bold_specimens function returns a warning if the BOLD API quota is 
+          # exceeded. Catch this warning and wait up to 70 minutes (trying every 5 min) 
+          # until the API begins accepting requests again.
+          if(grepl("exceeded",names(bini)[1])){
+            cat("BOLD retrieval quota exceeded: pausing process at i =", i,"\n")
+            tries <- 1
+            retry_time_seconds <- c(61,4)*60
+            while(grepl("exceeded",names(bini[1])) & tries <= 2){
+              Sys.sleep(retry_time_seconds[tries])
+              if(nrow(matchi) == 0){
+                matchi <- data.frame(ID = NA, taxonomicidentification = NA,
+                                     similarity = NA, specimen_country = NA,
+                                     bin_uri = NA)[0,]
+              }else{
+                # Otherwise use the bold_specimens function to extract the bin_uri for each record.
+                if(nrow(matchi) <= 50) {
+                  bini <- bold::bold_specimens(ids = matchi$ID) #seqspec
+                }else{
+                  # If there are more than 50 sufficiently similar records, break it into lots
+                  # of 50 or less so as not to overload the BOLD API
+                  J <- c(which(1:nrow(matchi) %% 50 == 0),nrow(matchi))
+                  for(j in 1:length(J)){
+                    indJ <- ifelse(j == 1, 1, J[j - 1] + 1):J[j] 
+                    binj <- bold::bold_specimens(ids = matchi$ID[indJ])
+                    Sys.sleep(1)
+                    if(j == 1){
+                      bini <- binj
+                    }else{
+                      bini <- rbind(bini, binj)
+                    }
+                  }
+                }
+              }
+              cat("...for", cumsum(retry_time_seconds[1:tries])[tries]/60, "minutes")
+              tries <- tries + 1
+            }
+          }
+          # A very small number of bini get returned with no header row.
+          # This is a work around for them
+          if(names(bini)[1] != "processid"){
+            stop("2: missing header row?")
+            bini <- bini[,c(1,grep("BOLD",names(bini)[1]))]
+            lostline <- names(bini)
+            names(bini) <- c("processid","bin_uri")
+            bini <- rbind(data.frame(processid = lostline[i],bin_uri = lostline[2]),
+                          bini)
+          }
+          bini <- bini[,c("processid","bin_uri")]
+          matchi$bin_uri <- gsub("BOLD:","",bini$bin_uri[match(matchi$ID,bini$processid)])
+          # add the reduced table with bin_uri to match_list_bin_uri
+        }
+        match_list_bin_uri <- c(match_list_bin_uri,list(matchi))
+        if(length(match_list_bin_uri) != i ) stop("1")
+        names(match_list_bin_uri)[i] <- names(match_list)[i]
+        # Save a working copy and report progress every 100 iterations.
+        if(i %% 100 == 0){
+          save(match_list_bin_uri, 
+               file = paste0("~/temp/match_list_bin_uri.rda"))
+          cat(i, as.character(Sys.time()),"\n")
+        }
+      }
+    })  
+    
+# Saved to same folder as asv data source files with datestamp to avoid over-writing
+save(match_list_bin_uri, file = 
+       paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",
+              "asv_library_97_match_list_with_bin_uris_", Sys.Date(), ".rda"))
 
 ```
 
-# corrections of records with incorrect genus names in tfill spreadsheet
+Some ad-hoc changes to provisional species names can be made without recourse to the BOLD database.  They are made here first.
+
 ```{r}
-asv_genus_corrections_tf <- c("64d1a48a6ecdf91a3302ac93abb2660b" = "Cardiocladius",
-"b167c9e6e63d586c8f79138f640da0cb" = "Eusthenia",
-"40c9a0e410636ea12e8939097e2d1e70" = "Illiesoperla",
-"c1921daa3f5540925d9e5665ddd685d7" = "Illiesoperla",
-"417a147572314eb831920593a6f855a6" = "Limnodrilus",
-"73b30f3d5ed35a60478bb40faa743103" = "Limnodrilus",
-"54c4f55ce6c085a4ae3c48b0f6cfdf85" = "Limnophila",
-"5891552594c69be0ce0115907b14e679" = "Limnophila",
-"ca0d841497e5adc77bb5c77ad6387a55" = "Limnophila",
-"f9f17f1fc2377cf4a3ad3af2e06b8822" = "Limnophila",
-"c5e9ed11cb3e54ebe7be96ab7fa4e7bb" = "Limnophila",
-"3ba6698641d2024757af7d454cf2f7b2" = "Limnophila",
-"69f0912a9f5891036280cd9ba3e42b2f" = "Limnophila",
-"f02ae936d610e8de0863bc9c5b4f7775" = "Limnophila",
-"a754f5c95f942ea3e163edc51f4c5340" = "Limnophila",
-"717f60174e763821a83f2a0e2ab4cbfe" = "Limnophila",
-"022d6c5f8ca3ddbb38862fca738ac945" = "Limnophila",
-"d361f81aada6a3131743d917a65ce5e0" = "Limnophila",
-"4b2149125b1eab4d0bf0aa4b3a3f3e33" = "Limnophila",
-"1bb889d6c302970481be889e8a5f072b" = "Limnophila",
-"e4452ccd492478fde868f344768d8805" = "Limnophila",
-"3dbfba4ead1a39db6b9a8dca521fe0cd" = "Limnophila",
-"d7ec6a3ffce28d814e99a0fb4bc341fc" = "Orthotrichia",
-"3c53818b7dba9d904b7eea8ff74da37f" = "Orthotrichia",
-"f7358734f527c2ee2d34faee20d698c9" = "Orthotrichia",
-"82d28b72c3abb370e13d65dd276f89ee" = "Rhadinosticta",
-"65f7c2bfe69db19644a64586b0d58634" = "Rhadinosticta",
-"caef4a0caa706750af87af8b29f76cca" = "Rhadinosticta",
-"f69cda376ebfda153f279dd5a4ec0620" = "Rhadinosticta",
-"9ca9760013a77462d9c5e2c942e4d27e" = "Phytophthora",
-"d5ee6716a28d4eb9b0d60465ff707327" = "Atrichopogon",
-"bef6b5cae9985af4b85a6b605fa9fdde" = "Atrichopogon",
-"1acd38a074a29e8ec63a20a7417366c0" = "Atrichopogon",
-"2746221e52f4eaf9941524f1e91d1938" = "Atrichopogon",
-"1510e9da49de6fd35eeb269c7e009bdc" = "Atrichopogon",
-"3884d87677ac17de269a9dcb9f4e122e" = "Atrichopogon",
-"b673ad9c60ae7b8ca484dca510c480b7" = "Atrichopogon",
-"89826614d379a646660009c87d7277a4" = "Atrichopogon",
-"966d602e3b481bdce8fcb84d7e12e284" = "Atrichopogon",
-"beb2be3786f39b4e2b86e345bce96b9b" = "Nothocyphon",
-"7991ada89d1e5bc6d86e0b79ebb273c9" = "Nothocyphon",
-"a9ca6b9e0d6c2c3f69a1ab6f62227e6c" = "Nothocyphon",
-"201cfdafcc628ccbcbd13f77928a97af" = "Nothocyphon",
-"516cca6e694eef5726c0dbbb76dc5414" = "Nothocyphon",
-"ba5fb41916aff499ffee8e4bb86578f0" = "Nothocyphon",
-"3e55ecc587652697ef5db92aa60564cf" = "Nothocyphon",
-"415f18a3295dc264a9f199cc78e101ad" = "Nothocyphon",
-"4ff6a29cd87280c79d609ba2690b9b92" = "",
-"91162e539c973809dfa49f065bcb46c2" = "",
-"314b908770c6f9c296aaab2da5698807" = "", 
-"34e16163d6aa109cd49e63dd9c77063e" = "Sphaerium",
-"3dc52e2c7a31e2a01a84549b92911bcb" = "Sphaerium",
-"5c1015d5f6cc01d7ac95378200637dd8" = "Sphaerium",
-"601d1f503e11bfbd84ea1b5010a73db8" = "Sphaerium",
-"81530c1415a28a9a62322a482d714cef" = "Sphaerium",
-"959c81957d1b849ed9c77739c0cb4085" = "Sphaerium",
-"a9a514669a42c0a26a908d6d7c977852" = "Sphaerium",
-"aa87944be7ace16e376e12531934de9e" = "Sphaerium",
-"86b33bf13e66c6c67d3f5474293b571e" = "Cheumatopsyche",
-"da4d55f930d324ef809f8cb8ed9f7f92" = "Limnophyes",
-"17d370084150f91d09432df645e3a689" = "Apsectrotanypus",
-"5d99739d90edd7a4c04c039c31e5e1d4" = "Apsectrotanypus",
-"7b63fa3e6001d8dd5b1e6ed4fb5cd8d2" = "Apsectrotanypus",
-"a45b2f42201c473c0bda9448991f2f76" = "Austrheithrus",
-"3f4b5bb8f843b6231461c257d99f8411" = "Gynoplistia",
-"8ca4a080d6a6bf02b39c7ad1e83b0439" = "Apsectrotanypus",
-"c2fb64f0e662b5db32c11ee187a9bd0f" = "Cognettia",
-"c4e01d5fa4513318a1be2a00899d6e1a" = "Cognettia",
-"7f15bdde33a25d1d333699264f073d37" = "Notriolus",
-"f6ba88fdb937e5c233ff1acef9dc399b" = "Notriolus",
-"4e47d884df5e7e6d0a0ff88304991c65" = "Gymnochthebius",
-"2a355d22517b206b021ee593c90e89bd" = "Gymnochthebius",
-"654a2f07087d509901669d96f5e6e559" = "Gymnochthebius",
-"00b75095625dec00f84aaf4bd35f7561" = "",
-"1995d15a2bf7a1e13a2f446c2181bd74" = "Bothrioneurum",
-"8274abe141342580cb6f742678bb269f" = "",
-"93f3b3bd831f808b1c0a510df9f02167" = "Bothrioneurum",
-"99fcb0d3ffaa8726ccd9cd45fc9bf112" = "Bothrioneurum",
-"c5f8109e46eebba439317d8eabd7c043" = "",
-"cfc29e6b343c7f58f485f311fa3cbb6e" = "",
-"d21a7e8c0685b94466ab06d13964d5ef" = "Bothrioneurum",
-"e94b3c334cab692f4efdad397b9f116c" = "Bothrioneurum",
-"f530f2b01471bba22dff9d650ba78834" = "Bothrioneurum",
-"e7e0a193d3d4d87970b57d391d01e589" = "Limnophila",
-"41e26b047eedf4f0f3d3772fd10b6166" = "",
-"cd53765b72dab09daf8a3e8f90d68803" = "",
-"3f4b5bb8f843b6231461c257d99f8411" = "Gynoplistia",
-"741aca4ed6f6847e894d0ae837cc5032" = "Psychoda")
 
-
-# Update the species column based on asv_code matching the correction vector
-truncated_fills_df <- truncated_fills_df %>%
-  mutate(genus = ifelse(asv_code %in% names(asv_genus_corrections_tf),
-                          asv_genus_corrections_tf[asv_code],
-                          genus))
-
+tfill$species[tfill$species == "Austrochiltonia sp. MC-1"] <- 
+                                                 "Austrochiltonia australis"
+tfill$species[tfill$species == "Culicoides sp. MC-24"] <- 
+                                                      "Culicoides sigmoidus"
+tfill$species[tfill$species == "Limnophyes sp. MC-A1"] <- 
+                                                  "Limnophyes sp. B-ABW5528"
+tfill$species[tfill$species == "Limoniidae sp. MC-1"] <- 
+                                                   "Limnophilinae sp. B-ABW2416"
+tfill$species[tfill$species == "Limoniidae sp. MC-2"] <- 
+                                                   "Limnophilinae sp. B-ABX1292"
+tfill$species[tfill$species == "Isopoda sp. B-ACG3222"] <- 
+                                                  "Sphaeromatidae sp. B-ACG3222"
 ```
 
-# corrections of records with incorrect family names in tfill spreadsheet
+[MEL: here are some comments on changes in your earlier Appendix 2. FYI. This chunk can be deleted if you are happy]
 ```{r}
 asv_family_corrections_tf <- c("b167c9e6e63d586c8f79138f640da0cb" = "Eustheniidae",
+  # taken care of automatically below.
 "9ca9760013a77462d9c5e2c942e4d27e" = "Peronosporaceae")
-
-# Update the species column based on asv_code matching the correction vector
-truncated_fills_df <- truncated_fills_df %>%
-  mutate(family = ifelse(asv_code %in% names(asv_family_corrections_tf),
-                          asv_family_corrections_tf[asv_code],
-                          family))
-
-```
-
-
-# corrections of records with incorrect order names in tfill spreadsheet
-```{r}
+  # not aquatic - changes added above...as are the following three lines)
 asv_order_corrections_tf <- c("9ca9760013a77462d9c5e2c942e4d27e" = "Peronosporales")
-
-# Update the species column based on asv_code matching the correction vector
-truncated_fills_df <- truncated_fills_df %>%
-  mutate(order = ifelse(asv_code %in% names(asv_order_corrections_tf),
-                          asv_order_corrections_tf[asv_code],
-                         order))
-```
-
-# corrections of records with incorrect class names in tfill spreadsheet
-```{r}
 asv_class_corrections_tf <- c("9ca9760013a77462d9c5e2c942e4d27e" = "Oomycota")
-
-# Update the species column based on asv_code matching the correction vector
-truncated_fills_df <- truncated_fills_df %>%
-  mutate(class = ifelse(asv_code %in% names(asv_class_corrections_tf),
-                          asv_class_corrections_tf[asv_code],
-                         class))
-```
-
-# corrections of records with incorrect phylum names in tfill spreadsheet
-```{r}
 asv_phylum_corrections_tf <- c("9ca9760013a77462d9c5e2c942e4d27e" = "Heterokontophyta")
 
-# Update the species column based on asv_code matching the correction vector
-truncated_fills_df <- truncated_fills_df %>%
-  mutate(phylum = ifelse(asv_code %in% names(asv_phylum_corrections_tf),
-                          asv_phylum_corrections_tf[asv_code],
-                         phylum))
+# The following not necessary - captured automatically below (but correction to 
+# Ulmerophlebia genus (from Ulmerochorema) name added below)
+asv_species_corrections_mpu <- c("d54cf91de2a56cbde204c32eea369742" = "Fridericia sp. B-ADR5065",
+                             "a3b763c11784ab20ccb6053c998cd0e4" = "Ulmerophlebia sp. B-ABV8830",
+                             "b0c8e99497b5ab0e503fa633d238f220" = "Zavrelimyia sp. B-AEN0522/AEN0524")
+                             # Update the species column based on asv_code matching the correction vector
+# As above, correction to Ulmerophlebia in genus field captured below 
+asv_genus_corrections_mpu <- c("a3b763c11784ab20ccb6053c998cd0e4" = "Ulmerophlebia")
+# And correction to family field also updated automatically (with correct spelling, as opposed to this)
+asv_family_corrections_mpu <- c("a3b763c11784ab20ccb6053c998cd0e4" = "Leptophelbiidae")
+# And this change to max_p_identity added to asv_list in next chunk
+asv_max_p_identity_corrections_mpu <- c("a3b763c11784ab20ccb6053c998cd0e4" = "97")
 ```
 
-# add corrections to revised matches
+# add corrections to revised matches  
+[MEL: I'm not crazy about this matching by asv_codes, but I don't understand enough about these changes to revise them in a safer way.
+Can you tell me where you got these values from?
+I've left them as they are, but have changed the code for making the changes from dplyr to base code]
 ```{r}
 max_p_identity_corrections <- c("9e5035bf7ec6a1f2c651ed0e98ed2da7" = "96.6",
 "d453f558117b6d43a6d2feafbd877e0e" = "96.4",
@@ -569,568 +477,699 @@ max_p_identity_corrections <- c("9e5035bf7ec6a1f2c651ed0e98ed2da7" = "96.6",
 "20c0f2c414bc8b2ff71a32ef4a6da942" = "96",
 "4ff6a29cd87280c79d609ba2690b9b92" = "92",
 "50a1d897e621e2dbb170bc4a7d206319" = "96",
-"91162e539c973809dfa49f065bcb46c2" = "92")
+"91162e539c973809dfa49f065bcb46c2" = "92",
+"a3b763c11784ab20ccb6053c998cd0e4" = "97")
 
-# Update the max_p_identity column in truncated_fills_df based on asv_code matching the correction vector
-truncated_fills_df  <- truncated_fills_df %>%
-  mutate(max_p_identity = ifelse(asv_code %in% names(max_p_identity_corrections),
-                                 max_p_identity_corrections[asv_code],
-                                 max_p_identity))
-
-# Identify the rows to update
-updated_rows <- truncated_fills_df %>%
-  filter(asv_code %in% names(max_p_identity_corrections))
-
-# Update the max_p_identity column in truncated_fills_df based on asv_code matching the correction vector
-truncated_fills_df  <- truncated_fills_df %>%
-  mutate(max_p_identity = ifelse(asv_code %in% names(max_p_identity_corrections),
-                                 max_p_identity_corrections[asv_code],
-                                 max_p_identity))
-
-# Add the updated rows to max_p_update_df (these records need to be moved to the max_p_update_df so the max_p_identity will be updates) 
-max_p_update_df <- rbind(max_p_update_df, updated_rows)
-
-# Remove only the updated rows from truncated_fills_df
-truncated_fills_df <- truncated_fills_df %>%
-  filter(!asv_code %in% names(max_p_identity_corrections))
-
-# add corrections to complexes (groups) to complexes_df
-truncated_fills_df <- truncated_fills_df %>%
-  mutate(species = gsub("complex", "group", species))
-      
+max_p_identity_corrections <- data.frame(asv_code = names(max_p_identity_corrections),
+                                         max_p_identity = as.numeric(max_p_identity_corrections))
+for(i in 1:nrow(max_p_identity_corrections)){
+  if(!max_p_identity_corrections$asv_code[i] %in% tfill$asv_code) stop("") # didn't stop, so all in tfill
+  tfill$max_p_identity[tfill$asv_code == max_p_identity_corrections$asv_code[i]] <- 
+                      max_p_identity_corrections$max_p_identity[i]
+}
+# sum(!max_p_identity_corrections$asv_code %in% max_p_update_df$asv_code) #0
+#[MEL: no need for your code to move these records to the max_p_update table, 
+#  as the above commented out line shows that they are all already there]
 ```
 
-# delete misidentified records in in tfill spreadsheet
-```{r}
-truncated_fills_df <- truncated_fills_df %>%
-  filter(!asv_code %in% c("9725daabf323ef5cf9b512ee0b06f682", 
-                          "160985800d21d905b2e3dff1edc1bf18", 
-                          "238f54c32343060e69613167f345dd15"))
-```
-
-# corrections of records with incorrect species names in max_p_update spreadsheet
-```{r}
-asv_species_corrections_mpu <- c("d54cf91de2a56cbde204c32eea369742" = "Fridericia sp. B-ADR5065",
-                             "a3b763c11784ab20ccb6053c998cd0e4" = "Ulmerophlebia sp. B-ABV8830",
-                             "b0c8e99497b5ab0e503fa633d238f220" = "Zavrelimyia sp. B-AEN0522/AEN0524")
-                             # Update the species column based on asv_code matching the correction vector
-
-max_p_update_df <- max_p_update_df %>%
-  mutate(species = ifelse(asv_code %in% names(asv_species_corrections_mpu),
-                          asv_species_corrections_mpu[asv_code],
-                          species))
-```
-
-# corrections of records with incorrect genus names in max_p_update spreadsheet
-```{r}
-asv_genus_corrections_mpu <- c("a3b763c11784ab20ccb6053c998cd0e4" = "Ulmerophlebia")
-
-max_p_update_df <- max_p_update_df %>%
-  mutate(genus = ifelse(asv_code %in% names(asv_genus_corrections_mpu),
-                          asv_genus_corrections_mpu[asv_code],
-                          species))
-```
-
-# corrections of records with incorrect family names in max_p_update spreadsheet
-```{r}
-asv_family_corrections_mpu <- c("a3b763c11784ab20ccb6053c998cd0e4" = "Leptophelbiidae")
-
-max_p_update_df <- max_p_update_df %>%
-  mutate(family = ifelse(asv_code %in% names(asv_family_corrections_mpu),
-                          asv_family_corrections_mpu[asv_code],
-                          species))
-```
-
-# corrections of records with incorrect max_p_identity names in max_p_update spreadsheet
-```{r}
-asv_max_p_identity_corrections_mpu <- c("a3b763c11784ab20ccb6053c998cd0e4" = "97")
-
-max_p_update_df <- max_p_update_df %>%
-  mutate(family = ifelse(asv_code %in% names(asv_max_p_identity_corrections_mpu),
-                          asv_max_p_identity_corrections_mpu[asv_code],
-                          species))
-```
-
-# add new complexes (groups) to complexes_df
-```{r}
-bin_name <-  c("Asmicridea edwardsii",
-"Asmicridea sp. B-AAD2412",
-"Asmicridea sp. B-ABV8740",
-"Atrichopogon sp. B-ABX7319",
-"Ceratopogonidae sp. B-ABX0996",
-"Austrheithrus glymma",
-"Austrheithrus sp. B-AAW2994",
-"Austrheithrus sp. B-ABZ7475",
-"Austropyrgus centralia",
-"Austropyrgus turbatus",
-"Austropyrgus sp. B-AAW3122",
-"Austropyrgus niger",
-"Austropyrgus sparsus",
-"Austropyrgus simsonianus",
-"Chironomidae sp. B-ACG8753",
-"Polypedilum sp. MC-FS1",
-"Chironomidae sp. B-ABA7844",
-"Chironomidae sp. B-ABA7848",
-"Coenoria sp. B-AAX3064",
-"Coenoria sp. B-ABX6841",
-"Coenoria sp. B-ABX6842",
-"Dinotoperla thwaitesi",
-"Dinotoperla sp. B-ADK4863",
-"Dinotoperla sp. B-ADJ9199",
-"Dinotoperla sp. B-ADK6597",
-"Dinotoperla sp. B-ADK4862",
-"Dinotoperla sp. B-ADK4864",
-"Dinotoperla sp. B-ABX4167",
-"Dinotoperla sp. B-ADK4861",
-"Dinotoperla sp. B-ABX4126",
-"Diptera sp. B-AEV0976",
-"Simuliidae sp. B-AEV0976",
-"Simuliidae sp. B-AEV6641",
-"Gynoplistia bimaculata",
-"Gynoplistia lowanna",
-"Gynoplistia sp. B-ACM3369",
-"Gynoplistia sp. B-ABW4478",
-"Hydra oligactis",
-"Hydra sp. B-AAX2383",
-"Hydra robusta",
-"Hydra sp. B-AAX2396",
-"Hydra sinensis",
-"Hydra viridissima",
-"Nousia sp. B-AAV4106",
-"Nousia sp. B-ACM3590",
-"Nousia sp. B-ACM3519",
-"Polypedilum sp. B-ACQ1905",
-"Polypedilum sp. B-ACS6047",
-"Polypedilum sp. B-ACQ1906",
-"Polypedilum sp. B-ACS3491",
-"Polypedilum sp. B-ACS6048",
-"Polypedilum sp. B-ACS6045",
-"Tamasia acuta",
-"Tamasia variegata",
-"Tamasia sp. B-ACF0164",
-"Tamasia sp. B-AAK0518",
-"Laevapex nipponica",
-"Ferrissia fragilis",
-"Ferrissia californica",
-"Zavrelimyia sp. B-AEN0522",
-"Zavrelimyia sp. B-AEN0524",
-"Zavrelimyia sp. B-AEN7359",
-"Scatella sp. B-ACZ6583",
-"Scatella sp. B-ACK6288",
-"Scatella stagnalis",
-"Scatella tenuicosta",
-"Scatella lutosa",
-"Scatella subvittata",
-"Sclerocyphon sp. C-18",
-"Sclerocyphon sp. C-19",
-"Sclerocyphon sp. C-20",
-"Sclerocyphon sp. C-21",
-"Pisidium sp. cf. hallae",
-"Pisidium sp. B-AAG0350/ACQ7011",
-"Pisidium sp. B-AAG0350",
-"Pisidium sp. B-ACQ7011",
-"Pisidium casertanum",
-"Pisidium fallax",
-"Pisidium supinum",
-"Pisidium sp. B-ADI7406",
-"Pisidium sp. BAEB7951",
-"Hydra vulgaris",
-"Apsectrotanypus sp. B-AEM8177",
-"Apsectrotanypus sp. B-AEM8936",
-"Kiefferulus intertinctus",
-"Tasmanophlebia sp. B-ACM3395",
-"Tasmanophlebia sp. B-AAV8388",
-"Nannochorista dipteroides",
-"Dinotoperla serricauda",
-"Leptoperla kimminsi",
-"Apsilochorema obliquum",
-"Triplectides truncatus",
-"Paratya australiensis",
-"Australopelopia sp. MC-1",
-"Limnophila sp. ZB-EPAsp30",
-"ParaLimnophila sp. B-private",
-"Paralimnophila sp. B-ACM3249",
-"Paralimnophila sp. B-ACM3182",
-"Tonnoiromyia sp. ZB-EPAsp3",
-"Austrochiltonia sp. MC1",
-"Nais sp. B-ACB6480",
-"Limnophila sp. MC-1",
-"Lumbriculus sp. B-AEC5767",
-"Lingora sp. AV1",
-"Lingora sp. B-ABY8640/AAX5053",
-"Lingora sp. B-AAY5550/ADF2103",
-"Lingora sp. B-ACC8619",
-"Dinotoperla walkeri",
-"Dinotoperla evansi",
-"Atalophlebia sp. B-ABX7606",
-"Atalophlebia sp. B-ACM3545",
-"Atalophlebia sp. B-ABV8739",
-"Atalophlebia sp. B-ABV8733",
-"Cognettia sphagnetorum",
-"Cognettia chlorophila",
-"Cryptochironomus sp. B-ACS3851",
-"Cryptochironomus sp. B-ACS4478/ACS3865",
-"Ferrissia sp. B-ADR3550 group",
-"Ferrissia sp. B-AAE6642",
-"Koorrnonga sp. B-ABV9140", 
-"Koorrnonga sp. B-ABV9142",
-"Limnophila sp. B-ABX1094",
-"Limnophila sp. B-ABX1091",
-"Nais christinae",
-"Nais variabilis",
-"Nais elinguis",
-"Nais pseudobtusa",
-"Rheumatometra dimorpha",
-"Rheumatometra philarete",
-"Schizonyxhelea sp. B-ADTX1789",
-"Schizonyxhelea sp. B-AFV6727",
-"Schizonyxhelea sp. B-ABX1780",
-"Tasmanocoenis sp. B-ACG1634",
-"Ceratopogonidae sp. 12",
-"Hydrophilidae sp. MC-5",
-"Tipulidae sp. MC-6",
-"Centroptilum sp. B-ACM3150",
-"Micronecta sp. B-ACG1960",
-"Micronecta sp. B-ADU6789",
-"Riethia sp. B-ACG9457",
-"Riethia sp. B-ADU5431",
-"Apsectrotanypus sp. MC-4",
-"Apsectrotanypus sp. MC-1",
-"Austroargiolestes",
-"Chaetogaster sp. CEO",
-"Gyraulus sp. B-ACO7407",
-"Hydra sp. MC-O1",
-"Ilyodrilus sp. CEB",
-"Nais sp. B-ACB6665",
-"Dolichopodidae sp. B-AAW0925",
-"Oxyethira sp. B-ACN2323",
-"Physa acuta",
-"Pristina sp. CEE",
-"Pristina sp. CEF",
-"Limnodrilus claparedeanus",
-"Microvelia sp. B-ADL6764",
-"Notalina bifaria",
-"Notalina sp. B-ADF2209",
-"Notalina sp. B-AAI2529",
-"Polypedilum sp. MC-B",
-"Psychodidae sp. B-AAU4648",
-"Psychoda sp. B-AAU4648",
-"Notalina parkeri")
-
-complex <- c("Asmicridea edwardsii group",
-"Asmicridea edwardsii group",
-"Asmicridea edwardsii group",
-"Atrichopogon sp. B-ABX7319/ABX0996",
-"Atrichopogon sp. B-ABX7319/ABX0996",
-"Austrheithrus glymma group",
-"Austrheithrus glymma group",
-"Austrheithrus glymma group",
-"Austropyrgus centralia group",
-"Austropyrgus centralia group",
-"Austropyrgus centralia group",
-"Austropyrgus centralia group",
-"Austropyrgus centralia group",
-"Austropyrgus centralia group",
-"Polypedilum sp. B-ACG8753",
-"Polypedilum sp. B-ACG8753",
-"Chironomidae sp. B-ABA7844/ABA7848",
-"Chironomidae sp. B-ABA7844/ABA7848",
-"Coenoria sp. B-ABX6841 group",
-"Coenoria sp. B-ABX6841 group",
-"Coenoria sp. B-ABX6841 group",
-"Dinotoperla thwaitesi group",
-"Dinotoperla thwaitesi group",
-"Dinotoperla thwaitesi group",
-"Dinotoperla thwaitesi group",
-"Dinotoperla thwaitesi group",
-"Dinotoperla thwaitesi group",
-"Dinotoperla thwaitesi group",
-"Dinotoperla thwaitesi group",
-"Dinotoperla thwaitesi group",
-"Simuliidae sp. B-AEV0976/AEV6641",
-"Simuliidae sp. B-AEV0976/AEV6641",
-"Simuliidae sp. B-AEV0976/AEV6641",
-"Gynoplistia bimaculata/lowanna",
-"Gynoplistia bimaculata/lowanna",
-"Gynoplistia bimaculata/lowanna",
-"Gynoplistia bimaculata/lowanna",
-"Hydra oligactis/robusta",
-"Hydra oligactis/robusta",
-"Hydra oligactis/robusta",
-"Hydra sinensis/viridissima",
-"Hydra sinensis/viridissima",
-"Hydra sinensis/viridissima",
-"Nousia sp. B-AAV4106 group",
-"Nousia sp. B-AAV4106 group",
-"Nousia sp. B-AAV4106 group",
-"Polypedilum sp. B-ABW9978 group",
-"Polypedilum sp. B-ABW9978 group",
-"Polypedilum sp. B-ABW9978 group",
-"Polypedilum sp. B-ABW9978 group",
-"Polypedilum sp. B-ABW9978 group",
-"Polypedilum sp. B-ABW9978 group",
-"Tamasia acuta/variegata",
-"Tamasia acuta/variegata",
-"Tamasia acuta/variegata",
-"Tamasia acuta/variegata",
-"Ferrissia sp. B-AAY1880 group",
-"Ferrissia sp. B-AAY1880 group",
-"Ferrissia sp. B-AAY1880 group",
-"Zavrelimyia sp. B-AEN0522/AEN0524",
-"Zavrelimyia sp. B-AEN0522/AEN0524",
-"Zavrelimyia sp. B-ACQ7611 group",
-"Scatella sp. B-ACK6288/ACZ6583",
-"Scatella sp. B-ACK6288/ACZ6583",
-"Scatella sp. B-ACK6288/ACZ6583",
-"Scatella sp. B-ACK6288/ACZ6583",
-"Scatella sp. B-ACK6288/ACZ6583",
-"Scatella sp. B-ACK6288/ACZ6583",
-"Sclerocyphon sp. G-C18 group",
-"Sclerocyphon sp. G-C18 group",
-"Sclerocyphon sp. G-C18 group",
-"Sclerocyphon sp. G-C18 group",
-"Pisidium sp. B-AAG0350 group",
-"Pisidium sp. B-AAG0350 group",
-"Pisidium sp. B-AAG0350 group",
-"Pisidium sp. B-AAG0350 group",
-"Pisidium sp. B-AAG0350 group",
-"Pisidium sp. B-AAG0350 group",
-"Pisidium sp. B-AAG0350 group",
-"Pisidium sp. B-AAG0350 group",
-"Pisidium sp. B-AAG0350 group",
-"Hydra vulgaris group",
-"Apsectrotanypus sp. B-AEM8177/AEM8936",
-"Apsectrotanypus sp. B-AEM8177/AEM8936",
-"Kiefferulus intertinctus group",
-"Tasmanophlebia sp. B-ACM3395/AAV8388",
-"Tasmanophlebia sp. B-ACM3395/AAV8388",
-"Nannochorista dipteroides group",
-"Dinotoperla serricauda group",
-"Leptoperla kimminsi group",
-"Apsilochorema obliquum group",
-"Triplectides truncatus group",
-"Paratya australiensis group",
-"Australopelopia sp. B-AEN1251",
-"Limnophila sp. EPAsp30",
-"Paralimnophila sp. B-ACM3182/ACM3249",
-"Paralimnophila sp. B-ACM3182/ACM3249",
-"Paralimnophila sp. B-ACM3182/ACM3249",
-"Tonnoiromyia tasmaniensis",
-"Austrochiltonia sp. MC-1",
-"Nais complex group",
-"Limnophila sp. B-ABA7043",
-"Lumbriculus variegatus",
-"Lingora sp. B-AAY5550 group",
-"Lingora aurata group",
-"Lingora sp. B-AAY5550 group",
-"Lingora sp. B-AAY5550 group",
-"Dinotoperla walkeri/evansi",
-"Dinotoperla walkeri/evansi",
-"Atalophlebia sp. B-ABV8729 group",
-"Atalophlebia sp. B-ABV8729 group",
-"Atalophlebia sp. B-ABV8733/ABV8739",
-"Atalophlebia sp. B-ABV8733/ABV8739",
-"Cognettia chlorophila/sphagnetorum",
-"Cognettia chlorophila/sphagnetorum",
-"Cryptochironomus sp. B-ACS3865 group",
-"Cryptochironomus sp. B-ACS3865 group",
-"Ferrissia sp. B-AAY1880 group",
-"Ferrissia sp. B-AAY1880 group",
-"Koorrnonga sp. B-ABV9140/ABV9142", 
-"Koorrnonga sp. B-ABV9140/ABV9142",
-"Limnophila sp. B-ABX1091/ABX1094",
-"Limnophila sp. B-ABX1091/ABX1094",
-"Nais communis group",
-"Nais communis group",
-"Nais elinguis/pseudobtusa",
-"Nais elinguis/pseudobtusa",
-"Rheumatometra dimorpha/philarete",
-"Rheumatometra dimorpha/philarete",
-"Schizonyxhelea sp. B-ABX1780 group",
-"Schizonyxhelea sp. B-ABX1780 group",
-"Schizonyxhelea sp. B-ABX1780 group",
-"Tasmanocoenis tillyardi/rieki",
-"Ceratopogonidae sp. MC-12",
-"Enochrus sp. MC-5",
-"Limoniidae sp. B-AGD4712/AGD4715",
-"Centroptilum elongatum",
-"Micronecta sp. B-ACG1960/ADU6789",
-"Micronecta sp. B-ACG1960/ADU6789",
-"Riethia sp. B-ACG9457ADU5431",
-"Riethia sp. B-ACG9457ADU5431",
-"Apsectrotanypus sp. B-AEM4866",
-"Apsectrotanypus sp. B-ACD5991",
-"Austroargiolestes sp. B-ACL1904 group",
-"Chaetogaster sp. B-AEW4333",
-"Gyraulus chinensis",
-"Hydra vulgaris group",
-"Ilyodrilus sp. B-AEV3713",
-"Nais communis group",
-"Nothorhaphium aemulans",
-"Orthotrichia sp. B-ACN2323",
-"Physella acuta",
-"Pristina sp. B-AEW1288",
-"Pristina sp. B-AEW1289",
-"Limnodrilus claparedianus",
-"Microvelia sp. B-ADH7670",
-"Notalina bifaria B-ABV8023 group",
-"Notalina bifaria B-ABV8023 group",
-"Notalina bifaria B-ABV8023 group",
-"Polypedilum sp. B-AAV5945",
-"Psychoda gemina",
-"Psychoda gemina",
-"Notalina fulva/parkeri")
-
-# Combine into a data frame
-new_complexes <- data.frame(bin_name = bin_name, complex = complex, stringsAsFactors = FALSE)
-
-# Add to existing complexes dataframe
-complexes_df <- rbind(complexes_df, new_complexes)
-
-# change complex to group to reflect grouping are based on DNA metabarcoding analysis not taxonomic. Also add changes to grouping based on revised groupings
-complexes_df <- complexes_df %>%
-  mutate(
-    complex = gsub("complex", "group", complex),
-    complex = gsub("Cryptochironomus sp. B-ACS4478/ACS3865", "Cryptochironomus sp. B-ACS3865 group", complex),
-    complex = gsub("Atalophlebia sp. B-ABV8733/ABV8739", "Atalophlebia sp. B-ABV8729 group", complex),
-    complex = gsub("Lingora sp. B-AAY5550/ADF2103", "Lingora sp. B-AAY5550 group", complex),
-    complex = gsub("Zavrelimyia sp. B-AEM5402 group", "Zavrelimyia sp. B-ACQ7611 group", complex),
-    complex = gsub("Zavrelimyia sp. B-AEN0860 group", "Zavrelimyia sp. B-ACQ7611 group", complex),
-    complex = gsub("Dero obtusa/nivea/nivea", "Dero obtusa/nivea", complex),
-    complex = gsub("Nais group group", "Nais communis group", complex),
-    complex = gsub("Notalina bifara group B-ABV8023", "Notalina bifaria B-ABV8023 group", complex),
-    complex = gsub("Notalina B-ABV8023 group", "Notalina bifaria B-ABV8023 group", complex),
-    complex = gsub("Trinotoperla sp. group B-ABX3905", "Trinotoperla sp. B-ABX3905 group", complex),
-    complex = gsub("Notalina sp. B-AAX5636", "Notalina fulva/parkeri", complex))
-```
-
-There are a small number of asv records that show overlap of less that 98% but greater than 97% overlap with existing BIN. In all but the exceptions below these asv's separate into discrete groups (without overlappling BINs). These asv include
-species/asv(s)
-
-Atalophlebia sp. B-ACM3545  70d22725893c8c5a6de91b0f5f7c1483
-
-Cryptochironomus sp. B-ACS4478/ACS3865 f066a63f4be7f1afa34e27c7e3714d0c
-
-Lingora sp. B-ACC8619 735492437a56a4f6abdbf33ed55b592c, d3144ff41766d86574ccac06c5403646, 942f26219b03e8fb78ec4192f366785a
-
-Micronecta sp. B-ADU6789 11c285225b8247fa93d6f6914d26b1bc, 8ab7293630c98e69091fe1b78efbca89
-
-Nousia sp. B-ACM3590 bf2227414cea927a76e794da505c1e29
-
-Nousia sp. B-AAV4108 complex fd8e3126f07ab10a767c08e175f8017a
-
-Nousia sp. B-ACM3519 9be6f30d5f0a1e589d9f4567f01215d6
-
-Hydrobiosella waddama cf4d8b16cb64eb29dd6eb8aeff774878 
-
-Given that metabarcoding can introduce errors in and this may be the cause of these boarderline overlaps. These BIN's will not be combined at this stage
-
-#Taxonomic errors on databases
-BIN - AAX5275  It matches two different species in different genera/species. I suspect the Limnodrilus hoffmeisteri is the incorrect identification and identification of Bothrioneurum vejdovskyanum is correct. This is due to Bothrioneurum vejdovskyanum being identified by a taxonomic expert. Limnodrilus hoffmeisteri has many other records not associated with the BIN and the sequence was mined from GenBank
- 
+The following chunk creates a new table of asv_codes, species names, and their bin_uris. Many asv_codes have multiple bin_uris, so this table is longer than tfill. (15,939 rows rather than 11,979).
 
 ```{r}
-library(writexl)
-library(openxlsx)
+# load list "match_list_bin_uri", compiled in the chunk above
+load(paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",
+              "asv_library_97_match_list_with_bin_uris_2024-12-15.rda"))
+# And load "match_List" - the full list of matching records to BOLD (not limited to >0.97 similarity)
+load(paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",
+              "asv_library_97_match_list_to_BOLD_2024-12-15.rda"))
 
-# Create a new workbook
-wb <- createWorkbook()
+# There are 60 asv_codes in the match_lists that aren't in tfill...not sure of their origin
+# Exclude them here
+match_list_bin_uri <- match_list_bin_uri[match(tfill$asv_code, names(match_list_bin_uri))]
+match_list <- match_list[match(tfill$asv_code, names(match_list))]
 
-# Add worksheets
-addWorksheet(wb, "truncated_fills")
-addWorksheet(wb, "otu_groups")
-addWorksheet(wb, "max_p_update")
-addWorksheet(wb, "complexes")
+# Create a tfill_spp_bins, which lists all bin_uris associated with each asv_code
+tfill_spp_bins <- data.frame(asv_code = names(match_list_bin_uri),
+                             species = tfill$species[match(names(match_list_bin_uri), tfill$asv_code)],
+                             bin_uri = NA)
+for(i in 1:nrow(tfill_spp_bins)){
+  tfill_spp_bins$species[i] <- tfill$species[tfill$asv_code == names(match_list_bin_uri)[i]]
+}
 
-# Write data into each sheet
-writeData(wb, sheet = "truncated_fills", truncated_fills_df)
-writeData(wb, sheet = "otu_groups", otu_groups_df)
-writeData(wb, sheet = "max_p_update", max_p_update_df)
-writeData(wb, sheet = "complexes", complexes_df)
+for(i in 1:nrow(tfill_spp_bins)){
+    bins <- match_list_bin_uri[[i]]$bin_uri
+    bins <- bins[!is.na(bins) & !bins == ""]
+  if(length(unique(bins)) == 0){
+     next()
+    }else{
+    tfill_spp_bins$bin_uri[i] <- unique(bins)[1]
+    if(length(unique(bins)) > 1){
+      tfill_spp_bins <- rbind(tfill_spp_bins, 
+                              data.frame(asv_code = names(match_list_bin_uri)[i],
+                              species = tfill$species[tfill$asv_code == names(match_list_bin_uri)[i]],      
+                              bin_uri = unique(bins)[-1]))
+    }
+    }
+}
 
-# Save the workbook
-saveWorkbook(wb, "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_aug24_modified.xlsx", overwrite = TRUE)
+tfill_spp_bins <- tfill_spp_bins[order(tfill_spp_bins$species),]
+tfill_spp_bins$bin_uri <- gsub("BOLD:","",tfill_spp_bins$bin_uri)
+
 ```
 
-## comments of changes 10_Dec_24
+Species without a formal name are given a name based on their BOLD identifiers (bin_uri).  Species that have two bin_uris are given a name containing both bin_uris separated by a slash (/).  Species that have more than 2 bin_uris are given the name of one of the bin_uris followed by "group".  The following chunks renders those names. 
 
-<!-- tfill$species <- gsub("  ", " ", tfill$species) added -->
-<!-- tfill$species <- gsub("Cricptopus", "Cricotopus", tfill$species) added -->
-<!-- tfill$species <- gsub("sp.B", "sp. B", tfill$species) added -->
+The first chunk ensures that the first word of the name (usually genus, but potentially a higher taxonomic level) are correct, first by making manual corrections using the BOLD database and taxonomic identifications of specimens.
 
-<!-- #Inconsistent naming? -->
-<!-- tfill$species[tfill$species == "Asmicridea edwardsiii"] <- "Asmicridea edwardsii group" added -->
-<!-- tfill$species[tfill$species == "Chironomidae sp. B-ABX4803"] <- "Chironominae sp. B-ABX4803" added -->
-<!-- tfill$species[tfill$species == "Chironomidae sp. B-AEE9278"] <- "Orthocladiinae sp. B-AEE9278" added -->
-<!-- tfill$species[tfill$species == "Dero obtusa"] <- "Dero obtusa/nivea" added -->
-<!-- tfill$species[tfill$species == "Atalophlebia sp. B-ACM3545"] <- "Atalophlebia sp. B-ABV8729 group" added -->
-<!-- tfill$species[tfill$species == "Lingora aurata"] <- "Lingora aurata group" added -->
+[CHRIS: DON"T FORGET TO PUT THE MATCH LIST SCRIPT IN!]
 
-<!-- tfill$species <- gsub("Dinotoperla aff. thwaitesi", "Dinotoperla thwaitesi group", tfill$species) added -->
-<!-- tfill$species <- gsub("Dinotoperla walkeri/evansi", "Dinotoperla walkeri", tfill$species) changed Dinotoperla walkeri to Dinotoperla walkeri/evansi and added to complexes table -->
-<!-- tfill$species <- gsub("Dinotoperla aff. thwaitesi", "Dinotoperla thwaitesi group", tfill$species)? Is this the same as above? -->
-<!-- tfill$species <- gsub("Pisidium sp. cf. hallae group","Pisidium sp. B-AAG0350/ACQ7011", tfill$species) seems like there are many BINs/species that overlap. I have added all these to the complexes table and now called them “Pisidium sp. B-AAG0350 group” as the “Pisidium sp. cf. hallae” name is not used by BOLD anymore -->
-<!-- tfill$species <- gsub("Trinotoperla sp. group B-ABX3905","Trinotoperla sp. B-ABX3905 group",tfill$species) added -->
-<!-- tfill$species <- gsub("Austropyrgus centralia group","Austropyrgus centralia/turbatus",tfill$species) changed Austropyrgus centralia/turbatus to Austropyrgus centralia group (in ‘complexes’ too) and added additional species that match this group -->
-<!-- tfill$species <- gsub("Nousia sp. B-ACM3590", "Nousia sp. B-AAV4108 group",tfill$species) added and also added Nousia sp. B-ACM3590 to Nousia sp. B-AAV4108 group  in ‘complexes’ -->
-<!-- tfill$species <- gsub("Simuliidae sp. B-AEV0976", "Simuliidae sp. B-AEV0976/AEV6641",tfill$species) added already in ‘complexes’ so picked up there but added anyway -->
-<!-- tfill$species <- gsub("Trinotoperla sp. B-ABX3937","Trinotoperla sp. B-ABX3905 group",tfill$species) have not added. When check on BOLD id engine it suggests Trinotoperla sp. B-ABX3937 does not overlap with the Trinotoperla sp. B-ABX3905 group? -->
+```{r}
+# tfill_bu <- tfill
+# tfill_spp_bins_bu <- tfill_spp_bins
+# tfill <- tfill_bu
+# tfill_spp_bins <- tfill_spp_bins_bu
+
+tfill$species_old <- tfill$species
+
+# Some records named Sphaerium not correct (Set species to "" for those without a bold match)
+for(i in grep("Sphaerium", tfill$species)){
+  if(nrow(match_list_bin_uri[[tfill$asv_code[i]]]) == 0){
+    tfill$genus[i] <- NA
+    tfill$species[i] <- "Pisidiidae sp. (Unident.)"
+  }else{
+    # Make sure we're dealing with just Sphaerium sp. B-ADJ8477
+    if(!"ADJ8477" %in% match_list_bin_uri[[tfill$asv_code[i]]]$bin_uri) stop()
+    tfill$genus[i] <- "Sphaerium"
+  }
+}
+
+# An unidentified naididae previously classed as Limnodrilus hoffmeisteri should be Naididae sp. B-ADJ9699
+naid_asvs <- tfill_spp_bins$asv_code[tfill_spp_bins$bin_uri == "ADJ9699"]
+tfill$genus[tfill$asv_code %in% naid_asvs] <- NA
+# [MEL: is the above right? check the 5 asv_codes using the following code: 
+#   match_list_bin_uri[names(match_list_bin_uri) %in% naid_asvs]]
+
+# [MEL: the above (and the subsequent check and update of genus names) does the 
+#  job of your asv_code chunk changing genus names. 
+# See "unravel_asv_code_changes.R". Note that I have aimed to ensure that the code 
+# in this document makes all of the changes in your original code chunks. However, 
+# there were three changes that you made that I cannot verify (or understand). 
+# Can you check these please?
+# #                             asv_code                        new_species                   species_old         bold_species bin_uri n_bins del
+# 158 51bb3b643e6c884ac72e340348a32c33          Ablabesmyia sp. B-AAP5135     Ablabesmyia sp. B-ACG8949                 <NA>    <NA>      0   0
+# 159 d67b66092a6572d57ac7290d21ef39c4           Coloburiscoides munionga Coloburiscoides sp. B-ADW5046                 <NA>    <NA>      0   0
+# 212 19661209bd3d6750ef55e93b6f8f400b            Ferrissia sp. B-AAY1880            Ferrissia sp. MC-1                 <NA>    <NA>      0   0
+# Note your code changed the given asv_code from old_species to new_species. 
+# None of these three had a matching bold record for me to assess their veracity]
+
+# And the following are changes in part from your asv_code chunk changing species names
+bold_name_corrections <- 
+c("AAE9243" = "Cheumatopsyche alampeta",
+"ACG2503" = "Coloburiscoides munionga",
+"ACV9482" = "Cricotopus tasmania",
+"ABX3893" = "Illiesoperla mayi",	
+"ACG1875" = "Rhadinosticta simplex",
+"ADJ8523" = "Limnodrilus hoffmeisteri",
+"AEI0789" = "Procorticacarus victorianus",
+"ABV8829" = "Ulmerochorema onychion",
+"AAU4648" = "Psychoda gemina",
+"ACV9482" = "Cricotopus tasmania",
+"AAT8936" =  "Cognettia chlorophila/sphagnetorum",
+"AAF0821" = "Tanytarsus fuscithorax",
+"ACB6471" = "Chaetogaster diastrophus",
+"ABX5220" = "Austrosimulium furiosum",
+"ABY8640" = "Lingora aurata",
+"AAW2994" = "Austrheithrus glymma",
+"ACD5693" = "Dinotoperla thwaitesi",
+"ABX4166" = "Dinotoperla walkeri/evansi",
+"ABV8830" = "Ulmerophlebia sp. B-ABV8830", # included here because genus was wrong in library
+"AAW4309" = "Cardiocladius sp. B-AAW4309", # included here because genus was wrong in library
+"ADJ0699" = "Byrrocryptus sp. B-ADJ0699", # late genus-level id
+"ACV9616" = "Bothrioneurum vejdovskyanum",
+"AAX5275" = "Bothrioneurum vejdovskyanum",
+"ACI5239" = "Bothrioneurum vejdovskyanum")
+
+bnc_df <- data.frame(bin_uri = names(bold_name_corrections), 
+                       new_species = bold_name_corrections)
+for(i in 1:nrow(bnc_df)){
+  asvcodei <- tfill_spp_bins$asv_code[!is.na(tfill_spp_bins$bin_uri) & 
+                                        tfill_spp_bins$bin_uri == bnc_df$bin_uri[i]]
+  tfill_spp_bins$species[tfill_spp_bins$asv_code %in% asvcodei] <- 
+                                                    bnc_df$new_species[i]
+  tfill$species[tfill$asv_code %in% asvcodei] <- bnc_df$new_species[i]
+  
+}
+
+# [MEL: The above makes the changes in your asv_code species-change chunk but applies the changes to all 
+#       records that have the same bin_uris (some of which were missed by your code). Is my logic sound?
+#       Do the last three satisfy your concern that you wrote some time ago - as follows:
+#  "I suspect the Limnodrilus hoffmeisteri is the incorrect identification and identification of 
+#   Bothrioneurum vejdovskyanum is correct. This is due to Bothrioneurum vejdovskyanum being identified 
+#   by a taxonomic expert. Limnodrilus hoffmeisteri has many other records not associated with the BIN 
+#   and the sequence was mined from GenBank"]
+
+# [MEL: I think this change in your code that changes species names by asv_code is wrong - 
+# 207 c4e01d5fa4513318a1be2a00899d6e1a Cognettia chlorophila/sphagnetorum      Chamaedrilus varisetosus Cognettia varisetosa AAT9501      4   0
+# The following is my solution to the problem of Chamaedrilus and Cognettia using bin_uris.  Do you agree?]
+
+chamaedrilus_asv_codes <- tfill_spp_bins$asv_code[tfill_spp_bins$bin_uri %in% c("AAT9499","AAT9501","ACQ1237","AAU1095")]
+tfill_spp_bins$species[tfill_spp_bins$asv_code %in% chamaedrilus_asv_codes] <- "Chamaedrilus varisetosus"
+tfill$species[tfill$asv_code %in% chamaedrilus_asv_codes] <- "Chamaedrilus varisetosus" 
+
+cognettia_asv_codes <- tfill_spp_bins$asv_code[tfill_spp_bins$bin_uri %in% "AAT8936"]
+tfill_spp_bins$species[tfill_spp_bins$asv_code %in% cognettia_asv_codes] <- "Cognettia chlorophila/sphagnetorum"
+tfill$species[tfill$asv_code %in% cognettia_asv_codes] <- "Cognettia chlorophila/sphagnetorum" 
+
+# "Hydrobiosella waddama" and "Hydrobiosella perangusta" are distinct except for 
+# asv_code cf4d8b16cb64eb29dd6eb8aeff774878, which has similarity >0.985 with 
+# Hydrobiosella waddama AAZ5125 and similarity 0.9706 to one record of AAZ4813...
+# just over the criterion.  Sufficiently different to keep separate. Thus:
+tfill_spp_bins$bin_uri[(tfill_spp_bins$species == "Hydrobiosella waddama" & 
+                     tfill_spp_bins$bin_uri == "AAZ4813")] <- "AAZ5125"
+
+# Add "Nais variabilis" to "Nais communis group"
+tfill$species[tfill$species == "Nais variabilis"] <- "Nais communis group"
+tfill_spp_bins$species[tfill_spp_bins$species == "Nais variabilis"] <- "Nais communis group"
+
+# Check and correct family names, requiring the taxon_gen and taxon_fam tables from mwbugs
+# [MEL: Are you happy to use the mwbugs taxonomy to correct the genus and family fields in tfill?
+# I will make these tables accessible in the final version...]
+
+## Check genus and family fields throughout the table ensuring: 
+## a) the genus name matches the first word of the species name (or is blank if 
+##     the first word is a higher taxonomic level)
+## b) the family name is the correct family for the given genus (or species name
+##     if the species name is not a genus)
+db <- RPostgres::dbConnect(drv = RPostgres::Postgres(), dbname = "mwbugs")
+taxon_gen <- DBI::dbReadTable(db, "taxon_gen")
+taxon_fam <- DBI::dbReadTable(db, "taxon_fam")
+# ]
+tfill$genus_old <- tfill$genus
+tfill$family_old <- tfill$family
+tfill$genus_recode <- 0
+tfill$family_recode <- 0
+# Remove duplicated species names from family, genus, order
+tfill$order[!is.na(tfill$order) & tfill$order == tfill$species] <- NA
+tfill$family[!is.na(tfill$family) & tfill$family == tfill$species]  <- NA
+tfill$genus[!is.na(tfill$genus) & tfill$genus == tfill$species] <- NA
+
+# sum(grepl("Unident.", max_p_update_df$species))  #198
+## 198 records without a species name (all from the max_p_update table)
+## The following gives them species names using their lowest identified taxonomic level
+# [MEL: The following assumes that the "class","order","family","genus" details  are correct. Is that right?
+#        Some of these look odd also: e.g. several have a species name in the genus column...I deal with those first...
+#        But you might want to look at them yourself...try this code (with Chunk output set to in console: cog menu above]
+#        tfill[grep("Unident.", tfill$species),3:8]
+#   One example I'm suspicious about is grep("Unident.", tfill$species)[7] # = 11775
+#   Genus = Illiesoperla mayi and the following script makes that the species name also,  see  - tfill[11775,]
+#   But the asv_code match_list_bin_uri$`693405ffa22eb11c8a4302db0e8b6b7e` doesn't match anything in BOLD
+#   even though all other Illiesoperla mayi records match bin_uri ABX3893.
+#   Another dodgy looking one is 5148a3678b70de5db884a99af7734de4 - order Trombidiformes, genus Sarcoptiformes..
+#   I'll just delete that one here, because it makes the following script fall over
+tfill <- tfill[tfill$asv_code != "5148a3678b70de5db884a99af7734de4",]
+tfill_spp_bins <- tfill_spp_bins[tfill_spp_bins$asv_code != "5148a3678b70de5db884a99af7734de4",]
+#[MEL:   Is it possible you have been writing over the source max_similarity_update table in excel?  You really need to quarantine the
+#   source table somewhere where it's not going to be written over (somewhere you will never open it in excel and never overwrite it from R)
+#   That's why I've moved the source tables that this script reads into a separate out-of-the-way folder. PLEASE do not open any of those files in Excel.
+#   Best to inspect them in R (or if you MUST look at them in Excel, copy them to a different local directory and open them up from there.)
+#  Is there a more direct source for these data than an excel file you are adding to manually? If so, I'd be happy to work with you on a coding approach to using your direct data source to update your library tables.
+#   HERE IS ONE CORRECTION TO THESE ARISING FROM YOUR EMAILS...(An enchytraeid listed as a Dytiscid)]
+tfill[tfill$asv_code == "9cb0fd3c74a7d78345ce9dab0d7f1a87", c("class","order","family","species")] <- 
+                       c("Clitellata", "Enchytraeida", "Enchytraeidae","Enchytraeidae sp. (Unident.)")
+
+for(i in grep("Unident.", tfill$species)){
+  if(length(strsplit(tfill$genus[i]," ")[[1]]) > 1){
+    tfill$species[i] <- tfill$genus[i]
+  }else{
+  if(sum(is.na(which(!is.na(tfill[i,c("class","order","family","genus")])))) > 0) stop()
+  if(length(which(!is.na(tfill[i,c("class","order","family","genus")]))) == 0){
+    tfill$species[i] <- paste(tfill$phylum[i], "sp. (Unident.)")
+  }else{
+  record_identified_to <- max(which(!is.na(tfill[i,c("class","order","family","genus")]))) + 3
+  tfill$species[i] <- paste(tfill[i,record_identified_to], "sp. (Unident.)")
+  }
+    }
+}
+# [MEL: apart from the reservations above, this takes care of the 46 records in your asv_code script that were set to "". See "unravel_asv_code_changes.R"]
+
+## Finally loop through each record correcting genus and family names (keeping
+## a record of old names and identifying those that have changed.)
+# Remove erroneous genus names first
+tfill$genus[!is.na(tfill$genus) & tfill$genus == "Chironomidae"] <- NA
+tfill$genus[!is.na(tfill$genus) & tfill$genus == "Trombidiformes"] <- NA
+
+# [MEL: To get the following loop to run, I needed to exclude a few taxon names.
+ #      None of these exclusions matter for this exercise, but I do need to confirm whether
+ #      the following taxa should be excluded from our analyses for being non-aquatic or non-macroinvertebrate
+ #      Can you check the following and let me know if I should add them to the exclusions table
+ #      (noting that the subfamily names I have excluded below are fine, and don't need checking)]
+ #      "Eupodidae","Triophtydeidae","Isopoda sp. MC-1","Listronotus","Paederus","Spanioda","Geranomyia","Marionina"
+ #      In looking through these, I read that Enchytraeidae are a primarily terrestrial family, but I have not 
+ #      excluded any Enchytraeidae to date.  Can you help with advice on what to do with members of this family?]
+
+# [MEL: Do you have reservations about me using the mwbugs taxonomy to correct the genus and family names in the 
+ #      the asv library? See below for some diagnostics to see what I have changed]  
+for(i in 1:nrow(tfill)){
+  recordi <- tfill[i,]
+  first_word <- strsplit(recordi$species," ")[[1]][1]
+  # If the first word in the species name is not a listed genus, family or subfamily...
+  if(!first_word %in% taxon_gen$genus & 
+      !first_word %in% c(taxon_fam$family, 
+                  taxon_fam$subfamily[!is.na(taxon_fam$subfamily)],
+                  taxon_fam$tribe[!is.na(taxon_fam$tribe)]) & 
+     !tfill$family[i] %in% c("Eupodidae","Triophtydeidae") & 
+     !tfill$species[i] %in% c("Isopoda sp. MC-1") &
+     !first_word %in% c("Galerucinae","Limnophilinae","Coenosiinae","Atalophlebiinae",
+                        "Listronotus","Paederus","Spanioda","Geranomyia","Marionina")){
+     #...check that neither "genus" or "family" fields have a value - stop if so
+    if(!is.na(recordi$genus) | !is.na(recordi$family)) stop("1")
+  }
+     #If it's a listed genus, then give the genus field that name , 
+     # and give the family name the correct family name from the mwbugs database
+  if(first_word %in% taxon_gen$genus){
+    # if non genus is listed or it doesn't match the first_word
+    if(is.na(recordi$genus) | recordi$genus != first_word){
+      tfill$genus[i] <- strsplit(recordi$species," ")[[1]][1]
+      tfill$genus_recode[i] <- 1
+    }
+    taxon_geni <- taxon_gen[taxon_gen$genus == tfill$genus[i],]
+    taxon_fam_tab <- taxon_fam[taxon_fam$famcode == taxon_geni$famcode,]
+    taxon_fami <- taxon_fam_tab$family
+    # If the genus is a Tubificid, make the family field "Naididae"
+    if(taxon_fam_tab$famcode == "LO04"){
+         taxon_fami <- "Naididae"
+        }
+    # If the genus is a chironomid make the family field the subfamily
+    if(grepl("QDA",taxon_fam_tab$famcode)){
+        taxon_fami <- taxon_fam_tab$subfamily
+        }
+    tfill$family[i] <- taxon_fami
+  }
+  # If the above resulted in a change to the genus or fam field mark them as recoded
+    if(is.na(tfill$family_old[i]) & !is.na(tfill$family[i])){
+      tfill$family_recode[i] <- 1
+      }else{
+       if(!(is.na(tfill$family_old[i]) & is.na(tfill$family[i]))){
+         if(tfill$family[i] != tfill$family_old[i]){
+                            tfill$family_recode[i] <- 1
+                   }}
+      }
+    if((is.na(tfill$genus_old[i]) & !is.na(tfill$genus[i])) | 
+       (!is.na(tfill$genus_old[i]) & is.na(tfill$genus[i]))){
+      tfill$genus_recode[i] <- 1
+      }else{
+        if(!(is.na(tfill$genus_old[i]) & is.na(tfill$genus[i]))){
+           if(tfill$genus[i] != tfill$genus_old[i]){
+                            tfill$genus_recode[i] <- 1
+                   }}
+      }
+  # If it's a listed family or subfamily, then give the family field that name
+  # and check that the genus field is empty. Stop if so.
+  if(first_word %in% c(taxon_fam$family, 
+                  taxon_fam$subfamily[!is.na(taxon_fam$subfamily)],
+                  taxon_fam$tribe[!is.na(taxon_fam$tribe)])){
+    if(!is.na(recordi$genus)) stop("2")
+    # if the given family name is a tribe, then make the family name Chironomidae
+    # Otherwise
+    if(!is.na(recordi$family)){ 
+      if(recordi$family != first_word){
+      tfill$family[i] <- ifelse(first_word %in% taxon_fam$tribe[!is.na(taxon_fam$tribe)], 
+                                "Chironominae", #only subfamily with tribes listed
+                                first_word)
+      tfill$family_recode[i] <- 1
+    }}
+  }
+}
+
+# [MEL: the above loop corrected:  
+# sum(tfill$family_recode) # = 3065 family names. To inspect the unique changes, 
+#   unique(tfill[tfill$family_recode == 1,c("family","family_old"),]) # Just 17 unique family changes
+# sum(tfill$genus_recode) # = 61 genus names. To inspect the unique changes
+#   unique(tfill[tfill$genus_recode == 1,c("genus","genus_old"),]) # 27 unique genus changes
+# To inspect the records for a particular change you can do something like this:
+# tfill[!is.na(tfill$genus) & !is.na(tfill$genus_old) & tfill$genus == "Chamaedrilus" & tfill$genus_old == "Cognettia",]
+# # If you are unhappy about any of these changes, let me know and I can recode]
+```
+
+With genus and family fields correct, correct species names, using the following rules:
+
+- Species without a formal identification, but with a single match to a bin_uri are given a species name using the bin_uri (e.g. );
+
+- Species without a formal identification, that match two bin_uris are given a species names using both bin_uris separated by a "/" (e.g. );
+[MEL: I wonder about the wisdom of this rule. What if a new bin_uri is created down the trak, that also matches this species? Wouldn't it be better just to call these "group" like the next case?  What purpose do the "/" names serve?]
+
+- Species without a formal identification, that match three or more bin_uris are given a species names using one bin_Uri and the term "group" (e.g. );
+
+- Species with a formal identification, that match one or more bin_uris (and none of those bin_uris are validly associated with any other formal species names) are given the formal species name as it is. (e.g. , which matches bin_uris....)
+
+- Species with a formal identification, that match more than one bin_uris that are validly associated with two formal spcies names are given both species names separated by "/" (e.g.)
+
+- Species with a formal identification, that match more than two bin_uris that are validly associated with two formal spcies names are given the most common formal species name followed by group (e.g.)
+
+To begin this process, we ensure all species without formal identifications are given a name matching a single bin_uri (prior to grouping below).
+
+```{r}
+
+# check all B- species names match the first bin_uri for that species name
+tfill$no_bin_match <- 0
+for(i in grep("B-",tfill$species)){
+  # remove all "group" and "/" names (to be re-instated later)
+  tfill$species[i] <- gsub(" group", "", tfill$species[i])
+  if(grepl("/", tfill$species[i])){
+    tfill$species[i] <- substr(tfill$species[i], 1, nchar(tfill$species[i]) - 8)
+  }
+  bin_i <- match_list_bin_uri[tfill$asv_code[i]][[1]]
+  if(nrow(bin_i) == 0)  {
+    tfill$no_bin_match[i] <- 1
+    }else{
+#      if(!is.na(bin_i$bin_uri[1]) & bin_i$bin_uri[1] == "AAP5135") stop("1")
+  tfill$species[i] <- paste0(substr(tfill$species[i], 1, nchar(tfill$species[i]) - 7), 
+                             bin_i$bin_uri[1])
+    }
+}
+
+# three given the wrong name in the above because of matches to multiple bin_uris. Correct manually
+tfill$species[tfill$species == "Koorrnonga sp. B-ABV9140"] <- "Koorrnonga sp. B-ABV9142"
+tfill$species[tfill$species == "Cryptochironomus sp. B-ACS3865"] <- "Cryptochironomus sp. B-ACS3851"
+tfill$species[tfill$species == "Schizonyxhelea sp. B-ABX1780"] <- "Schizonyxhelea sp. B-ADT1789"
+
+dodge_bs <- data.frame(species = unique(tfill$species[tfill$no_bin_match == 1]), 
+                       some_bin_matches = 0)
+for(i in 1:nrow(dodge_bs)){
+  if(sum(tfill$no_bin_match[tfill$species == dodge_bs$species[i]]) != sum(tfill$species == dodge_bs$species[i]))
+    dodge_bs$some_bin_matches[i] <- 1
+}
+
+# [Mel, dodge_bs lists 55 species names that you created using bin_uris that either have no matches in the bold database (19: sum(dodge_bs$some_bin_matches == 0) ), or some records given that name have no match (36: sum(dodge_bs$some_bin_matches) )].  What do you want to do about them? I will leave them as they are for now.]
+
+# Having corrected the species names, update the species name in tfill_spp_bins
+tfill_spp_bins$species <- tfill$species[match(tfill_spp_bins$asv_code,tfill$asv_code)]
+
+```
+
+The chunk below identifies the number of distinct species names associated with bin_uris. (There should only be one species name per bin_uri, while each species name can have multiple bin_uris).  
+
+The loop creates a list to catch any groups of bin_uris that need to be given formal group names (form_gps).  To ensure transparent grouping decisions, we ran the loop first, and then made the requisit manual changes before re-running the loop.  
+
+The loop also creates a list of groups with inconsistent names (inc_groups), which were similarly caught and corrected before re-running the loop.
+
+```{r}
+# Check for bin_url inconsistencies, and create new group names where appropriate
+# This removed all such problems!
+tfill_spp_bins_unq <- unique(tfill_spp_bins[,2:3])
+tfill_spp_bins_unq <- tfill_spp_bins_unq[!is.na(tfill_spp_bins_unq$bin_uri),]
+tfill_spp_bins_unq_bu <- tfill_spp_bins_unq
+
+# Formally named groups created after running the loop below first (identified in form_gps)
+tfill$species[tfill$species %in% c("Tamasia acuta","Tamasia variegata")] <- "Tamasia acuta/Tamasia variegata"
+tfill$species[tfill$species %in% c("Nannochorista dipteroides","Nannochorista dipteroides group")] <- "Nannochorista dipteroides"
+tfill$species[tfill$species %in% c("Austropyrgus centralia","Austropyrgus turbatus","Austropyrgus centralia/turbatus")] <- "Austropyrgus centralia/turbatus"
+tfill$species[tfill$species %in% c("Hydra oligactis","Hydra robusta")] <- "Hydra oligactis/robusta"
+tfill$species[tfill$species %in% c("Hydra sinensis","Hydra viridissima")] <- "Hydra sinensis/viridissima"
+tfill$species[tfill$species %in% c("Triplectides truncatus","Triplectides truncatus group")] <- "Triplectides truncatus"
+tfill$species[tfill$species %in% c("Gynoplistia bimaculata","Gynoplistia lowanna")] <- "Gynoplistia bimaculata/lowanna"
+tfill$species[tfill$species %in% c("Leptoperla kimminsi","Leptoperla kimminsi group")] <- "Leptoperla kimminsi"
+tfill$species[tfill$species %in% c("Dinotoperla thwaitesi","Dinotoperla thwaitesi group")] <- "Dinotoperla thwaitesi"
+tfill$species[tfill$species %in% c("Nais elinguis","Nais pseudobtusa")] <- "Nais elinguis/pseudobtusa"
+tfill$species[tfill$species %in% c("Dinotoperla christinae", "Dinotoperla aryballoi")] <- "Dinotoperla christinae/aryballoi"
+tfill$species[tfill$species %in% c("Rheumatometra dimorpha","Rheumatometra philarete")] <- "Rheumatometra dimorpha/philarete"
+
+#[MEL: I looked the following inconsistently named species up on BOLD and come to the following conclusions
+#      Can you please check I have made the right decisions? 
+#      NOTE: these may be grouped later - Primary interest is correct genus name (and one corrected bin_uri)
+#      (I have assumed that your naming of "Ozeoura convoluta" and "Atrichopogon" are correct)]
+
+# ABV0255   "Limnophyes sp. B-ABV0255"  NOT "Echinocladius martini" 
+asvi <- tfill_spp_bins$asv_code[!is.na(tfill_spp_bins$bin_uri) & 
+                     tfill_spp_bins$bin_uri == "ABV0255" & 
+                     tfill_spp_bins$species == "Echinocladius martini"]
+tfill$species[tfill$asv_code %in% asvi] <- "Limnophyes sp. B-ABV0255"
+
+# ABX0996 "Atrichopogon sp. B-ABX0996"  presumably not  "Ceratopogonidae sp. B-ABX0996"
+asvi <- tfill_spp_bins$asv_code[!is.na(tfill_spp_bins$bin_uri) & 
+                     tfill_spp_bins$bin_uri == "ABX0996" & 
+                     tfill_spp_bins$species == "Ceratopogonidae sp. B-ABX0996"]
+tfill$species[tfill$asv_code %in% asvi] <- "Atrichopogon sp. B-ABX0996"
+
+# ABX1092 "Limnophila sp. B-ABX1092" "Ozeoura convoluta"  (Presumably Ozeoura is a corrected ID?) 
+asvi <- tfill_spp_bins$asv_code[!is.na(tfill_spp_bins$bin_uri) & 
+                     tfill_spp_bins$bin_uri == "ABX1092" & 
+                     tfill_spp_bins$species == "Limnophila sp. B-ABX1092"]
+tfill$species[tfill$asv_code %in% asvi] <- "Ozeoura convoluta"
+
+# # ABX4126 "Eusthenia sp. B-ABX4126"  NOT "Dinotoperla thwaitesi"
+asvi <- tfill_spp_bins$asv_code[!is.na(tfill_spp_bins$bin_uri) &
+                     tfill_spp_bins$bin_uri == "ABX4126" &
+                     tfill_spp_bins$species == "Dinotoperla thwaitesi"]
+tfill$species[tfill$asv_code %in% asvi] <- "Eusthenia sp. B-ABX4126"
+
+# ACG2297 "Notriolus sp. B-ACG2297" "Elmidae sp. B-ACG2297" Notriolus (1)  
+asvi <- tfill_spp_bins$asv_code[!is.na(tfill_spp_bins$bin_uri) & 
+                     tfill_spp_bins$bin_uri == "ACG2297" & 
+                     tfill_spp_bins$species == "Elmidae sp. B-ACG2297"]
+tfill$species[tfill$asv_code %in% asvi] <- "Notriolus sp. B-ACG2297"
+
+# ACN2323 "Hellyethira basilobata"     "Orthotrichia sp. B-ACN2323" Orthotrichia (3)
+asvi <- tfill_spp_bins$asv_code[!is.na(tfill_spp_bins$bin_uri) & 
+                     tfill_spp_bins$bin_uri == "ACN2323" & 
+                     tfill_spp_bins$species == "Hellyethira basilobata"]
+tfill$species[tfill$asv_code %in% asvi] <- "Orthotrichia sp. B-ACN2323"
+
+# ADJ9699 "Limnodrilus hoffmeisteri" "Naididae sp. B-ADJ9699"  Naididae (2)
+asvi <- tfill_spp_bins$asv_code[!is.na(tfill_spp_bins$bin_uri) & 
+                     tfill_spp_bins$bin_uri == "ADJ9699" & 
+                     tfill_spp_bins$species == "Limnodrilus hoffmeisteri"]
+tfill$species[tfill$asv_code  %in% asvi] <- "Naididae sp. B-ADJ9699"
+
+# AEV0976 "Simuliidae sp. B-AEV0976" "Simulium sp. B-AEV0976"  Simuliidae (corrected in previous script with manual grouping)
+asvi <- tfill_spp_bins$asv_code[!is.na(tfill_spp_bins$bin_uri) & 
+                     tfill_spp_bins$bin_uri == "AEV0976" & 
+                     tfill_spp_bins$species == "Simulium sp. B-AEV0976"]
+tfill$species[tfill$asv_code %in% asvi] <- "Simuliidae sp. B-AEV0976"
+
+# ABX3905 "Trinotoperla nivata" (4), "Trinotoperla montana" (2) )
+asvi <- tfill_spp_bins$asv_code[!is.na(tfill_spp_bins$bin_uri) & 
+                     tfill_spp_bins$bin_uri == "ABX3905" & 
+                     tfill_spp_bins$species == "Trinotoperla montana"]
+tfill$species[tfill$asv_code %in% asvi] <- "Trinotoperla sp. B-ABX3905"
+
+tfill_spp_bins$species <- tfill$species[match(tfill_spp_bins$asv_code, tfill$asv_code)]
+tfill_spp_bins_unq <- unique(tfill_spp_bins[,2:3])
+tfill_spp_bins_unq <- tfill_spp_bins_unq[!is.na(tfill_spp_bins_unq$bin_uri),]
+
+# Formally named groups created after running the loop below first (identified in form_gps)
+n_unq <- function(x) length(unique(x))
+spp_per_bin <- aggregate(tfill_spp_bins_unq$species, by = list(bin_uri = tfill_spp_bins_unq$bin_uri), FUN = n_unq)
+# The above process has created multiple names for some bin_uris. Here, find them, check they all share the first word, and then give them the same (temporary) name.
+# keep formally named groups and inconsistently named groups for later consideration
+form_gps <- inc_gps <- list()
+for(i in which(spp_per_bin$x > 1)){
+  spi <- unique(tfill_spp_bins$species[!is.na(tfill_spp_bins$bin_uri) & 
+                                         tfill_spp_bins$bin_uri == spp_per_bin$bin_uri[i]])
+  if(spp_per_bin$bin_uri[i] == "AAX5636") stop("1")
+  # Check all first words are the same
+  if(length(unique(sapply(strsplit(spi," "),"[[",1))) != 1)  inc_gps <- c(inc_gps, list(spi))
+  # Check if there is a non-B species name, if so, use that - if not, use the first name
+  # first check no more than one non-B species name
+  if(sum(!grepl(" B-", spi)) > 1)  form_gps <- c(form_gps, list(spi))
+  if(sum(!grepl(" B-", spi)) == 1){
+    tfill$species[tfill$species %in% spi] <- spi[!grepl(" B-", spi)]
+  }else{
+    tfill$species[tfill$species %in% spi] <- spi[1]
+  }
+}
+# After the above corrections were applied form_gps and inc_gps are now empty.
+
+tfill_spp_bins$species <- tfill$species[match(tfill_spp_bins$asv_code, tfill$asv_code)]
+tfill_spp_bins_unq <- unique(tfill_spp_bins[,2:3])
+tfill_spp_bins_unq <- tfill_spp_bins_unq[!is.na(tfill_spp_bins_unq$bin_uri),]
+
+spp_per_bin <- aggregate(tfill_spp_bins_unq$species, by = list(bin_uri = tfill_spp_bins_unq$bin_uri), FUN = n_unq)
+max(spp_per_bin$x) # 1 - so only one name per bin. Good! (It took a bit of effort to get there!)
+```
+
+```{r}
+bins_per_sp <- aggregate(tfill_spp_bins_unq$bin_uri, by = list(species = tfill_spp_bins_unq$species), FUN = length)
+# Any taxa named a group with only one bin_uri
+bins_per_sp[bins_per_sp$x == 1 & grepl("group", bins_per_sp$species),]  # None. Good.
+
+# Any group of bins with one formal species name leave it as the formal name
+# Only one such species is already named group. (p1 Nais communis group)
+p1 <- bins_per_sp[bins_per_sp$x > 1 & grepl("group", bins_per_sp$species) & 
+              !grepl("B-", bins_per_sp$species),] 
+# "B"- species names with more than one bin.
+bin_spp_groups <- bins_per_sp[bins_per_sp$x > 1 & 
+                  grepl("B-", bins_per_sp$species),]  # 53 
+for(i in 1:nrow(bin_spp_groups)){
+# Make new_name = the existing name (in preparation for changing it necessary)
+  new_name <- bin_spp_groups$species[i]
+  gp_bins_i <- tfill_spp_bins_unq[tfill_spp_bins_unq$species == bin_spp_groups$species[i],]
+  #if the species names has just 2 bin_uris
+  if(bin_spp_groups$x[i] == 2){
+    # If the name already has a slash...
+    if(grepl("/",bin_spp_groups$species[i])){
+      # if the bin_uris in the name are right leave it and move on - if not stop for now...
+      if(!(grepl(gp_bins_i$bin_uri[1],gp_bins_i$species[1]) & 
+           grepl(gp_bins_i$bin_uri[2],gp_bins_i$species[1]))){
+        stop("1")
+      }
+# and if the name doesn't have a slash, create a new 'slash' name.
+    }else{
+      bin_i <- right(bin_spp_groups$species[i],7)
+      bin_i2 <- gp_bins_i$bin_uri[gp_bins_i$bin_uri != bin_i]
+      sp_trunk_i <- substr(bin_spp_groups$species[i],1, nchar(bin_spp_groups$species[i]) - 7)
+      # If the existing name doesn't match either of the bin_uris, stop for now...
+      if(!bin_i %in% gp_bins_i$bin_uri){
+        stop("2")
+      }else{
+        # Otherwise make new_name a new 'slash' name
+        new_name <- paste0(sp_trunk_i, bin_i,"/",bin_i2)
+      }
+    }
+    # and if the species names has more than 2 bin_uris
+  }else{
+        # If the name has a slash, rename it a group 
+    if(grepl("/",bin_spp_groups$species[i])){
+      sp_trunk_i <- substr(new_name, 1, nchar(new_name) - 8)
+      new_name <- paste(sp_trunk_i, "group")
+            # but if this new name does not match one of the bin_uris, stop for now...
+      if(!right(sp_trunk_i,7) %in% gp_bins_i$bin_uri)
+              stop("3")
+    }else{
+        # if no slash and if the bin_uri in the name doesn't match any of the bin_uris, stop for now...
+      bin_i <- right(bin_spp_groups$species[i],7)
+      if(!bin_i %in% gp_bins_i$bin_uri){
+        stop("4")
+      }else{
+        # otherwise, just add group the existing name to make new_name
+        new_name <- paste(new_name, "group")
+      }
+    }
+  }
+  tfill_spp_bins_unq$species[tfill_spp_bins_unq$species == bin_spp_groups$species[i]]  <- new_name
+  tfill_spp_bins$species[tfill_spp_bins$species == bin_spp_groups$species[i]]  <- new_name
+  tfill$species[tfill$species == bin_spp_groups$species[i]]  <- new_name
+}
+
+# Check that tfill and tfill_spp_bins are consistent.
+for(i in 1:nrow(tfill_spp_bins)){
+  if(tfill$species[tfill$asv_code == tfill_spp_bins$asv_code[i]] != tfill_spp_bins$species[i])
+    stop("Check")
+}
+tfill_spp_bins_unq <- unique(tfill_spp_bins[,c("species","bin_uri")])
+
+check <- tfill_spp_bins[!grepl("group", tfill_spp_bins$species) & 
+                          !grepl("/", tfill_spp_bins$species) & 
+                          grepl("B-", tfill_spp_bins$species),]
+wronguns <- check[!is.na(check$bin_uri) & check$bin_uri != right(check$species,7),]
+# Zero wronguns ...run the following if wronguns return....
+# unq_wronguns <- unique(wronguns$species)
+# for(i in 1:length(unq_wronguns)){
+#   pot_group_i <- tfill_spp_bins_unq[tfill_spp_bins_unq$species == unq_wronguns[i],]
+#   if(nrow(pot_group_i) == 2 & sum(pot_group_i$bin_uri == right(pot_group_i$species,7)) == 1){
+#     group_name_i <- paste0(substr(unq_wronguns[i],1,nchar(unq_wronguns[i]) - 7),
+#                             pot_group_i$bin_uri[1], "/", pot_group_i$bin_uri[2])
+#     tfill_spp_bins_unq$species[tfill_spp_bins_unq$species == unq_wronguns[i]] <- group_name_i
+#     tfill$species[tfill$species == unq_wronguns[i]] <- group_name_i
+#     wronguns <- wronguns[wronguns$species != unq_wronguns[i],]
+#     }
+#   if(nrow(pot_group_i) > 2 & sum(pot_group_i$bin_uri == right(pot_group_i$species,7)) == 1){
+#     group_name_i <- paste0(unq_wronguns[i], " group")
+#     tfill_spp_bins_unq$species[tfill_spp_bins_unq$species == unq_wronguns[i]] <- group_name_i 
+#     tfill$species[tfill$species == unq_wronguns[i]] <- group_name_i
+#     wronguns <- wronguns[wronguns$species != unq_wronguns[i],]
+#   }
+# }
+
+# sum(tfill$species != tfill$species_old)  # 1893 records have had their species name changed
+# changed_species <- unique(tfill[tfill$species != tfill$species_old, c("species","species_old")])
+# nrow(changed_species)  #246 species names changed.
+# sum(grepl("Zavrelimyia", changed_species$species)) # including 13 distinct Zavrelimyia groups. More than before?
+```
+
+[MEL: A shortcoming of the process I have taken here is that I am unable to check asv_codes that do not have a match to the bold database. The following chunk finds the asv_codes of records without a matching bin_uri that have been given a species name that has matches to the BOLD database for other records. There are 387 of them. The Nothocyphon frater records look a bit odd to me, as does the single record of Aulodrilus pluriseta (among others) - maybe they're ok,  but I thought it worth bringing them to your attention. The following chunk can be removed ultimately, but it should stay until we are convinced these 387 records are right]
+
+```{r}
+# 387 asv_codes in the same group have NA bin_uri. is that ok?
+# This code finds those entries, returns the nearest matches returned by BOLD, with the
+# three most common names used by BOLD and the maximum similarity returned by bold
+# The bin_uri column returns the bin_uri values of other tfill records that have been given 
+# the same species name
+seq_no_match_to_bold_sp <- tfill_spp_bins[0,]
+unq_spp <- unique(tfill$species)
+for(i in 1:length(unq_spp)){
+  sp_bin_i <- tfill_spp_bins[tfill_spp_bins$species== unq_spp[i],]
+  if(sum(is.na(sp_bin_i$bin_uri)) > 0 & sum(is.na(sp_bin_i$bin_uri)) < nrow(sp_bin_i)){
+    seq_no_match_to_bold_sp <- rbind(seq_no_match_to_bold_sp, sp_bin_i[is.na(sp_bin_i$bin_uri),])
+  }
+}
+seq_no_match_to_bold_sp$bold_id3 <- seq_no_match_to_bold_sp$bold_id2 <- seq_no_match_to_bold_sp$bold_id1 <- NA
+seq_no_match_to_bold_sp$max_sim <- NA
+for(i in 1:nrow(seq_no_match_to_bold_sp)){
+  bin_uri_other_records <- 
+    unique(tfill_spp_bins$bin_uri[tfill_spp_bins$species == seq_no_match_to_bold_sp$species[i]])
+  bin_uri_other_records <- bin_uri_other_records[!is.na(bin_uri_other_records)]
+  seq_no_match_to_bold_sp$bin_uri[i] <- paste(bin_uri_other_records, collapse = ", ")
+bold_match_i <- match_list[seq_no_match_to_bold_sp$asv_code[i]][[1]]
+if(nrow(bold_match_i) > 0){
+bold_names_i <- aggregate(bold_match_i$taxonomicidentification, 
+                  by = list(species = bold_match_i$taxonomicidentification), FUN = length)
+bold_names_i <- bold_names_i[order(bold_names_i$x, decreasing = TRUE),]
+seq_no_match_to_bold_sp$bold_id1[i] <- bold_names_i$species[1]
+if(nrow(seq_no_match_to_bold_sp) > 1)
+seq_no_match_to_bold_sp$bold_id2[i] <- bold_names_i$species[2]
+if(nrow(seq_no_match_to_bold_sp) > 3)
+seq_no_match_to_bold_sp$bold_id3[i] <- bold_names_i$species[3]
+seq_no_match_to_bold_sp$max_sim[i] <- max(bold_match_i$similarity)
+}
+}
+WriteXLS::WriteXLS(seq_no_match_to_bold_sp, "~/temp/seq_no_match_to_bold_sp.xlsx")
+# Corrections from Mel that have not come across cleanly to tfill
 
 
-The bit of the script looking for pot_complexes turned up a few groups worth looking into further, I think.  (pot_complexes saved a csv file at "~/uomShare/wergStaff/ChrisW/temp/pot_complexes.csv"). Here's what I think, working down the not particularly long table:
-AAX5275 - is shared across two species of different genera and an unidentified Clitellata specimen (asv_code 274d742e3ee489202dab4da510b8787a). I suspect this is one you've decided is a problem with dodgy BIN codes. If that is the case, we should document that in this qmd file. It matches two different species in different genera. I suspect the Limnodrilus hoffmeisteri is the incorrect identification and identification of Bothrioneurum vejdovskyanum is correct. This is due to Bothrioneurum vejdovskyanum being identified by a taxonomic expert. Limnodrilus hoffmeisteri has many other records not associated with the BIN and the sequence was mined from GenBank  I have added this correct the asv_correction_library.Rmd.
-Atalophlebia sp. B-ABV8729 group and Atalophlebia sp. B-ABV3545 group overlap a lot. Combine? Atalophlebia sp. B-ABV8733 and Atalophlebia sp. B-ABV8739 overlap. Combine? Let’s combine I have changed ‘complexes’ so all fall under the name Atalophlebia sp. B- ABV8729 group.
-- should it just be Centroptilum elongatum or is Centroptilum sp. B-ACM3150 really a separate species or should they be a group? same, added name correction Centroptilum sp. B-ACM3150 = Centroptilum elongatum 
-AAT8936 - two separate genera ...another BOLD problem? (if so document decision) Cognettia sphagnetorum and Cognettia chlorophila all overlap. I have this to the ‘complexes’ table as Cognettia chlorophila/sphagnetorum. Records c2fb64f0e662b5db32c11ee187a9bd0f and c4e01d5fa4513318a1be2a00899d6e1a are not Chamaedrilus varisetosus they are Cognettia chlorophila/sphagnetorum. I have added these to the corrections to tfiil species and genus
+```
 
-ACV9482 - Cricotopus tasmania or a group with Cricotopus sp. B-ACQ6787? No. dfde7b1be822b7bc262c5802de893bef is Cricotopus tasmania not Cricotopus sp. B-ACQ6787. I have added these to the corrections to tfiil species.
-ACS3851 - Cryptochironomus sp. B-ACS4478/ACS3865 seems an odd name for this group? There is some overlap between ACS3851/ACS4478/ACS3865. I’ll collapse these into a group. Now in ‘complexes’ spreadsheet
-ACG2297 – Elmidae – some incorrect assignments of ACG2296 as ACG2297 changes added "7f15bdde33a25d1d333699264f073d37" = "Notriolus sp. B-ACG2297",
-"f6ba88fdb937e5c233ff1acef9dc399b" = "Notriolus sp. B-ACG2297",
-"7f15bdde33a25d1d333699264f073d37" = "Notriolus",
-"f6ba88fdb937e5c233ff1acef9dc399b" = "Notriolus",
 
-Ferrissia sp. B-AAE6642, Ferrissia sp. B-AAY1880 group, Ferrissia sp. B-ADR3550 group combine as groups overlap now called ‘Ferrissia sp. B-AAY1880 group’ all added to ‘complexes’
+Recompile final ASV_library tables, adding back in the non-macroinvertebrate, non-aquatic species removed before the above BOLD matches, adding a column "cw_checked" to identify those records that have been checked by the above processes (cw_checked = 1), and species excluded by the only_aqu_inverts() function (cw_checked = 0)
 
-One incorrect Fridericia pretoriana  id ‘d54cf91de2a56cbde204c32eea369742" = "Fridericia sp. B-ADR5065”
+```{r}
+# separate the records originally taken from the max_p_update sheet (imported as x4 above)
+max_p_update <- tfill[tfill$asv_code %in% max_p_update_df$asv_code,]
+tfill_t <- tfill[!tfill$asv_code %in% max_p_update_df$asv_code,]
 
-One  incorrect ‘Galerucinae sp. B-ABX9821 id "2b943424b95aee577e27aa221cf57118" = "Galerucinae sp. B-ABA9962
+tfill_non_am <- tfill_all[!tfill_all$asv_code %in% tfill_t$asv_code & 
+                            !tfill_all$asv_code %in% max_p_update_df$asv_code,]
+tfill_non_am$cw_checked <- 0 
+tfill_non_am <- dplyr::mutate(tfill_non_am, species_old = tfill_non_am$species, genus_old = tfill_non_am$genus, 
+                              family_old = tfill_non_am$family, genus_recode = 0, family_recode = 0,
+                              no_bin_match = NA,
+                              .before = cw_checked)
+tfill_non_am <- tfill_non_am[!duplicated(tfill_non_am$asv_code),]
+tfill_t <- rbind(tfill_t, tfill_non_am)
 
-Could not find an issue with Hydrobiosella perangusta and Hydrobiosella waddama seem to be distinct groups
+max_p_update_non_am <- tfill_all[!tfill_all$asv_code %in% tfill_t$asv_code & 
+                                   !tfill_all$asv_code %in% max_p_update$asv_code & 
+                                   tfill_all$asv_code %in% max_p_update_df$asv_code,]
+max_p_update_non_am$cw_checked <- 0 
+max_p_update_non_am <- dplyr::mutate(max_p_update_non_am, species_old = max_p_update_non_am$species, 
+                                     genus_old = max_p_update_non_am$genus, 
+                              family_old = max_p_update_non_am$family, 
+                              genus_recode = 0, family_recode = 0,
+                              no_bin_match = NA,
+                              .before = cw_checked)
+max_p_update <- rbind(max_p_update, max_p_update_non_am)
 
-Made new complex "Koorrnonga sp. B-ABV9140/ABV9142"
+nrow(max_p_update) + nrow(tfill_t) #15596 = number of rows in tfill_all
 
-Corrected identifications for ADJ9699 and ADJ8523
-“00b75095625dec00f84aaf4bd35f7561" = "Naididae sp. B-ADJ9699",
-"8274abe141342580cb6f742678bb269f" = "Naididae sp. B-ADJ9699"
-"c5f8109e46eebba439317d8eabd7c043" = "Naididae sp. B-ADJ9699",
-"cfc29e6b343c7f58f485f311fa3cbb6e" = "Naididae sp. B-ADJ9699",
-Limnophila sp. B-ABX1092 is Limnodrilus hoffmeisteri (mistake in code fixed) 
-Lingora sp. B-AAY5550/ADF2103 add ACC8619 to complex new name Lingora sp. B-AAY5550 group
-Nais variabilis and to Nais communis group
+wd <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/"
+WriteXLS::WriteXLS(list(truncated_fills = tfill_t, 
+                        max_p_update = max_p_update,
+                        bin_uris = tfill_spp_bins_unq),
+                        ExcelFileName = paste0(wd, "asv_library_cw_corrected.xlsx"))
 
-Nais pseudobtusa/ Nais elinguis new complex Nais elinguis/pseudobtusa
-
-Some Psychoda gemina were Psychoda sp. B-AAU4648 record updated
-"eb8a6ac51ba6e4ec934d77dfe7093571" = "Psychoda sp. B-AAU4648",
-"c85fa78fa52e9d30ea72015607998944" = "Psychoda sp. B-AAU4648",
-"af2ad7276ba40e03989a485856d1b0b8" = "Psychoda sp. B-AAU4648",
-"a88b8fa7362a69b12d30503dc0e0d40a" = "Psychoda sp. B-AAU4648",
-"9b4fd984d9ce6d3a02d16b014004f6e6" = "Psychoda sp. B-AAU4648",
-"81987c57de8c8f22484fc7fec4968faa" = "Psychoda sp. B-AAU4648",
-"91718ad5f4ac2909fc4dabf3b7f83058" = "Psychoda sp. B-AAU4648",
-"3b9fa04c8f620038fb9bace9f1512db2" = "Psychoda sp. B-AAU4648",
-
- New complex Rheumatometra dimorpha/philarete. Probably two species but too many discrepancies in naming to be sure so will combine.
-
-Schizonyxhelea sp. B-ABX1780/ ADT1789/ AFV6727 new complex Schizonyxhelea sp. B-ABX1780 group
-
-Simuliidae sp. B-AEV0976/AEV6641 already in complexes
-
-Tanytarsus sp. B-AAF0821 = Tanytarsus fuscithorax
-"f0671dc5cb44b617842a1e84dba330c0" = "Tanytarsus fuscithorax"
-
-Trinotoperla sp. B-ABX3905 = Trinotoperla sp. B-ABX3905 group added to complexes
-
-Agreed Zavrelimyia is a nightmare. Decided to lump to two groups Zavrelimyia sp. B-AEN0522/AEN0524 (seems distinct from others) and everything else is Zavrelimyia sp. B-ACQ7611 group
-
+# # tfill <- readxl::read_excel(paste0(wd,"asv_library_cw_corrected.xlsx"), sheet = "asv_library")
+# max_p_update <- readxl::read_excel(paste0(wd,"asv_library_cw_corrected.xlsx"), sheet = "max_p_update")
+# bin_uris <- readxl::read_excel(paste0(wd,"asv_library_cw_corrected.xlsx"), sheet = "bin_uris")
+# load(paste0(wd, "asv_library_97_match_list_with_bin_uris_2024-12-11.rda"))
+# match_list_bin_uri[tfill$asv_code[1]]
+# tfill$asv_code[1]
+```
