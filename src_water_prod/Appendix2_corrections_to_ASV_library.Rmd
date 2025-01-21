@@ -16,9 +16,8 @@ left <- function(x, n) {substr(x, 1, n)}
 
 ## Introduction
 
-This document amends the file 'asv_library_97_aug24.xlsx' [MEL: can you describe how this file was generated? Are there scripts or was it all in excel?] by:  
-
-- adding records from subsequent miSeq runs [MEL: is this the right way to describe the origin of the addition records?];
+This document amends the file 'asv_library_97_aug24.xlsx' [MEL: can you describe how this file was generated? Are there scripts or was it all in excel? CHRIS: The initial file was generated in excel] by:  
+- adding records from subsequent miSeq runs [MEL: is this the right way to describe the origin of the addition records? CHRIS: The additional records were from subsequent miSeq runs];
 
 - correcting spelling errors in taxonomic names;
 
@@ -35,12 +34,10 @@ First, primary data from 'asv_library_97_aug24.xlsx' spreadsheets
 
 ## [MEL: please note I have copied the source files this script needs to the new folder asv_source_files. The should only ever be read and not edited from now on. All other asv_library files can be removed from the main metabarcoding_workflow folder, I think!, and this script creates a new asv_library file that can be further corrected/updated as we find errors in the script.  THERE IS NO NEED TO BE MAKING AND SAVING MULTIPLE VERSIONS - if the source files remain unchanged, this script will do the necessary changes to the final file]
 
-source_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/"
-source_file <- "asv_library_97_aug24.xlsx"
-
 # Read the sheets into as dataframes
 tf0 <- as.data.frame(readxl::read_excel(paste0(source_path,source_file), 
-                                        sheet = "truncated_fills"))  
+      sheet = "truncated_fills"))  
+
   # contains full taxonomic information for classifications with truncated taxonomy
 otu_groups_df <- 
   as.data.frame(readxl::read_excel(paste0(source_path,source_file), 
@@ -51,7 +48,8 @@ mp0 <- as.data.frame(readxl::read_excel(paste0(source_path,source_file),
  # remove a duplicate record
 mp0 <- mp0[!duplicated(mp0),]
   #updates/corrects any missing identifications or errors in classification
-# [MEL: I don't really get your explanation of what max_p_update is for...can you rephrase?]
+# [MEL: I don't really get your explanation of what max_p_update is for...can you rephrase? CHRIS: The max-p-update corrects taxonomic identifications and max-p-identity for asv's with incorrect identifications resulting from identification errors in the vsearch reference library and also adds taxonomic identifications and max-p-identity for species not in the vsearch reference library (i.e., specimens sequenced after the vsearch library was assembled)]
+
 complexes_df <- readxl::read_excel(paste0(source_path,source_file),
                                        sheet = "complexes")
 
@@ -59,7 +57,7 @@ complexes_df <- readxl::read_excel(paste0(source_path,source_file),
 
 Then, additional data from:
 
-- additions_asv_library_oct24.xlsx (additional records for truncated_fills); [MEL: can you describe where these additional records come from?]
+- additions_asv_library_oct24.xlsx (additional records for truncated_fills); [MEL: can you describe where these additional records come from? CHRIS: These are records found requiring updating after the 'asv_library_97_aug24.xlsx' was constructed]
 
 - asv_library_97_add_miseq15-20_records.csv (additional records for truncated_fills  from miSeq runs 15-20 with species identifications that match those in the above source tables for truncated_fills);
 
@@ -78,23 +76,23 @@ truncated_fills_df <- rbind(tf0, tf1, tf2)
 
 # Additional max_p_update records
 mp1 <- read.csv(paste0(source_path, "filtered_97_data.csv"))
-# [MEL: see email about what I have assumed needed doing here and correct as necessary]
+# [MEL: see email about what I have assumed needed doing here and correct as necessary CHRIS: I have responded to this in an e-mail. Sorry]
 # update max_p_identify for those records with a corrected value
 mp1$max_p_identity[!is.na(mp1$max_p_identity_corrected)] <- 
   mp1$max_p_identity_corrected[!is.na(mp1$max_p_identity_corrected)]
-# [MEL: species names for those records are updated below - I have not used the 'recomended_species_name' field: see my email
+# [MEL: species names for those records are updated below - I have not used the 'recomended_species_name' field: see my email CHRIS: I have seen your e-mail and was unclear what the issue was?)
 # Combine the source tables into a new table, but replace records in mp0 with those in mp1 where there are duplicates
 max_p_update_df <- rbind(mp0[!mp0$asv_code %in% mp1$asv_code,], 
                          mp1[match(names(mp0),names(mp1))])
 
 # Keep max_p_update_df records and remove matching records from truncated_fills
-# [MEL: as per my email, is this the right thing to do?]
+# [MEL: as per my email, is this the right thing to do? CHRIS: remove duplicates from the truncated_fills_df]
 truncated_fills_df <- truncated_fills_df[!truncated_fills_df$asv_code %in%
                                            max_p_update_df$asv_code,]
 
 # replace "" with NA throughout
 # [MEL: perhaps this will cause a problem with your 06 script? It is more usual to 
-#  use NA for missing values....let me know if it is a problem]
+#  use NA for missing values....let me know if it is a problem CHRIS: I don't think it will be an issue]
 truncated_fills_df[truncated_fills_df == ""] <- NA
 max_p_update_df[max_p_update_df == ""] <- NA
 
@@ -102,7 +100,7 @@ max_p_update_df[max_p_update_df == ""] <- NA
 sum(duplicated(truncated_fills_df$asv_code)) # 2 - not good
  # Remove the one complete duplicate
 truncated_fills_df <- truncated_fills_df[!duplicated(truncated_fills_df),]
- # [MEL: you need to decide which of the following need to be removed
+ # [MEL: you need to decide which of the following need to be removed. CHRIS: The duplicates are both truncated_fills_df and asv duplicated is 0a50789e3a9a9ee30d85a361ac7da535. Correct? The removed has a max-p-identity of 100. Not following below at this point?)
 truncated_fills_df[duplicated(truncated_fills_df$asv_code) | 
                   duplicated(truncated_fills_df$asv_code, fromLast = TRUE),]
  # I have assumed the one with max_p_identity = 98.0 (Just change 99.3 to 98.0 if I have guessed wrong)
@@ -111,20 +109,20 @@ truncated_fills_df <-
                         truncated_fills_df$max_p_identity == 99.3),]
 sum(duplicated(c(truncated_fills_df$asv_code, max_p_update_df$asv_code))) # 0 - good
 
-#[MEL: this is a weird non-aquatic entry that you corrected family and genus in two different places in your script. 
+#[MEL: this is a weird non-aquatic entry that you corrected family and genus in two different places in your script. CHRIS: This would just be a duplication of the code. I think. It was likely something that identified as an invertebrate but was not)
 # Here I also correct the other taxonomic levels, but I really don't want to be messing around with non-aquatic species.
-# Are you sure this is right.  IT IS VERY ODD!]
+# Are you sure this is right.  IT IS VERY ODD! CHIRS: This is how BOLD identifies this asv] 
 truncated_fills_df[truncated_fills_df$asv_code == "9ca9760013a77462d9c5e2c942e4d27e",
                    c("phylum","class","order","family","genus")] <- 
                 c("Heterokontophyta","Oomycota","Peronosporales", "Peronosporaceae", "Phytophthora")
 
-#[MEL: in your Appendix 2 script, you deleted these three records. I haven't done so here - they look alright to me.  
+#[MEL: in your Appendix 2 script, you deleted these three records. I haven't done so here - they look alright to me. CHRIS: there was something odd with these records so I revert to the taxonomic identifications given by vsearch (as I only produced the asv tables to correct errors). These records no species match on BOLD.]
 # If you are sure they need to go, then delete the following command and uncomment the commented out lines below
 # (this will change my reported line counts in the docment below)]
 truncated_fills_df[truncated_fills_df$asv_code %in% c("9725daabf323ef5cf9b512ee0b06f682", 
                                                      "160985800d21d905b2e3dff1edc1bf18", 
                                                      "238f54c32343060e69613167f345dd15"),]
-# [MEL: code for deleting them if you are sure they really should be deleted]
+# [MEL: code for deleting them if you are sure they really should be deleted. CHRIS: I think that they should be deleted. Thi means they will appear in the miseq data as asv without a species identification]
 # truncated_fills_df <- truncated_fills_df[!truncated_fills_df$asv_code %in% c("9725daabf323ef5cf9b512ee0b06f682", 
 #                                                      "160985800d21d905b2e3dff1edc1bf18", 
 #                                                      "238f54c32343060e69613167f345dd15"),]
@@ -164,7 +162,7 @@ tfill <- only_aqu_inverts(tfill_all,
                           non_aqu_macro_invert_already_loaded = TRUE)$include #11,975 records
 # And exclude two additional records only identified to phylum (Arthropoda and Zygomycota)
 tfill <- tfill[!is.na(tfill$species),]  #11,973 records
-#[MEL: are you also happy to leave Isopoda sp. MC-1 out of aquatic consideration?]
+#[MEL: are you also happy to leave Isopoda sp. MC-1 out of aquatic consideration? CHRIS: It ambiguous as to whether it is aquatic or not so it can be omitted]
 tfill <- tfill[tfill$species != "Isopoda sp. MC-1",] #11,953 records
 
 ```
@@ -214,9 +212,9 @@ tfill$species[tfill$species == "Riethia zeylandica"] <- "Riethia sp. B-ADU5431"
 # [MEL: As you noted "Riethia zeylandica is not found in Australia": the above is a temporary name to be grouped below]
 tfill$species[tfill$species == "Notalina bifara group B-ABV8023"] <- "Notalina bifara"
 tfill$species[tfill$species == "Notalina sp. B-AAX5636"] <- "Notalina bifara"
-# [MEL: Perhaps you want to call this "Notalina bifara group"? (the two bin_uris overlap...you had originally called this "Notalina bifara  B-ABV8023 group"!)]
+# [MEL: Perhaps you want to call this "Notalina bifara group"? (the two bin_uris overlap...you had originally called this "Notalina bifara  B-ABV8023 group"!) CHRIS: That's fine.]
 tfill$species[tfill$species == "Ferrissia sp. MC-1"] <- "Ferrissia sp. B-AAE6642"
-# [MEL: You had renamed this "Ferrissia sp. B-AAY1880" group" but it only matches "ADR7371", "AAE6642" and "ADR3550". There is no AAY1880 in the library dataset. Are you happy for this to be called "Ferrissia sp. B-AAE6642 group"?)]
+# [MEL: You had renamed this "Ferrissia sp. B-AAY1880" group" but it only matches "ADR7371", "AAE6642" and "ADR3550". There is no AAY1880 in the library dataset. Are you happy for this to be called "Ferrissia sp. B-AAE6642 group"?) CHRIS: Yes.]
 
 # [MEL: the spelling corrections in your Appendix 2 of species with B- names are taken care of automatically below.
 #       Some have ended up using different bin_uris than their original names, but I don't think this matters (the 
@@ -224,7 +222,7 @@ tfill$species[tfill$species == "Ferrissia sp. MC-1"] <- "Ferrissia sp. B-AAE6642
 #       ...unless I've made a mistake somewhere...
 # tfill$species[tfill$species == "Trinotoperla sp. complex B-ABX3905"] <- "Trinotoperla sp. B-ABX3905 group"
 #  ...as far as I can tell, there is no other bin_uris overlap with ABX3905
-# ]
+# CHRIS: One BIN but many names Trinotoperla nivata, Trinotoperla montana, Trinotoperla minor, Trinotoperla sp. Group A, Trinotoperla sp. JMH879, hence why 'group' was added. How do you want to deal with this?]
 ```
 
 The following was run using the bold package V1.3.0 to download from the boldsystems API  before their upgrade at the end of 2024. The script thus includes steps to allow for errors arising from exceeding download quotas from bold.  It involves two steps:
@@ -403,7 +401,7 @@ tfill$species[tfill$species == "Isopoda sp. B-ACG3222"] <-
                                                   "Sphaeromatidae sp. B-ACG3222"
 ```
 
-[MEL: here are some comments on changes in your earlier Appendix 2. FYI. This chunk can be deleted if you are happy]
+[MEL: here are some comments on changes in your earlier Appendix 2. FYI. This chunk can be deleted if you are happy CHRIS: Not sure what you mean here? Are these errors are addressed elsewhere so this chunk can be deleted?]
 ```{r}
 asv_family_corrections_tf <- c("b167c9e6e63d586c8f79138f640da0cb" = "Eustheniidae",
   # taken care of automatically below.
@@ -429,7 +427,7 @@ asv_max_p_identity_corrections_mpu <- c("a3b763c11784ab20ccb6053c998cd0e4" = "97
 
 # add corrections to revised matches  
 [MEL: I'm not crazy about this matching by asv_codes, but I don't understand enough about these changes to revise them in a safer way.
-Can you tell me where you got these values from?
+Can you tell me where you got these values from? CHRIS: from check against BOLD or GenBank
 I've left them as they are, but have changed the code for making the changes from dplyr to base code]
 ```{r}
 max_p_identity_corrections <- c("9e5035bf7ec6a1f2c651ed0e98ed2da7" = "96.6",
@@ -620,7 +618,7 @@ for(i in 1:nrow(bnc_df)){
 }
 
 # [MEL: The above makes the changes in your asv_code species-change chunk but applies the changes to all 
-#       records that have the same bin_uris (some of which were missed by your code). Is my logic sound?
+#       records that have the same bin_uris (some of which were missed by your code). Is my logic sound? CHRIS: Yes. I am happy with what you have done here.
 #       Do the last three satisfy your concern that you wrote some time ago - as follows:
 #  "I suspect the Limnodrilus hoffmeisteri is the incorrect identification and identification of 
 #   Bothrioneurum vejdovskyanum is correct. This is due to Bothrioneurum vejdovskyanum being identified 
