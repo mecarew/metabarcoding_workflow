@@ -208,6 +208,13 @@
 3,"family","Anystidae","Whirligig mites","likely terrestrial",0
 3,"family","Anthomyiidae","Muscoid flies","terrestrial",0
 3,"family","Microtrombidiidae","Velvet mites","mainly terrestrial or parasitic",0
+3,"family","Punctidae","dot snails","terrestrial",0
+3,"family","Acanthosomatidae","shield bugs","terrestrial",0
+3,"family","Coccidae","scale insects","terrestrial",0
+3,"family","Diaspididae","scale insects","terrestrial",0
+3,"family","Eupodidae","Trombidiform mites","probably terrestrial",0
+3,"family","Triophtydeidae","Tydeoid mites","probably terrestrial",0
+3,"family","Enchytraeidae","Partly terrestrial oligochaete family","Many terrestrial species (definitely aquatic taxa included below)",0
 4,"genus","Paropsisterna","leaf beetles","non-aquatic",0
 4,"genus","Melanterius","flower weevil (?)","non-aquatic",0
 4,"genus","Meliscaeva","terrestrial hoverfly (?)","non-aquatic",0
@@ -222,6 +229,10 @@
 4,"genus","Mecyclothorax","terrestrial Carabid beetle","terrestrial",0
 4,"genus","Xanthogaleruca","Elm-leaf Chrysomelid beetle","terrestrial",0
 4,"genus","Thyreocephalus","rove beetle","terrestrial genus of Staphylinidae",0
+4,"genus","Eisenia","earthworms","terrestrial",0
+4,"genus","Pterostichus","ground beetle","terrestrial",0
+4,"genus","Paederus","Rove beetles","terrestrial",0
+4,"genus","Spanioda","terrestrial staphylinids","terrestrial",0
 5,"species","Arcitalitrus sylvaticus","land hopper (terrestrial amphipod)","non-aquatic",0
 5,"species","Rhopalosiphum padi","aphid","non-aquatic",0
 5,"species","Apis mellifera","honey bee","non-aquatic",0
@@ -232,9 +243,11 @@
 4,"genus","Listronotus","aquatic weevil","NOT EXCLUDED: aquatic genus",1
 4,"genus","Eristalis","aquatic hoverfly","NOT EXCLUDED: aquatic genus",1
 4,"genus","Platynothrus","aquatic sarcoptiform oribatid mite genus","NOT EXCLUDED: aquatic genus",1
-3,"family","Punctidae","dot snails","terrestrial",0
-3,"family","Acanthosomatidae","shield bugs","terrestrial",0
-4,"genus","Eisenia","earthworms","terrestrial",0
-3,"family","Coccidae","scale insects","terrestrial",0
-3,"family","Diaspididae","scale insects","terrestrial",0
-4,"genus","Pterostichus","ground beetle","terrestrial",0
+4,"genus","Cognettia","aquatic Enchytraeid oligochaetes","NOT EXCLUDED: aquatic genus",1
+4,"genus","Chamaedrilus","aquatic Enchytraeid oligochaetes","NOT EXCLUDED: aquatic genus",1
+5,"species","Lumbricillus semifuscus","aquatic Enchytraeid oligochaetes","NOT EXCLUDED: aquatic species",1
+5,"species","Globulidrilus riparius","aquatic Enchytraeid oligochaetes","NOT EXCLUDED: aquatic species",1
+5,"species","Lumbricillus variegatus","aquatic Enchytraeid oligochaetes","NOT EXCLUDED: aquatic species",1
+5,"species","Marionina argentea","aquatic Enchytraeid oligochaetes","NOT EXCLUDED: aquatic species",1
+5,"species","Cernosvitoviella aggtelekiensis","aquatic Enchytraeid oligochaetes","NOT EXCLUDED: aquatic species",1
+5,"species","Cernosvitoviella microtheca","aquatic Enchytraeid oligochaetes","NOT EXCLUDED: aquatic species",1
