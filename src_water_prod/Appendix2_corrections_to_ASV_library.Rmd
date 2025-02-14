@@ -15,6 +15,32 @@ knitr::opts_chunk$set(echo = TRUE)
 # Function equivalent to excel's =RIGHT() and =LEFT() functions
 right <- function(x, n) {substr(x, nchar(x) - n + 1, nchar(x))}
 left <- function(x, n) {substr(x, 1, n)}
+
+# Check requisite source data files and the 
+# taxonomy, exclusion, and BOLD files are in data directory, 
+# And if not download them from OSF into that directory
+# Note that these files are deleted again at the end of the script
+# to guard against corruption of the files.  If there is a data subdirectory
+# of the working directory, make sure it is has none of the 8 data_files listed 
+# below in it before running the script.
+
+## Check if there is a 'data' directory. If not make one
+if(!"data" %in% dir()){dir.create("data")}
+## Check for large data files. If absent download them 
+# ## from the OSF repository to the data directory
+data_files <- c("taxonomy.xlsx","non_aqu_macro_invert.csv",
+                "asv_library_97_match_list_with_bin_uris_2024-12-15.rda",
+                "asv_library_97_match_list_to_BOLD_2024-12-15.rda",
+                "additions_asv_library_oct24.xlsx",
+                "asv_library_97_add_miseq15-20_records.csv",
+                "asv_library_97_aug24.xlsx",
+                "filtered_97_data.csv")
+missing <- data_files[!data_files %in% dir("data")]
+if(length(missing) > 0){
+ dl_files <- osfr::osf_retrieve_node("hvx69") %>% osfr::osf_ls_files()
+ osfr::osf_download(dl_files, path = "data", conflicts = "skip")
+}
+
 ```
 
 ## Introduction
@@ -36,7 +62,7 @@ First, primary data from 'asv_library_97_aug24.xlsx' spreadsheets
 ```{r}
 # read in files
 
-source_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/"
+source_path <- "data/"
 source_file <- "asv_library_97_aug24.xlsx"
 
 # Read the sheets into as dataframes
@@ -207,22 +233,6 @@ Similarly to correct genus and family names in the library, we use the taxonomic
 tfill_all <- rbind(truncated_fills_df, max_p_update_df)    # 15593 records
 
 source("https://tools.thewerg.unimelb.edu.au/data/mwbugs/bug_database_functions.R")
-
-# Check requisite taxonomy, exclusion, and BOLD files are in data directory, 
-# And if not download them from OSF into that directory
-
-## Check if there is a 'data' directory. If not make one
-if(!"data" %in% dir()){dir.create("data")}
-## Check for large data files. If absent download them 
-# ## from the OSF repository to the data directory
-data_files <- c("taxonomy.xlsx","non_aqu_macro_invert.csv",
-                "asv_library_97_match_list_with_bin_uris_2024-12-15.rda",
-                "asv_library_97_match_list_to_BOLD_2024-12-15.rda")
-missing <- data_files[!data_files %in% dir("data")]
-if(length(missing) > 0){
- dl_files <- osfr::osf_retrieve_node("hvx69") %>% osfr::osf_ls_files()
- osfr::osf_download(dl_files, path = "data", conflicts = "skip")
-}
 
 # Record of how non_aqu_macroinvert.csv was created
 # db <- RPostgres::dbConnect(drv = RPostgres::Postgres(), dbname = "mwbugs")
@@ -638,6 +648,9 @@ tfill$species[tfill$asv_code == x[7]] <- "Cernosvitoviella sp. (Unident.)"
 tfill[tfill$asv_code == "9cb0fd3c74a7d78345ce9dab0d7f1a87", c("class","order","family","species")] <- 
                        c("Clitellata", "Enchytraeida", "Enchytraeidae","Enchytraeidae sp. B-AAG4407")
 
+# Ensure family field is consistent with the max_p_identity rules
+tfill$family[tfill$max_p_identity < 92] <- NA
+
 for(i in grep("Unident.", tfill$species)){
   if(length(strsplit(tfill$genus[i]," ")[[1]]) > 1){
     tfill$species[i] <- tfill$genus[i]
@@ -696,10 +709,13 @@ for(i in 1:nrow(tfill)){
     if(is.na(tfill$family_old[i]) & !is.na(tfill$family[i])){
       tfill$family_recode[i] <- 1
       }else{
+        if(is.na(tfill$family[i]) & !is.na(tfill$family_old[i])){
+           tfill$family_recode[i] <- 1
+        }else{
        if(!(is.na(tfill$family_old[i]) & is.na(tfill$family[i]))){
          if(tfill$family[i] != tfill$family_old[i]){
                             tfill$family_recode[i] <- 1
-                   }}
+                   }}}
       }
     if((is.na(tfill$genus_old[i]) & !is.na(tfill$genus[i])) | 
        (!is.na(tfill$genus_old[i]) & is.na(tfill$genus[i]))){
@@ -1038,8 +1054,11 @@ Recompile final ASV_library tables, adding back in the non-macroinvertebrate, no
 ```{r}
 # separate the records originally taken from the max_p_update sheet (imported as x4 above)
 tfill$cw_checked <- 1
-# Final ad-hoc corrections to family field
-tfill$family[tfill$max_p_identity < 92] <- NA
+
+# # Remove 'checking' fields for final version
+# tfill <- tfill[,!names(tfill) %in% c("species_old", "genus_old",
+#                                      "family_old","genus_recode", "family_recode",
+#                                      "no_bin_match","cw_checked")]
 
 max_p_update <- tfill[tfill$asv_code %in% max_p_update_df$asv_code,]
 tfill_t <- tfill[!tfill$asv_code %in% max_p_update_df$asv_code,]
@@ -1082,6 +1101,13 @@ max_p_update$species[!is.na(max_p_update$family) & is.na(max_p_update$genus) & g
 
 nrow(max_p_update) + nrow(tfill_t) #15593 = number of rows in tfill_all
 
+# Delete the files in the data directory that were downloaded from OSF above.
+for(i in 1:length(data_files)){
+  if(data_files[i] %in% dir("data"))
+  system(paste0("rm data/", data_files[i]))
+}
+
+# And save the output xlsx to the data directory
 wd <- "data/"
 WriteXLS::WriteXLS(list(truncated_fills = tfill_t, 
                         max_p_update = max_p_update,
