@@ -8,6 +8,9 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
+requiredPackages <- c("osfr","dplyr")
+lapply(requiredPackages, require, character.only = TRUE)
+
 knitr::opts_chunk$set(echo = TRUE)
 # Function equivalent to excel's =RIGHT() and =LEFT() functions
 right <- function(x, n) {substr(x, nchar(x) - n + 1, nchar(x))}
@@ -204,13 +207,29 @@ Similarly to correct genus and family names in the library, we use the taxonomic
 tfill_all <- rbind(truncated_fills_df, max_p_update_df)    # 15593 records
 
 source("https://tools.thewerg.unimelb.edu.au/data/mwbugs/bug_database_functions.R")
+
+# Check requisite taxonomy, exclusion, and BOLD files are in data directory, 
+# And if not download them from OSF into that directory
+
+## Check if there is a 'data' directory. If not make one
+if(!"data" %in% dir()){dir.create("data")}
+## Check for large data files. If absent download them 
+# ## from the OSF repository to the data directory
+data_files <- c("taxonomy.xlsx","non_aqu_macro_invert.csv",
+                "asv_library_97_match_list_with_bin_uris_2024-12-15.rda",
+                "asv_library_97_match_list_to_BOLD_2024-12-15.rda")
+missing <- data_files[!data_files %in% dir("data")]
+if(length(missing) > 0){
+ dl_files <- osfr::osf_retrieve_node("hvx69") %>% osfr::osf_ls_files()
+ osfr::osf_download(dl_files, path = "data", conflicts = "skip")
+}
+
 # Record of how non_aqu_macroinvert.csv was created
 # db <- RPostgres::dbConnect(drv = RPostgres::Postgres(), dbname = "mwbugs")
 # non_aqu_macro_invert <- DBI::dbReadTable(db, "non_aqu_macro_invert")
 # write.csv(non_aqu_macro_invert,
 #           "~/git/metabarcoding_workflow/data/non_aqu_macro_invert.csv",
 #           row.names = FALSE)
-non_aqu_macro_invert <- read.csv("data/non_aqu_macro_invert.csv")
 
 # Record of how taxonomy.xlsx was created, noting that when complete this can be read 
 # directly from the mwbugs downloads page (not yet updated)
@@ -219,11 +238,12 @@ non_aqu_macro_invert <- read.csv("data/non_aqu_macro_invert.csv")
 # taxon_fam <- DBI::dbReadTable(db, "taxon_fam")
 # WriteXLS::WriteXLS(list(taxon_gen = taxon_gen, taxon_fam = taxon_fam),
 #           "~/git/metabarcoding_workflow/data/taxonomy.xlsx")
-taxon_gen <- readxl::read_excel("~/git/metabarcoding_workflow/data/taxonomy.xlsx", 
-                                "taxon_gen")
-taxon_fam <- readxl::read_excel("~/git/metabarcoding_workflow/data/taxonomy.xlsx", 
-                                "taxon_fam")
-
+non_aqu_macro_invert <- read.csv("data/non_aqu_macro_invert.csv")
+taxon_gen <- as.data.frame(readxl::read_excel("data/taxonomy.xlsx", 
+                                              sheet = "taxon_gen"))
+taxon_fam <- as.data.frame(readxl::read_excel("data/taxonomy.xlsx", 
+                                              sheet = "taxon_fam"))
+  
 tfill <- only_aqu_inverts(tfill_all, 
                           non_aqu_macro_invert_already_loaded = TRUE)$include #11,866 records
 # And exclude two additional records only identified to phylum (Arthropoda and Zygomycota)
@@ -280,14 +300,13 @@ bin_uri for each BOLD ID.
 It is likely that the new API will not require the steps to work around errors or the two-step process for extracting bin_uris.
 The process was error free using RStudio 2024.09.0 (Each step took ~30 h to  extract data for 10,000 asv records), but failed many times, requiring restarting of the loop in both steps, using RStudio Server 2023.03.02
 
-The following chunk is step 1, saving the full list of BOLD matches (each with name = asv_code) to "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_match_list_to_BOLD_2024-12-05.rda".
+During the preparation of this file, BOLD launched a new version of their database (https://id.boldsystems.org/), which would require substantially revised R code to replicate the processes below.  We subsequently discovered some discrepancies between the two databases, which are noted and corrected below.
 
-[MEL: when we have finalised this, we need to place big files such as these match_list files in a repository, and then re-write this script to allow users to download and use them. I can help you do this. (Note for me later on - example code at L20 of https://github.com/cjbwalsh/urban_riffle_experiment/blob/master/urban_riffle_exp_figs_code.qmd)]
-[MEL2: Let's leave these comments here for now until the final version, and I can have a final go] CHRIS#2: Thank you. 
+The following chunk is step 1, saving the full list of BOLD matches (each with name = asv_code) to "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_match_list_to_BOLD_2024-12-05.rda" (i.e. a unimelb network drive). This file, and the one created by the subsequent chunk have then been saved to an OSF repository (https://osf.io/hvx69/). The script above ensures these files have been saved to the user's local data directory, from which they are read in below.  
 
-The chunk is set not to evaluate, as it took ~30 h to run.
+The chunk is set not to evaluate, as it took ~30 h to run. (It is unnecessary to do so, as its resulting file is read in below)
 
-```{r eval:FALSE}
+```{r eval=FALSE}
 
 match_list <- list()
 
@@ -316,11 +335,11 @@ save(match_list, file =
 
 The following chunk then reduces each match_list table to those records with >=97% similarity and extracts their bin_uris, saving them as a second list of tables with fields: ID, taxonomicidentification, similarity, specimen_country, bin_uri.
 
-The list was saved as "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_match_list_with_bin_uris2024-12-05.rda".
+The list was saved as "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_match_list_with_bin_uris2024-12-05.rda". (See above for who this was managed)
 
-As above, the chunk is set not to evaluate, as it also took ~30 h to run.
+As above, the chunk is set not to evaluate, as it also took ~30 h to run. (It is unnecessary to do so, as its resulting file is read in below)
 
-```{r eval:FALSE}
+```{r eval=FALSE}
 
 match_list_bin_uri <- list()
 
@@ -444,11 +463,9 @@ The following chunk creates a new table of asv_codes, species names, and their b
 
 ```{r}
 # load list "match_list_bin_uri", compiled in the chunk above
-load(paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",
-              "asv_library_97_match_list_with_bin_uris_2024-12-15.rda"))
+load("data/asv_library_97_match_list_with_bin_uris_2024-12-15.rda")
 # And load "match_List" - the full list of matching records to BOLD (not limited to >0.97 similarity)
-load(paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/",
-              "asv_library_97_match_list_to_BOLD_2024-12-15.rda"))
+load("data/asv_library_97_match_list_to_BOLD_2024-12-15.rda")
 
 # There are 60 asv_codes in the match_lists that aren't in tfill...not sure of their origin
 # Exclude them here
@@ -843,7 +860,7 @@ tfill$species[tfill$asv_code  %in% asvi] <- "Naididae sp. B-ADJ9699"
 asvi <- tfill_spp_bins$asv_code[!is.na(tfill_spp_bins$bin_uri) & 
                      tfill_spp_bins$bin_uri == "AEV0976"]
 tfill$species[tfill$asv_code %in% asvi] <- "Simulium sp. B-AEV0976"
-tfill$genus[tfill$asv_code %in% asvi] <- "Simulium"
+tfill$genus[grep("Simulium", tfill$species)] <- "Simulium"
 
 # ABX3905 "Trinotoperla nivata" (4), "Trinotoperla montana" (2) )
 asvi <- tfill_spp_bins$asv_code[!is.na(tfill_spp_bins$bin_uri) & 
@@ -980,7 +997,7 @@ wronguns <- check[!is.na(check$bin_uri) & check$bin_uri != right(check$species,7
 
 ```
 
-A number of records only showed matches to sequences deposited on GenBank or records on the bold BarcodID web interface when private and public sequences were searched or were specimens sequenced by us but not yet published on bold database. These sequences could not be checked via bold::bold_identify() function.
+A number of records only showed matches to sequences deposited on GenBank or records on the bold BarcodID web interface when private and public sequences were searched or were specimens sequenced by us but only published on newer BOLD database. These sequences could not be checked via bold::bold_identify() function.
 
 ```{r}
 # 379 asv_codes in the same group have NA bin_uri. The following code collates those asv_codes for future reference
@@ -1021,6 +1038,9 @@ Recompile final ASV_library tables, adding back in the non-macroinvertebrate, no
 ```{r}
 # separate the records originally taken from the max_p_update sheet (imported as x4 above)
 tfill$cw_checked <- 1
+# Final ad-hoc corrections to family field
+tfill$family[tfill$max_p_identity < 92] <- NA
+
 max_p_update <- tfill[tfill$asv_code %in% max_p_update_df$asv_code,]
 tfill_t <- tfill[!tfill$asv_code %in% max_p_update_df$asv_code,]
 
@@ -1033,6 +1053,7 @@ tfill_non_am <- dplyr::mutate(tfill_non_am, species_old = tfill_non_am$species, 
                               .before = cw_checked)
 tfill_non_am <- tfill_non_am[!duplicated(tfill_non_am$asv_code),]
 tfill_t <- rbind(tfill_t, tfill_non_am)
+
 
 max_p_update_non_am <- tfill_all[!tfill_all$asv_code %in% tfill_t$asv_code & 
                                    !tfill_all$asv_code %in% max_p_update$asv_code & 
@@ -1061,11 +1082,11 @@ max_p_update$species[!is.na(max_p_update$family) & is.na(max_p_update$genus) & g
 
 nrow(max_p_update) + nrow(tfill_t) #15593 = number of rows in tfill_all
 
-wd <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/"
+wd <- "data/"
 WriteXLS::WriteXLS(list(truncated_fills = tfill_t, 
                         max_p_update = max_p_update,
                         bin_uris = tfill_spp_bins_unq),
-                        ExcelFileName = paste0(wd, "asv_library_cw_corrected.xlsx"))
+                        ExcelFileName = paste0(wd, "asv_library_corrected.xlsx"))
 
 # # tfill <- readxl::read_excel(paste0(wd,"asv_library_cw_corrected.xlsx"), sheet = "asv_library")
 # max_p_update <- readxl::read_excel(paste0(wd,"asv_library_cw_corrected.xlsx"), sheet = "max_p_update")
