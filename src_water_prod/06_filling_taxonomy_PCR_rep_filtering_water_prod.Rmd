@@ -29,20 +29,20 @@ A file based on analysis of Miseq datasets was constructed ('asv_library_97_aug2
 ```{r setup, warning=FALSE}
 # read in flies
 
-file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library_97_aug24_modified.xlsx"
+file_path <- "~/git/metabarcoding_workflow/data/asv_library_corrected.xlsx"
 
 # Get the names of the sheets
 sheet_names <- readxl::excel_sheets(file_path)
 
 # Read the sheets into as dataframes
 truncated_fills_df <- readxl::read_excel(file_path, sheet = sheet_names[1])  # contains full taxonomic information for classifications with truncated taxonomy
-otu_groups_df <- readxl::read_excel(file_path, sheet = sheet_names[2])# groups unclassified sequences into 'OTUs'
-max_p_update_df <- readxl::read_excel(file_path, sheet = sheet_names[3])# updates/corrects any missing identifications or errors in classification
-complexes_df <- readxl::read_excel(file_path, sheet = sheet_names[4])# identifies any ambiguous taxonomic assignments that should be considered as complexes
+#otu_groups_df <- readxl::read_excel(file_path, sheet = sheet_names[2])# groups unclassified sequences into 'OTUs'
+max_p_update_df <- readxl::read_excel(file_path, sheet = sheet_names[2])# updates/corrects any missing identifications or errors in classification (change sheet to 2 as not using OTU grouping)
+#complexes_df <- readxl::read_excel(file_path, sheet = sheet_names[4])# identifies any ambiguous taxonomic assignments that should be considered as complexes
 
 # Replace NA values with empty strings
 truncated_fills_df <- truncated_fills_df %>% mutate_all(~ ifelse(is.na(.), "", .))
-otu_groups_df <- otu_groups_df %>% mutate_all(~ ifelse(is.na(.), "", .))
+#otu_groups_df <- otu_groups_df %>% mutate_all(~ ifelse(is.na(.), "", .))
 max_p_update_df <- max_p_update_df %>% mutate_all(~ ifelse(is.na(.), "", .))
 
 #read in raw dataframe (if starting with a clear global environment)
@@ -127,59 +127,65 @@ print(df1)
 # Add 'OTU' groupings from 'Geneious prime' denovo analysis
 Any unclassified ASVs have been grouped together at a similarity threshold of <3%. These ASVs are denoted with the name 'sp. MC-ARCO'. 
 ```{r}
-# Find common IDs
-common_ids2 <- intersect(otu_groups_df$asv_code, df3$asv_code)
-
-df4 <- df3[df3$asv_code %in% common_ids2, ] # asvs in common in remaining final_df
-df5 <- otu_groups_df[otu_groups_df$asv_code %in% common_ids2, ] # asvs in common in truncated_fills_df
-df6 <- df3[!df3$asv_code %in% common_ids2, ] #  data left in final dataframe
-
-# Update the 'species' value in df1 based on matching 'asv_code'
-for (i in 1:nrow(df4)) {
-  target_asv_code <- df4$asv_code[i]
-  df4$species[i] <- df5$species[df5$asv_code == target_asv_code]
-}
-
-for (i in 1:nrow(df4)) {
-  target_asv_code <- df4$asv_code[i]
-  df4$genus[i] <- df5$genus[df5$asv_code == target_asv_code]
-}
-
-for (i in 1:nrow(df4)) {
-  target_asv_code <- df4$asv_code[i]
-  df4$family[i] <- df5$family[df5$asv_code == target_asv_code]
-}
-
-for (i in 1:nrow(df4)) {
-  target_asv_code <- df4$asv_code[i]
-  df4$order[i] <- df5$order[df5$asv_code == target_asv_code]
-}
-
-for (i in 1:nrow(df4)) {
-  target_asv_code <- df4$asv_code[i]
-  df4$class[i] <- df5$class[df5$asv_code == target_asv_code]
-}
-
-for (i in 1:nrow(df4)) {
-  target_asv_code <- df4$asv_code[i]
-  df4$phylum[i] <- df5$phylum[df5$asv_code == target_asv_code]
-}
- 
-for (i in 1:nrow(df4)) {
-  target_asv_code <- df4$asv_code[i]
-  df4$kingdom[i] <- df5$kingdom[df5$asv_code == target_asv_code]
-}
-
-print(df4)
+# # Find common IDs
+# common_ids2 <- intersect(otu_groups_df$asv_code, df3$asv_code)
+# 
+# df4 <- df3[df3$asv_code %in% common_ids2, ] # asvs in common in remaining final_df
+# df5 <- otu_groups_df[otu_groups_df$asv_code %in% common_ids2, ] # asvs in common in truncated_fills_df
+# df6 <- df3[!df3$asv_code %in% common_ids2, ] #  data left in final dataframe
+# 
+# # Update the 'species' value in df1 based on matching 'asv_code'
+# for (i in 1:nrow(df4)) {
+#   target_asv_code <- df4$asv_code[i]
+#   df4$species[i] <- df5$species[df5$asv_code == target_asv_code]
+# }
+# 
+# for (i in 1:nrow(df4)) {
+#   target_asv_code <- df4$asv_code[i]
+#   df4$genus[i] <- df5$genus[df5$asv_code == target_asv_code]
+# }
+# 
+# for (i in 1:nrow(df4)) {
+#   target_asv_code <- df4$asv_code[i]
+#   df4$family[i] <- df5$family[df5$asv_code == target_asv_code]
+# }
+# 
+# for (i in 1:nrow(df4)) {
+#   target_asv_code <- df4$asv_code[i]
+#   df4$order[i] <- df5$order[df5$asv_code == target_asv_code]
+# }
+# 
+# for (i in 1:nrow(df4)) {
+#   target_asv_code <- df4$asv_code[i]
+#   df4$class[i] <- df5$class[df5$asv_code == target_asv_code]
+# }
+# 
+# for (i in 1:nrow(df4)) {
+#   target_asv_code <- df4$asv_code[i]
+#   df4$phylum[i] <- df5$phylum[df5$asv_code == target_asv_code]
+# }
+#  
+# for (i in 1:nrow(df4)) {
+#   target_asv_code <- df4$asv_code[i]
+#   df4$kingdom[i] <- df5$kingdom[df5$asv_code == target_asv_code]
+# }
+# 
+# print(df4)
 ```
 # Add in identification data for taxa missing from reference database (sheet 3)
 ```{r}
 # Find common IDs
 common_ids3 <- intersect(max_p_update_df$asv_code, final_df$asv_code)
 
-df7 <- df6[df6$asv_code %in% common_ids3, ] # asvs in common in final_df
+# commented out as not using OTU groups yet.
+# df7 <- df6[df6$asv_code %in% common_ids3, ] # asvs in common in final_df
+# df8 <- max_p_update_df[max_p_update_df$asv_code %in% common_ids3, ] # asv requiring updating
+# df9 <- df6[!df6$asv_code %in% common_ids3, ] # data left in final dataframe
+
+# code adjusted to skip OTU groupings
+df7 <- df3[df3$asv_code %in% common_ids3, ] # asvs in common in final_df
 df8 <- max_p_update_df[max_p_update_df$asv_code %in% common_ids3, ] # asv requiring updating
-df9 <- df6[!df6$asv_code %in% common_ids3, ] # data left in final dataframe
+df9 <- df3[!df3$asv_code %in% common_ids3, ] # data left in final dataframe
 
 # Update the 'species' value in df1 based on matching 'asv_code'
 for (i in 1:nrow(df7)) {
@@ -226,7 +232,11 @@ print(df7)
 ```
 # combine all filled dataframe into a single dataframe
 ```{r}
-final_data_filled <- rbind(df1, df4, df7, df9)
+# bind data back together
+#final_data_filled <- rbind(df1, df4, df7, df9)
+ 
+# bind with OTU grouping
+final_data_filled <- rbind(df1, df7, df9)
 # note the "final_data_filled" and "final_df" should be the same size 
 
 # Check if there are any duplicates in the asv_code column (there should NOT be)
@@ -246,14 +256,14 @@ if (nrow(final_df) == nrow(final_data_filled)) {
 
 # check 'final_filled_df' for any species complexes and add this information (from sheet 4)
 ```{r}
-# Use left_join to match and then mutate to replace the species with complex
-final_data_filled <- final_data_filled %>%
-  left_join(complexes_df, by = c("species" = "bin_name")) %>%
-  mutate(species = ifelse(!is.na(complex), complex, species)) %>%
-  select(-complex)
-
-# Print the modified dataframe
-print(final_data_filled)
+# # Use left_join to match and then mutate to replace the species with complex
+# final_data_filled <- final_data_filled %>%
+#   left_join(complexes_df, by = c("species" = "bin_name")) %>%
+#   mutate(species = ifelse(!is.na(complex), complex, species)) %>%
+#   select(-complex)
+# 
+# # Print the modified dataframe
+# print(final_data_filled)
 ```
 
 # adjust Cont names for flitering so that controls have the same names
