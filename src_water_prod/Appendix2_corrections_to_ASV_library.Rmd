@@ -1056,9 +1056,9 @@ Recompile final ASV_library tables, adding back in the non-macroinvertebrate, no
 tfill$cw_checked <- 1
 
 # # Remove 'checking' fields for final version
-# tfill <- tfill[,!names(tfill) %in% c("species_old", "genus_old",
-#                                      "family_old","genus_recode", "family_recode",
-#                                      "no_bin_match","cw_checked")]
+tfill <- tfill[,!names(tfill) %in% c("species_old", "genus_old",
+                                     "family_old","genus_recode", "family_recode",
+                                     "no_bin_match","cw_checked")]
 
 max_p_update <- tfill[tfill$asv_code %in% max_p_update_df$asv_code,]
 tfill_t <- tfill[!tfill$asv_code %in% max_p_update_df$asv_code,]
