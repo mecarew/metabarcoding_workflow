@@ -656,16 +656,59 @@ new_biota <- rbind(new_biota, data.frame(smpcode = biota_agg$smpcode,
                         originalbugcode = NA,
                         shortcode = NA))
 
-#[MEL the 'count' field in new_biota = sum of records among the three (sometimes 2) miseq replicates. Is this sensible? Useful? Note that unidentified genera and families can then have a count > 3 if there are more than one unidentified records for a genus or family.  Would total number of reads be a more useful count value, or should we just use the value 1?]
+#[MEL the 'count' field in new_biota = sum of records among the three (sometimes 2) miseq replicates. Is this sensible? Useful? Note that unidentified genera and families can then have a count > 3 if there are more than one unidentified records for a genus or family.  Would total mean number of reads per replicated be a more useful count value, or should we just use the value 1?]
 
 sample_asv <- rbind(sample_asv, unique(biota_wrkng[c("asv_code","smpcode")]))
 bugcode_asv <- rbind(bugcode_asv, unique(biota_wrkng[c("asv_code","bugcode")]))
 
-#[MEL: sorry to say at the last hurdle, bugcode_asv revealed e asv_codes that have been asigned to two different species: the following returns the probelmatic 3 asv_codes. I'm pretty sure this error is not my doing. Is it easy for you to go looking for the cause?]
-bugcode_asv[duplicated(bugcode_asv$asv_code) | duplicated(bugcode_asv$asv_code, fromLast = TRUE),]
+#[MEL: sorry to say at the last hurdle, bugcode_asv revealed e asv_codes that have been asigned to two different species: the following returns the probelmatic 3 asv_codes. I'm pretty sure this error is not my doing. The code below (separated by #####) does some digging that might help you find the problems...]
+
+#####
+x <- bugcode_asv[duplicated(bugcode_asv$asv_code) | duplicated(bugcode_asv$asv_code, fromLast = TRUE),]
+x_spp <- bugdata_spp[bugdata_spp$asv_code %in% unique(x$asv_code), c("sample","asv_code","species")]
+x_spp$miseq_run <- miseq_samples$miseq_run[match(x_spp$sample, miseq_samples$seq_code)]
+x_spp_agg <- aggregate(x_spp$species, 
+                   by = list(asv_code = x_spp$asv_code, species = x_spp$species, miseq_run = x_spp$miseq_run), 
+                   FUN = length)
+x_gen <- bugdata_gen[bugdata_gen$asv_code %in% unique(x$asv_code), c("sample","asv_code","genus")]
+x_gen$miseq_run <- miseq_samples$miseq_run[match(x_gen$sample, miseq_samples$seq_code)]
+x_gen_agg <- aggregate(x_gen$genus, 
+                   by = list(asv_code = x_gen$asv_code, genus = x_gen$genus, miseq_run = x_gen$miseq_run), 
+                   FUN = length)
+x_spp_agg # 2007d5c9d93583786864fb043f3f09c2 identified as different species in miseq runs 15 (Russobex cuneatus) and 18 (Psychoglypha subborealis)
+x_gen_agg # c684b08eca0dc60e274029cabda6cd4c identified as different genus in miseq runs 17 (Nousia) and 18 (Labiobaetis)
+
+x_fam <- bugdata_fam[bugdata_fam$asv_code == "65f10fe16b1f902c065c0fd9edb0f9bf",]
+miseq_samples$miseq_run[miseq_samples$seq_code == x_fam$sample[1]]
+# and 65f10fe16b1f902c065c0fd9edb0f9bf identified as Polypedilum in miseq 18, but Chironomidae in miseq 15
+
+# As these errors are at the family level, it is possible that similar errors have been missed by having begun this compilation by excluding non-aquatic taxa.  Here I do a quick check of the data without that exclusion:
+for(i in 1:length(miseq_dirs)){
+  miseq_path <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/miseq", miseq_dirs[i],"/")
+  bugdata_file <- paste0("miseq", miseq_dirs[i], "_final_data_long_format_18_02_2025.csv")
+  bugdata_i <- read.csv(paste0(miseq_path, "metabarcoding_workflow/final_modeling_data/", bugdata_file))
+  bugdata_i <- bugdata_i[c("sample","asv_code","family","genus","species")]
+  bugdata_i$miseq_run <- miseq_dirs[1]
+  if(i == 1){bugdata <- bugdata_i}else{bugdata <- rbind(bugdata, bugdata_i)}
+}
+bugcode_asv_all <- unique(bugdata[c("asv_code","family","genus","species")])
+dup_asvs <- bugcode_asv_all[duplicated(bugcode_asv_all$asv_code) | 
+                              duplicated(bugcode_asv_all$asv_code, fromLast = TRUE),]
+dup_asvs <- dup_asvs[order(dup_asvs$asv_code),]
+dup_asvs
+x_all <- bugdata[bugdata$asv_code %in% unique(dup_asvs$asv_code), c("sample","asv_code","family","genus","species")]
+x_all$miseq_run <- miseq_samples$miseq_run[match(x_all$sample, miseq_samples$seq_code)]
+x_all_agg <- aggregate(x_all$asv_code, 
+                   by = list(asv_code = x_all$asv_code, family = x_all$family, 
+                             genus = x_all$genus, species = x_all$species, 
+                             miseq_run = x_all$miseq_run), 
+                   FUN = length)
+x_all_agg <- x_all_agg[order(x_all_agg$asv_code),]
+x_all_agg
+# [MEL: I think it's worth having a look through these 180 records of asv_codes with multiple identifications. There do seem to be some aquatic taxa that have been missed (i.e. identified as an aquatic species/genus/family in one miseq run and not in another). As far as I can see, it looks like the IDs are consistent within miseq runs, but differ between them.  Does that make sense from a workflow perspective?]
+#####
 
 new_biota <- new_biota[order(new_biota$smpcode),]
-
 
 ```
 
