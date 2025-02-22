@@ -347,7 +347,10 @@ samples_c$sitecode_mc <- samples_c$sitecode
 samples_c$sitecode <- sites$sitecode[match(samples_c$reach, sites$reach_v12)]
 samples_c$smpcode <- paste(samples_c$monthcode, samples_c$sitecode, sep = "-")
 
-sum(!samples_c$sitecode %in% sites$sitecode) # 0 sitecodes consistent with sites table
+sum(!samples_c$sitecode %in% sites$sitecode) # 2 sitecodes consistent with sites table
+samples_c$sitecode[match(c("396-MUC-987","395-TNK-1992"), samples_c$smpcode_f)] <- c("MUC-987-0","TNK-2042-3")
+samples_c$smpcode[match(c("396-MUC-987","395-TNK-1992"), samples_c$smpcode_f)] <- c("396-MUC-987-0","396-TNK-2042-3")
+samples_c$reach[match(c("396-MUC-987","395-TNK-1992"), samples_c$smpcode_f)] <- c("MUC-987","TNK-2042")
 sum(!samples_c$smpcode_f %in% miseq_samples$smpcode) # 0: good - all 137 samples_a$smpcode_f in miseq_samples.
 sum(!samples_c$extraction_name %in% miseq_samples$extraction_name) # 0 (so sites, samples_a, and miseq_samples, consistent)
 
@@ -439,8 +442,6 @@ new_spv <- data.frame(sourcecode = 66, project = "ARC LP DNA metabarcoding", ref
 lab = "PEARG and WERG Unimelb, led by Melissa Carew",
 comment = NA)
 ```
-
-# MEL: Note Chris has yet to revise locations of a small number of new sites, which will result in changes to some smpcodes and sitecodes. This should only be treated as a draft at this stage...DO NOT disseminate or use for analysis yet.  Note for CHRIS - code for moving sites in mwbugs_site_update_spring_2022.R
 
 Correct taxonomy names prior to matching to the database
 
