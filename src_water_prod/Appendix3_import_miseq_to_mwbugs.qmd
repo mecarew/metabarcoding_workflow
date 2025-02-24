@@ -409,6 +409,7 @@ samples_miseq <- rbind(samples_a, samples_b[,match(names(samples_a),names(sample
 #      There are no matching samples (that I can find) in your and Gen's spreadsheets that I have 
 #     used to assemble these tables.
 #      should they be in here? Are they composite samples like all the others?  More information needed
+#CHRIS: These are re-runs from our initial experiment on the 10 sites used to determine how much sample to process for the sites covered in miseq runs 15-20. The remaining files are in run miseq13. I created a modified version of notebook 6 to process them as the experimental design was different. 
 # ]
 
 # Make samples table ready for import into mwbugs database
@@ -459,6 +460,7 @@ bugdata_spp$family[bugdata_spp$family == "Trapezidae"] <- "Trapeziidae"
 bugdata_spp$order[bugdata_spp$family == "Staphylinidae"] <- "Coleoptera"
 #[MEL: Please check the following three sets of decisions to exclude.  Do you agree?]
 # 5 family-level records identified as Unionidae. Highly unlikely. Delete
+#CHRIS: Agreed. Delete Unionidae, Arcidae (checking these on GenBank both actually match a gastropod at ~92%). All the species you list below can not be confirmed as aquatic, so I agree with excluding them. 
 bugdata_fam <- bugdata_fam[bugdata_fam$family != "Unionidae",]
 # 6 family-level records identified as Unionidae. Also highly unlikely. Delete
 bugdata_fam <- bugdata_fam[bugdata_fam$family != "Arcidae",]
