@@ -20,7 +20,9 @@ source("https://tools.thewerg.unimelb.edu.au/data/mwbugs/bug_database_functions.
 
 # Connect to the mwbugs database and load all tables (using the load_all_mwbugs_tables.R 
 #  from bug_database_functions.R)
+
 db <- RPostgres::dbConnect(drv = RPostgres::Postgres(), dbname = "mwbugs")
+
 load_all_mwbugs_tables(db)
 
 # Function equivalent to excel's =RIGHT() and =LEFT() functions
@@ -659,17 +661,19 @@ new_biota <- rbind(new_biota, data.frame(smpcode = biota_agg$smpcode,
                         originalbugcode = NA,
                         shortcode = NA))
 
-#[MEL the 'count' field in new_biota = sum of records among the three (sometimes 2) miseq replicates. Is this sensible? Useful? Note that unidentified genera and families can then have a count > 3 if there are more than one unidentified records for a genus or family.  Would total mean number of reads per replicated be a more useful count value, or should we just use the value 1?]
+#[MEL the 'count' field in new_biota = sum of records among the three (sometimes 2) miseq replicates. Is this sensible? Useful? Note that unidentified genera and families can then have a count > 3 if there are more than one unidentified records for a genus or family.  Would total mean number of reads per replicated be a more useful count value, or should we just use the value 1?] 
+#CHRIS: What your counts likely suggest is there are more individuals where the count is higher but this may not always work. Some species may have high genetic diversity whereas others may this will also influence the number of asv associated with each species. While interesting I'd suggest we use presence/absence (value of 1) for the species data.
 
 sample_asv <- rbind(sample_asv, unique(biota_wrkng[c("asv_code","smpcode")]))
 bugcode_asv <- rbind(bugcode_asv, unique(biota_wrkng[c("asv_code","bugcode")]))
 
 #[MEL: sorry to say at the last hurdle, bugcode_asv revealed e asv_codes that have been asigned to two different species: the following returns the probelmatic 3 asv_codes. I'm pretty sure this error is not my doing. The code below (separated by #####) does some digging that might help you find the problems...]
+#CHRIS: the assigment for 2007d5c9d93583786864fb043f3f09c2 should be Russobex cuneatus and for c684b08eca0dc60e274029cabda6cd4c Nousia is correct. The issue is that I inadvertently used the old vsearch database with errors and will need to re-run the vsearch step.
 
 #####
-x <- bugcode_asv[duplicated(bugcode_asv$asv_code) | duplicated(bugcode_asv$asv_code, fromLast = TRUE),]
 x_spp <- bugdata_spp[bugdata_spp$asv_code %in% unique(x$asv_code), c("sample","asv_code","species")]
 x_spp$miseq_run <- miseq_samples$miseq_run[match(x_spp$sample, miseq_samples$seq_code)]
+x <- bugcode_asv[duplicated(bugcode_asv$asv_code) | duplicated(bugcode_asv$asv_code, fromLast = TRUE),]
 x_spp_agg <- aggregate(x_spp$species, 
                    by = list(asv_code = x_spp$asv_code, species = x_spp$species, miseq_run = x_spp$miseq_run), 
                    FUN = length)
@@ -678,7 +682,7 @@ x_gen$miseq_run <- miseq_samples$miseq_run[match(x_gen$sample, miseq_samples$seq
 x_gen_agg <- aggregate(x_gen$genus, 
                    by = list(asv_code = x_gen$asv_code, genus = x_gen$genus, miseq_run = x_gen$miseq_run), 
                    FUN = length)
-x_spp_agg # 2007d5c9d93583786864fb043f3f09c2 identified as different species in miseq runs 15 (Russobex cuneatus) and 18 (Psychoglypha subborealis)
+x_spp_agg # 2007d5c9d93583786864fb043f3f09c2 identified as different species in miseq runs 15 (Russobex cuneatus) and 18 (Psychoglypha subborealis) 
 x_gen_agg # c684b08eca0dc60e274029cabda6cd4c identified as different genus in miseq runs 17 (Nousia) and 18 (Labiobaetis)
 
 x_fam <- bugdata_fam[bugdata_fam$asv_code == "65f10fe16b1f902c065c0fd9edb0f9bf",]
@@ -709,6 +713,7 @@ x_all_agg <- aggregate(x_all$asv_code,
 x_all_agg <- x_all_agg[order(x_all_agg$asv_code),]
 x_all_agg
 # [MEL: I think it's worth having a look through these 180 records of asv_codes with multiple identifications. There do seem to be some aquatic taxa that have been missed (i.e. identified as an aquatic species/genus/family in one miseq run and not in another). As far as I can see, it looks like the IDs are consistent within miseq runs, but differ between them.  Does that make sense from a workflow perspective?]
+#CHRIS: See my comment above. I am going to re-run the vsearch step for miseq18.
 #####
 
 new_biota <- new_biota[order(new_biota$smpcode),]
@@ -722,6 +727,7 @@ new_biota <- new_biota[order(new_biota$smpcode),]
 or these from your biotic table:
 "Consensus"      "max_p_identity" "threshold"  "asv_seq"        "amplicon"       "reads" 
 Do you think any of these are important to include in the mwbugs database (Note "kingdom","phylum","class","order","family","genus" are not included because that information is held in the taxonomic tables of the database (and implicitly in the bugcodes)),]
+CHRIS: This is fine. Howvever, I'll just need to be able to create tables with the taxonomic information, max-p-identity, asv_seq, amplicon and reads, so as long as we still have this information store elsewhere so I can use it in preparing papers.
 
 ```{r}
 bins <- as.data.frame(readxl::read_excel("data/asv_library_corrected.xlsx", sheet = 3))
