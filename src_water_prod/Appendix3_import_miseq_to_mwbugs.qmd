@@ -201,6 +201,8 @@ for(i in 1:length(miseq_dirs)){
     miseq_samples <- rbind(miseq_samples, miseq_samples_i)
   }
 }
+# A rogue terrestrial to be deleted.
+bugdata_gen <- bugdata_gen[bugdata_gen$genus != "Chrysophtharta",]
 ```
 
 Some samples were re-run because of insufficient reads (or other reasons), often in a subsequent miseq run.  The following chunk finds such cases (where there are replicate 1, 2, and 3 and 4, 5, and 6), and keeps only replicates 4, 5 and 6.
@@ -562,6 +564,24 @@ for(i in 1:nrow(new_spp)){
     }
 }
 
+# Subsequent checks found one 'species', Austropsyche sp., should actually be 
+# Austropsyche  sp. B-AAW3080, and its asv_code was incorrectly called and unidentified 
+# "Psychidae in miseq15.  This asv_code needs to be added to the next version of the 
+# asv_library, but for now, we will apply a manual fix to the workflow results here.
+bugdata_spp <- rbind(bugdata_spp, bugdata_fam[bugdata_fam$asv_code == 
+                                                "00f4bc36686affa317cbbdbad7a65991",])
+bugdata_fam <- bugdata_fam[bugdata_fam$asv_code != 
+                                                "00f4bc36686affa317cbbdbad7a65991",]
+bugdata_spp$genus[bugdata_spp$asv_code == "00f4bc36686affa317cbbdbad7a65991"] <- "Austropsyche"
+bugdata_spp$species[bugdata_spp$asv_code == "00f4bc36686affa317cbbdbad7a65991"] <- 
+  "Austropsyche sp. B-AAW3080"
+new_spp$species[new_spp$species == "Austropsyche sp."] <- "Austropsyche sp. B-AAW3080"
+new_spp$bugcode[new_spp$species == "Austropsyche sp. B-AAW3080"] <- "QT0603AI"
+
+# Note that morphospp_etc contains QT0603AI Austropsyche sp. B-AAW3080 (from 46-site data)
+# I will move all such records from morphospp_etc to taxon_spp to be consistent with 
+# the convention used here.
+
 new_taxon_spp <- data.frame(gencode = substr(new_spp$bugcode,1,6),
                             spcode = new_spp$bugcode,
                             species = new_spp$species,
@@ -575,27 +595,34 @@ new_morphospp_etc <- data.frame(taxon_code = new_spp$bugcode,
                                 tempNote = "added by CW for ARC metabarcoding project",
                                 taxonomic_note = substr(new_spp$bugcode,1,2))[!is.na(new_spp$mwbugs_table) &
                                                                                 new_spp$mwbugs_table == "morphospp_etc",]
-                          
-
 ```
 
 Assemble biological data for import into database
 
 ```{r}
-sequences <- unique(bugdata_spp[c("asv_code","asv_seq")])
+# # some max_p_identity inconsistencies
+# x <- unique(bugdata_spp[c("asv_code","max_p_identity","amplicon")])
+# x <- x[duplicated(x$asv_code) | duplicated(x$asv_code, fromLast = TRUE),]
+# x[order(x$asv_code),]
 
-biota_wrkng <- bugdata_spp[c("sample","asv_code","species")]
-biota_wrkng$extraction_name <- substr(biota_wrkng$sample,1,nchar(biota_wrkng$sample)-4)
-biota_wrkng$smpcode <- samples_miseq$smpcode[match(biota_wrkng$extraction_name, 
+# Ad hoc corrections to 3 inconsistent max_p_identity values (the first concerning
+# "Austropsyche sp. B-AAW3080", above)
+bugdata_spp$max_p_identity[bugdata_spp$asv_code == "00f4bc36686affa317cbbdbad7a65991"] <- 99.7
+bugdata_spp$max_p_identity[bugdata_spp$asv_code == "bfb774b22881eee84f0f221daeb9d157"] <- 100
+bugdata_spp$max_p_identity[bugdata_spp$asv_code == "ed6b0b7d5ab0813489018124e4f46c1e"] <- 99.7
+
+bugdata_spp$extraction_name <- substr(bugdata_spp$sample,1,nchar(bugdata_spp$sample)-4)
+bugdata_spp$smpcode <- samples_miseq$smpcode[match(bugdata_spp$extraction_name, 
                                                    samples_miseq$extraction_name)]
 # The NAs introduced here are the three samples (1418 records) with smpcodes starting with 337 excluded above
-biota_wrkng <- biota_wrkng[!is.na(biota_wrkng$smpcode),]
+sequences <- unique(bugdata_spp[c("asv_code","asv_seq","max_p_identity","amplicon")])
 
+biota_wrkng <- bugdata_spp[c("sample","smpcode","asv_code","species")]
+biota_wrkng <- biota_wrkng[!is.na(biota_wrkng$smpcode),]
 biota_wrkng$bugcode <- taxon_all$shortcode[match(biota_wrkng$species, taxon_all$taxon)]
 for(i in which(is.na(biota_wrkng$bugcode))){
     biota_wrkng$bugcode[i] <- new_spp$bugcode[new_spp$species == biota_wrkng$species[i]]
    }
-
 sample_asv <- unique(biota_wrkng[c("asv_code","smpcode")])
 bugcode_asv <- unique(biota_wrkng[c("asv_code","bugcode")])
 
@@ -613,12 +640,16 @@ new_biota <- data.frame(smpcode = biota_agg$smpcode,
                         shortcode = NA)
 
 # Add records only identified to genus:
-biota_wrkng <- bugdata_gen[c("sample","asv_code","genus")]
-biota_wrkng$extraction_name <- substr(biota_wrkng$sample,1,nchar(biota_wrkng$sample)-4)
-biota_wrkng$smpcode <- samples_miseq$smpcode[match(biota_wrkng$extraction_name, 
+bugdata_gen$extraction_name <- substr(bugdata_gen$sample,1,nchar(bugdata_gen$sample)-4)
+bugdata_gen$smpcode <- samples_miseq$smpcode[match(bugdata_gen$extraction_name, 
                                                    samples_miseq$extraction_name)]
+sequences <- rbind(sequences,
+                   unique(bugdata_gen[c("asv_code","asv_seq","max_p_identity","amplicon")]))
+# NAs introduced as above
+biota_wrkng <- bugdata_gen[c("sample","smpcode","asv_code","genus")]
 biota_wrkng <- biota_wrkng[!is.na(biota_wrkng$smpcode),]
 biota_wrkng$bugcode <- paste0(taxon_gen$gencode[match(biota_wrkng$genus, taxon_gen$genus)],"99")
+
 biota_agg <- aggregate(biota_wrkng$bugcode, by = list(smpcode = biota_wrkng$smpcode,
                                                       taxoncode = biota_wrkng$bugcode,
                                                       species = biota_wrkng$genus), 
@@ -638,7 +669,13 @@ sample_asv <- rbind(sample_asv, unique(biota_wrkng[c("asv_code","smpcode")]))
 bugcode_asv <- rbind(bugcode_asv, unique(biota_wrkng[c("asv_code","bugcode")]))
 
 # Add records only identified to family:
-biota_wrkng <- bugdata_fam[c("sample","asv_code","family")]
+bugdata_fam$extraction_name <- substr(bugdata_fam$sample,1,nchar(bugdata_fam$sample)-4)
+bugdata_fam$smpcode <- samples_miseq$smpcode[match(bugdata_fam$extraction_name, 
+                                                   samples_miseq$extraction_name)]
+# NAs introduced as above
+sequences <- rbind(sequences,
+                   unique(bugdata_fam[c("asv_code","asv_seq","max_p_identity","amplicon")]))
+biota_wrkng <- bugdata_fam[c("sample","smpcode","asv_code","family")]
 biota_wrkng$extraction_name <- substr(biota_wrkng$sample,1,nchar(biota_wrkng$sample)-4)
 biota_wrkng$smpcode <- samples_miseq$smpcode[match(biota_wrkng$extraction_name, 
                                                    samples_miseq$extraction_name)]
@@ -663,34 +700,32 @@ bugcode_asv <- rbind(bugcode_asv, unique(biota_wrkng[c("asv_code","bugcode")]))
 
 #####
 x <- bugcode_asv[duplicated(bugcode_asv$asv_code) | duplicated(bugcode_asv$asv_code, fromLast = TRUE),]
-x_spp <- bugdata_spp[bugdata_spp$asv_code %in% unique(x$asv_code), c("sample","asv_code","species")]
-x_spp$miseq_run <- miseq_samples$miseq_run[match(x_spp$sample, miseq_samples$seq_code)]
-x_spp_agg <- aggregate(x_spp$species, 
-                   by = list(asv_code = x_spp$asv_code, species = x_spp$species, miseq_run = x_spp$miseq_run), 
-                   FUN = length)
-x_spp_agg # 00f4bc36686affa317cbbdbad7a65991 identified as Hydropsychidae (Unident.) in miseq 15 and Austropsyche sp. in miseq18
-bugdata_spp[bugdata_spp$asv_code == "00f4bc36686affa317cbbdbad7a65991",]
-x_fam <-bugdata_fam[bugdata_fam$asv_code == "00f4bc36686affa317cbbdbad7a65991",]
-miseq_samples$miseq_run[miseq_samples$seq_code == x_fam$sample[1]]
+# 0 asv_codes with > 1 identification
 
 new_biota <- new_biota[order(new_biota$smpcode),]
 ```
 
-[MEL: I would like to produce a similar set of tables for the 46-site data but am unsure where to look to find the latest, most reliable data. With a table of asv_codes and species names as they were identified in the latest version, I can easily produce a synonyms table.  I don't want to commit any of this to the mwbugs database until that is sorted, because a version of the 46-site data is in there (without the asv_code data), and that will need revising]
-
-[MEL: note that in reformatting these tables, I have not included any of the following fields from your miseq_samples tables:
-"samp_no"         "plate_position"  "i7_index"        "i5_index"        "amplicons"       "comment"
-or these from your biotic table:
-"Consensus"      "max_p_identity" "threshold"  "asv_seq"        "amplicon"       "reads" 
-Do you think any of these are important to include in the mwbugs database (Note "kingdom","phylum","class","order","family","genus" are not included because that information is held in the taxonomic tables of the database (and implicitly in the bugcodes)),]
-CHRIS: This is fine. Howvever, I'll just need to be able to create tables with the taxonomic information, max-p-identity, asv_seq, amplicon and reads, so as long as we still have this information store elsewhere so I can use it in preparing papers.
 
 ```{r}
 bins <- as.data.frame(readxl::read_excel("data/asv_library_corrected.xlsx", sheet = 3))
 bins <- bins[!is.na(bins$bin_uri),]
 
-miseq_data <- bugdata_spp
+miseq_data <- rbind(bugdata_spp[c("sample","asv_code","reads")],
+                    bugdata_gen[c("sample","asv_code","reads")],
+                    bugdata_fam[c("sample","asv_code","reads")])
+miseq_data <- dplyr::mutate(miseq_data, 
+                            smpcode = miseq_data$smpcode[match(miseq_data$sample, 
+                                                               miseq_samples$seq_code)],
+                            .after = sample)
 
+ reads_tab <- dplyr::mutate(miseq_data, 
+                            smpcode = miseq_samples$smpcode[match(miseq_data$sample, miseq_samples$seq_code)],
+                            bugcode = bugcode_asv$bugcode[match(miseq_data$asv_code, bugcode_asv$asv_code)], 
+                            .after = sample)
+ reads_tab <- dplyr::mutate(reads_tab, 
+                            taxon = new_biota$taxon[match(paste0(reads_tab$smpcode,reads_tab$bugcode),
+                                                          paste0(new_biota$smpcode,new_biota$taxoncode))],
+                            .after = bugcode)
 ```
 
 ```{r}
@@ -706,6 +741,8 @@ table_list <- list(sites = sites[sites$sitecode %in% unique(new_samples$sitecode
                    sample_asv = sample_asv,
                    new_taxon_spp = new_taxon_spp,
                    new_morphospp_etc = new_morphospp_etc, 
+                   miseq_samples = miseq_samples,
+                   miseq_data = miseq_data,
                    bins = bins)
 WriteXLS::WriteXLS(table_list, "~/temp/arc_metabarcoding_data_for_mwbugs_db.xlsx")
 ```
