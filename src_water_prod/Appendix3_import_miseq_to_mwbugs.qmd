@@ -201,12 +201,13 @@ for(i in 1:length(miseq_dirs)){
     miseq_samples <- rbind(miseq_samples, miseq_samples_i)
   }
 }
-# A rogue terrestrial to be deleted.
+# 2 rogue terrestrials to be deleted.
 bugdata_gen <- bugdata_gen[bugdata_gen$genus != "Chrysophtharta",]
+bugdata_spp <- bugdata_spp[bugdata_spp$genus != "Eufairmairia",]
 ```
 
 Some samples were re-run because of insufficient reads (or other reasons), often in a subsequent miseq run.  The following chunk finds such cases (where there are replicate 1, 2, and 3 and 4, 5, and 6), and keeps only replicates 4, 5 and 6.
-
+ 
 ```{r}
 
 sample_reps <- aggregate(miseq_samples$seq_code, 
@@ -345,20 +346,23 @@ samples_c$smpcode_f <- miseq_samples$smpcode_mc[match(samples_c$extraction_name,
 samples_c$smpcode <- samples_c$smpcode_f
 # These are incorrect, using only reach codes, and these are based on mwstr v1.2 sitecodes...
 samples_c$reach <- substr(samples_c$sitecode, 1, nchar(samples_c$sitecode)-1)
+samples_c$reach <- gsub("-","_", samples_c$reach)
 # all but five of these are in the mwbugs database, and the other 5 are just minor differences
 diff_reaches <-  c("CVD_644" = "CVD_663", "EDG_714" = "EDG_720", "LON_611" = "LON_598",
                    "M3D_215" = "M3D_191","TN2_118" = "TN2_104")
 samples_c$reach[match(names(diff_reaches), samples_c$reach)] <- diff_reaches
-sum(!samples_c$reach %in% sites$reach_v12) # 0
-# so, correct sitecodes
+sum(!samples_c$reach %in% sites$reach_v12) #1 inconsistent - problematic french I site
+samples_c$reach[samples_c$reach == "TNK_1992"] <- "TNK_2042"
+
 samples_c$sitecode_mc <- samples_c$sitecode
 samples_c$sitecode <- sites$sitecode[match(samples_c$reach, sites$reach_v12)]
 samples_c$smpcode <- paste(samples_c$monthcode, samples_c$sitecode, sep = "-")
 
-sum(!samples_c$sitecode %in% sites$sitecode) # 2 sitecodes consistent with sites table
+   # 2 sitecodes consistent with sites table
 samples_c$sitecode[match(c("396-MUC-987","395-TNK-1992"), samples_c$smpcode_f)] <- c("MUC-987-0","TNK-2042-3")
 samples_c$smpcode[match(c("396-MUC-987","395-TNK-1992"), samples_c$smpcode_f)] <- c("396-MUC-987-0","396-TNK-2042-3")
-samples_c$reach[match(c("396-MUC-987","395-TNK-1992"), samples_c$smpcode_f)] <- c("MUC-987","TNK-2042")
+
+sum(!samples_c$sitecode %in% sites$sitecode) 
 sum(!samples_c$smpcode_f %in% miseq_samples$smpcode) # 0: good - all 137 samples_a$smpcode_f in miseq_samples.
 sum(!samples_c$extraction_name %in% miseq_samples$extraction_name) # 0 (so sites, samples_a, and miseq_samples, consistent)
 
@@ -432,7 +436,6 @@ new_samples$comment[new_samples$smpcode == "384-ANS-1611-6-DP"] <- "count value 
 new_samples$embargoed <- 1
 new_samples$old_samplecode <- samples_miseq$smpcode_f
 new_samples$dry_no_sample <- 0  
-# [CHRIS go back and include samples not taken because of dryngess - check 'Number of edge' field for hints]
 smpcode_vec <- new_samples$smpcode
 new_samples$smpcode <- paste0(smpcode_vec, "-DP")
 new_samples$smpcode[samples_miseq$n_riffle == 0] <- paste0(smpcode_vec[samples_miseq$n_riffle == 0], "-EP")
@@ -506,7 +509,7 @@ form_spp <- form_spp[order(form_spp)]
 # All were new except:
 # Synonym to add to mwbugs
 # QO120201 Aeshna brevistyla = Adversaeschna brevistyla
-# Make "Austroargiolestes spp." QD070200
+# Make "Austroargiolestes spp." QO070200
 
 new_spp <- data.frame(bugcode = NA, species = new_spp, mwbugs_table = NA)
 for(i in 1:nrow(new_spp)){
@@ -534,7 +537,7 @@ for(i in 1:nrow(new_spp)){
   }
   # 
  if(spi == "Austroargiolestes spp.") {
-   new_spp$bugcode[i] <- "QD070200"
+   new_spp$bugcode[i] <- "QO070200"
    new_spp$mwbugs_table[i] <- NA
  }
   }else{
@@ -595,6 +598,7 @@ new_morphospp_etc <- data.frame(taxon_code = new_spp$bugcode,
                                 tempNote = "added by CW for ARC metabarcoding project",
                                 taxonomic_note = substr(new_spp$bugcode,1,2))[!is.na(new_spp$mwbugs_table) &
                                                                                 new_spp$mwbugs_table == "morphospp_etc",]
+
 ```
 
 Assemble biological data for import into database
@@ -745,4 +749,5 @@ table_list <- list(sites = sites[sites$sitecode %in% unique(new_samples$sitecode
                    miseq_data = miseq_data,
                    bins = bins)
 WriteXLS::WriteXLS(table_list, "~/temp/arc_metabarcoding_data_for_mwbugs_db.xlsx")
+
 ```
