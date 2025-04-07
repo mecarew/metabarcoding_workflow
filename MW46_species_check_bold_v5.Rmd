@@ -1,0 +1,222 @@
+---
+title: "unmatched_checks_BOLDv5"
+author: "MCarew"
+date: "2025-04-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+CHRIS: The chunk below pulls out records that are missing from the asv library from the orignal unflitered version of 46 site data. I use your synonyms table to add new species names.
+
+```{r}
+library(dplyr)
+
+# read in synonyms output from Chris's find_synonyms.R
+old_mbc_matched <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/synonym_updates/old_mbc_matched.csv")
+
+synonyms <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/synonym_updates/synonyms_2025.csv")
+
+# read in original source data
+spring2018_metabarcoding_Nov2023 <- readxl::read_excel("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/spring2018_metabarcoding_Nov2023.xlsx", sheet = 2)
+
+# pulling out species data without filtering
+metabar_97 <- spring2018_metabarcoding_Nov2023 %>%
+  filter(match >= 97) %>%
+  select(otu_id, otu_sequence, species, match) %>%
+  distinct()
+
+# pulling out records not in the asv library
+metabar_97_filtered <- metabar_97 %>%
+  filter(!otu_id %in% old_mbc_matched$otu_id)
+
+# creating a table of synonyms that don't match
+synonyms_nomatch <- synonyms %>%
+  filter(species != species_new)
+
+# Extract records from metabar_97 where species match those in synonyms_nomatch
+metabar_mismatch <- metabar_97_filtered %>%
+  semi_join(synonyms_nomatch, by = "species")
+
+# Extract records from metabar_97 where species match those in synonyms_nomatch
+metabar_mismatch <- metabar_97_filtered %>%
+  inner_join(synonyms_nomatch %>% select(species, species_new), by = "species")
+
+# reduce df so that only one otu_id (asv_code) is present 
+metabar_mismatch_unique <- metabar_mismatch %>%
+  distinct(otu_id, .keep_all = TRUE)
+
+# some records match and some don't best to check all unmatched records against BOLD version 5 
+
+#write.csv(metabar_mismatch_unique,"~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/Mw46_metabar_mismatch_unique.csv", row.names = FALSE)
+```
+
+CHRIS: After having a quick play around I could not work out how to check the sequences by launching the BarcodeID search engine from R, so I search them in batches of 500 (which to a few minites per batch) and saved the in four output (below). I used the public+private library and the rapid species search function. I started with a 1000 sequences at a time but could not get the the 'combined hits' to download (guessing the file was too large)
+
+```{r}
+library(stringr)
+
+# read in .csv files with bold barcodeID engine results.
+bold_results1 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/synonym_updates/MW46_1_500_BOLDsearch_results.csv")
+
+bold_results2 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/synonym_updates/MW46_501_1000_BOLDsearch_results.csv")
+
+bold_results3 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/synonym_updates/MW46_1001_1500_BOLDsearch_results.csv")
+
+bold_results4 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/synonym_updates/MW46_1501_1779_BOLDsearch_results.csv")
+
+# combine all results into a single file
+bold_results_all <- rbind(bold_results1, bold_results2, bold_results3, bold_results4)
+
+# rename all results to match other dataframes
+bold_results_all <- bold_results_all %>%
+  rename(otu_id = Query.ID) %>%
+  rename(bold_species = Species)
+
+# Method using extract 'bin_url' and place in a new column
+bold_results_all <- bold_results_all %>%
+  mutate(bin_uri = str_extract(PID..BIN., "(?<=:)(.*?)(?=])"))
+
+# read in 'bins' dataframe from Appendix 3 to cross reference asv_library to barcodeID engine results
+bins <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/synonym_updates/bins.csv")
+
+# Perform the join with 'bins' to add current species names
+bold_results_all <- bold_results_all %>%
+  left_join(bins, by = "bin_uri")
+
+```
+
+```{r}
+# summarize the bold data keeping the highest value for ID. Remove PID..BIN. column so duplicate otu_id can be removed.
+bold_results_all <- bold_results_all %>%
+  select(-"PID..BIN.")
+
+# summarise so there is one  otu_id per row
+bold_results_sum <- bold_results_all %>%
+  group_by(`otu_id`) %>%
+  slice_max(order_by = `ID.`, n = 1) %>%
+  ungroup() %>%
+  distinct(otu_id, .keep_all = TRUE) # Add this line to remove fully duplicate rows
+
+```
+
+```{r}
+# bring in spring 2018 data for checking
+# library(readr)
+# MW46_metabar_mismatch_unique <- read_csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/MW46_metabar_mismatch_unique.csv")
+
+```
+
+```{r}
+# check bold IDs against synonym IDs and and previous identifications (orig_species)
+# Perform a left join to join bold ids to other ids
+MW46_metabar_mismatchs <- metabar_mismatch_unique %>%
+  left_join(bold_results_sum %>% select(otu_id, species, ID., bin_uri), by = "otu_id") 
+
+# update column names to avoid confusion
+MW46_metabar_mismatchs <- MW46_metabar_mismatchs %>%
+  rename(species_orig = species.x, # original names
+         species_bold = species.y, # names from bold v5 check
+         species_syn = species_new, # names from synonym df
+         bold_match = ID.,# % match from bold v5 check
+         bold_bin_uri = bin_uri) # top bin match from bold v5 check
+
+# write.csv(MW46_metabar_mismatchs, "~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/synonym_updates/MW46_metabar_mismatchs_for_checking.csv")
+
+```
+
+CHRIS: I checked the file manually as I could see an easy way to do it in R. I added two column one is what the new name should be and the second are comments. The comments are important for you to read as they point out important changes/updates. The synonyns table seems to differ from the 'bins' dataframe in places. I have not figured out why yet.
+
+```{r}
+# CHRIS: this is the file you should look at
+
+MW46_metabar_asvs_checked <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/synonym_updates/MW46_metabar_mismatchs_checked.csv")
+```
+
+
+CHRIS: Now I have checked the new asv's I thought I'd try the same thing with the asv's already in the library
+
+```{r}
+# pulling out records in the asv library
+metabar_97_matched <- metabar_97 %>%
+  filter(otu_id %in% old_mbc_matched$otu_id)
+
+# Extract records from metabar_97 where species match those in synonyms_nomatch
+metabar_mismatch_matched <- metabar_97_matched %>%
+  semi_join(synonyms_nomatch, by = "species")
+
+# reduce df so that only one otu_id (asv_code) is present 
+metabar_97_matched_unique <- metabar_97_matched %>%
+  distinct(otu_id, .keep_all = TRUE)
+
+# Extract records from metabar_97 where species match those in synonyms_nomatch
+metabar_mismatch_matched <- metabar_97_matched_unique %>%
+  inner_join(synonyms_nomatch %>% select(species, species_new), by = "species")
+
+# reduce df so that only one otu_id (asv_code) is present 
+metabar_97_matched_unique <- metabar_mismatch_matched %>%
+  distinct(otu_id, .keep_all = TRUE)
+
+# save file for searches
+write.csv(metabar_97_matched_unique,"~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/synonym_updates/MW46_metabar_matched_unique.csv", row.names = FALSE)
+```
+
+# import search results from bold
+```{r}
+# read in .csv files with bold barcodeID engine results
+bold_results_all_matched <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/synonym_updates/MW46_BOLD_MATCHED_search_results.csv")
+
+# rename all results to match other dataframes
+bold_results_all_matched <- bold_results_all_matched %>%
+  rename(otu_id = Query.ID) %>%
+  rename(bold_species = Species)
+
+# Method using extract 'bin_url' and place in a new column
+bold_results_all_matched <- bold_results_all_matched %>%
+  mutate(bin_uri = str_extract(PID..BIN., "(?<=:)(.*?)(?=])"))
+
+# Now perform the join using the different names
+bold_results_all_matched <- bold_results_all_matched %>%
+  left_join(bins, by = "bin_uri")
+
+# summarize the bold data keeping the highest value for ID. Remove PID..BIN. column so duplicate otu_id can be removed.
+bold_results_matched_sum <- bold_results_all_matched %>%
+  group_by(otu_id) %>%
+  slice_max(order_by = ID., n = 1) %>%
+  ungroup() %>%
+  select(-"PID..BIN.")
+
+# summarise so there is one  otu_id per row
+bold_results_matched_sum <- bold_results_all_matched %>%
+  group_by(`otu_id`) %>%
+  slice_max(order_by = `ID.`, n = 1) %>%
+  ungroup() %>%
+  distinct(otu_id, .keep_all = TRUE) # Add this line to remove fully duplicate rows
+```
+
+CHRIS: the results for the asv's already in the library against bold are presented here.
+```{r}
+# check bold IDs against synonym IDs and and previous identifications (orig_species)
+# Perform a left join to join bold ids to other ids
+metabar_mismatch_matched <- metabar_97_matched_unique %>%
+  left_join(bold_results_matched_sum %>% select(otu_id, species, ID., bin_uri), by = "otu_id") 
+
+# update column names to avoid confusion
+metabar_mismatch_matched <- metabar_mismatch_matched %>%
+  rename(species_orig = species.x, # original names
+         species_bold = species.y, # names from bold v5 check
+         species_syn = species_new, # names from synonym df
+         bold_match = ID.,# % match from bold v5 check
+         bold_bin_uri = bin_uri) # top bin match from bold v5 check
+
+# write.csv(metabar_mismatch_matched, "~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/synonym_updates/MW46_metabar_matched_for_checking.csv")
+```
+
+Final comparsion file
+```{r}
+# CHRIS: this is the file you should look at
+
+MW46_metabar_asvs_checked <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/synonym_updates/MW46_metabar_matched_checked.csv")
+```
