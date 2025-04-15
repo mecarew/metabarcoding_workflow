@@ -58,16 +58,69 @@ all_arc <- all_arc %>%
   select(asv_code, asv_seq, phylum, order, family, genus, species, max_p_identity) %>%
   distinct()
 
+### Check for duplicated asv_codes in all_arc
+sum(duplicated(all_arc$asv_code))  # 45.
+### Investigate duplicates 
+all_arc_dups <- all_arc[duplicated(all_arc$asv_code) | duplicated(all_arc$asv_code, fromLast = TRUE),]
+### Most seem to be cases of some records having been given sp. (Unident.) names and some not.
+### Or cases of differing max_p_identity
+### Remove the sp. (Unident.) names and set max_p_identity to maximum value and re-check
+dup_asvs <- unique(all_arc_dups$asv_code)
+for(i in 1:length(dup_asvs)){
+  dupi <- all_arc_dups[all_arc_dups$asv_code == dup_asvs[i],]
+  if(sum(is.na(dupi$max_p_identity) > 0)) stop("1")
+  if(length(unique(dupi$max_p_identity)) > 1){
+    all_arc$max_p_identity[all_arc$asv_code == dup_asvs[i]] <- max(dupi$max_p_identity)
+  }
+  if(sum(is.na(dupi$species) > 0)) stop("2")
+  if(sum(grepl("Unident.", dupi$species)) == 1 & sum(dupi$species == "") == 1){
+    all_arc$species[all_arc$asv_code == dup_asvs[i]] <- ""
+  }
+}
+### Remove duplicates and check again
+all_arc <- unique(all_arc)
+sum(duplicated(all_arc$asv_code))  # 2.
+### Investigate remaining duplicates 
+all_arc_dups <- all_arc[duplicated(all_arc$asv_code) | duplicated(all_arc$asv_code, fromLast = TRUE),]
+### Two records with differing levels of ID.  Remove the lesser id manually for these two.
+all_arc <- all_arc[!(all_arc$asv_code == "00f4bc36686affa317cbbdbad7a65991" & all_arc$species == ""),]
+all_arc <- all_arc[!(all_arc$asv_code == "501abc35668f71c0e301518eafaa20ee" & all_arc$family == ""),]
+### Check again
+sum(duplicated(all_arc$asv_code))  # 0.  Good
+
 # Combine the asv_code values from tfill and maxp
 codes_to_remove <- union(tfill$asv_code, maxp$asv_code)
 
 # Filter arc_all to remove matching asv_code values (isolate asv without a species match)
-all_arc_unmatched <- all_arc %>%
-  filter(!asv_code %in% codes_to_remove)
+### The following command is a problem because it re-introduces (I think) duplicates from tfill and maxp
+# all_arc_unmatched <- all_arc %>%
+#   filter(!asv_code %in% codes_to_remove)
+### This command returns 5418 records rather than 5434 that your command returned (16 more records)
+all_arc_unmatched <- all_arc[!all_arc$asv_code %in% codes_to_remove,]
 
 # add information from synonym table (adds a new column with any matches to the synonym table)
 all_arc_unmatched <- all_arc_unmatched %>%
   left_join(synonyms %>% select(species, species_new), by = "species")
+### The trouble with this step is that it re-introduces the 16 records I got rid of above, by introducing duplicated asv_codes.
+### By inspecting the following object, x, I found that in all cases, the species name with the most words was the most likely correct name...so use this to correct both all_arc_unmatched and the synonyms table, which is used again below.
+x <- all_arc_unmatched[duplicated(all_arc_unmatched$asv_code) | duplicated(all_arc_unmatched$asv_code, fromLast = TRUE),]
+dup_asvs <- unique(x$asv_code)
+for(i in 1:length(dup_asvs)){
+  dupi <- all_arc_unmatched[all_arc_unmatched$asv_code == dup_asvs[i],]
+  nwords <- vector("numeric", length = nrow(dupi))
+  for(j in 1:nrow(dupi)){
+  nwords[j] <- length(strsplit(dupi$species_new[j], " ")[[1]])
+  }
+  # And remove redundant synonyms
+  syns_to_remove <- dupi[nwords[nwords != max(nwords)],]
+  for(j in 1:nrow(syns_to_remove)){
+    synonyms <- synonyms[!(synonyms$species == syns_to_remove$species[j] & 
+                             synonyms$species_new == syns_to_remove$species_new[j]),]
+  }
+  all_arc_unmatched$species_new[all_arc_unmatched$asv_code == dup_asvs[i]] <- dupi$species_new[which.max(nwords)]
+}
+all_arc_unmatched <- unique(all_arc_unmatched)
+### Brings it back to 5418 records
 
 # save file for check against the bold barcodeID engine manually (this can be coded in future)
 
@@ -75,6 +128,7 @@ write.csv(all_arc_unmatched, paste0(wd, "/all_arc_unmatched_for_sequence_search.
 ```
 
 OK. Now I have searched all the asv sequences against against BOLD version 5 using the 'rapid species search' against the 'public+private' library manually. The 'rapid species search' can take 1000 records at a time. However, sometimes you can't download the final 'combined hits' possibly the.csv file is too large (so less sequences need to be searched)  This code brings the bold 'combined hits' .csv back into R.
+
 ```{r}
 #set directory for results files
 wd3 <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/unmatched_boldv5_search_results"
@@ -107,7 +161,7 @@ bold_results_all <- bold_results_all %>%
   left_join(bins, by = "bin_uri")
 ```
 
-Here, we perpare the data from the bold search so it can be added to the asvs NOT in our current asv library (e.g. tfill or max-p-identity)
+Here, we prepare the data from the bold search so it can be added to the asvs NOT in our current asv library (e.g. tfill or max-p-identity)
 ```{r}
 # summarize the bold data keeping the highest value for ID (note this doesn't always give the lowest taxonomy, just the best matching record). Remove PID..BIN. column so duplicate otu_id can be removed.
 bold_results_all <- bold_results_all %>%
@@ -151,6 +205,7 @@ Next is to extract the records for 'tfill', 'max-p-update' and 'bins' and put th
 
 ```{r}
 # Still need to do
+### See at the very end of the file where I've given this a crack
 ```
 
 # max-p-update update
@@ -209,6 +264,7 @@ maxp_syn <- maxp %>%
   left_join(synonyms %>% select(species, species_new), by = "species")
 
 #CHRIS: I noticed the 'maxp_syn' table was bigger than the 'maxp' table 'they should be the same size. the extra rows are coming from species with conflicting names. 29 here. I have gone back and regenerated the 'synonyms' dataframe using your most up to date code (Appendix 3 then find_synonyms.R) and checked it. It appear in some cases multiple 'species_new' names are given for a species. Do you mind checking this? Thanks
+### I think I have fixed this by removing redundant records in the synonyms table above. Looks ok now.
 # Count how many times each species appears in synonyms
 # syn_dups <- synonyms %>%
 #   count(species) %>%
@@ -233,6 +289,9 @@ Export records out for manual checking only checking records with >97 match on b
 ```{r}
 # only checking records where bold had a species match of >97 ()
 
+arc_maxp[!is.na(arc_maxp$species_bold) & !is.na(arc_maxp$species_orig) & 
+           arc_maxp$species_bold != arc_maxp$species_orig & arc_maxp$bold_match >= 97,]
+
 arc_maxp_ck <- arc_maxp %>%
 filter(
     (species_orig != species_bold |
@@ -245,9 +304,11 @@ write.csv(arc_maxp_ck, paste0(wd, "arc_maxp_for_checking.csv"), row.names = FALS
 
 ```
 
-CHRIS: We have ots of bins to add to our database, a small wumber of corrections and some species that have naming updates needed (below: arc_maxp_checked)
+CHRIS: We have ots of bins to add to our database, a small number of corrections and some species that have naming updates needed (below: arc_maxp_checked)
+
 ```{r}
 # read in checked file
+### Perhaps make it clear here that arc_maxp_checked is the manually checked version of arc_maxp_ck created above
 arc_maxp_checked <- read.csv(paste0(wd, "/arc_maxp_checked.csv"))
 
 #check for and remove duplicated records
@@ -255,6 +316,9 @@ any(duplicated(arc_maxp_checked$asv_code))
 
 dup_codes <- arc_maxp_checked$asv_code[duplicated(arc_maxp_checked$asv_code)]
 print(dup_codes) # 4 records duplicated
+### Better to inspect all duplicates
+arc_maxp_checked[duplicated(arc_maxp_checked$asv_code) | duplicated(arc_maxp_checked$asv_code, fromLast = TRUE),]
+### and, yes, from this I see that the following correction makes sense!
 
 arc_maxp_checked <- arc_maxp_checked %>%
   filter(
@@ -270,7 +334,7 @@ arc_maxp_checked <- arc_maxp_checked %>%
 Next is to extract the 'max-p-update' record update and new 'bins' to up date the 'asv library' spreadsheets. CHRIS: thinking about it some more is it worth placing the 'bin' in the asv library? Let me know what you think?
 
 ```{r}
-# Still need to do
+### Thinking about this a bit more...you know that we do already have a bins table in the asv_library, which we could add to...but it occurs to me that I have built that table using unique combinations of species names and bin_uris. While this is what I think I will put in the database, perhaps it would be more useful to have an bin_uri listed for every asv_code.  In that case, yes, lets add a bin_uri field to the tfill and maxp tables.
 ```
 
 # tfill check against the BOLD v5 library
@@ -347,6 +411,7 @@ tfill_syn <- tfill %>%
   left_join(synonyms %>% select(species, species_new), by = "species")
 
 #CHRIS: row difference again. 362 here. Will remove these further down as I only noticed after checking.
+### Once again fixed by deleting redundant synonym entries above.
 
 # check bold IDs against synonym IDs and and previous identifications (orig_species)
 # Perform a left join to join bold ids to other ids
@@ -384,75 +449,233 @@ any(duplicated(arc_tfill_checked$asv_code))  # TRUE or FALSE
 tfill_dup_codes <- arc_tfill_checked$asv_code[duplicated(arc_tfill_checked$asv_code)]
 print(tfill_dup_codes) # 85 duplicated asv records
 
-# Extract duplicated rows
-tfill_dup_asvs <- arc_tfill_checked %>%
-  filter(asv_code %in% tfill_dup_codes)
+### I take a different approach here (as I did above). I think it deals with all the duplicates without 
+### resorting to making changes by asv_code (which risks difficult to trace errors)
+### Note that adding "| duplicated(arc_tfill_checked$asv_code, fromLast = TRUE)" gives all duplicate entries (not just the first duplicate record)
+tfill_dups <- arc_tfill_checked[duplicated(arc_tfill_checked$asv_code) | duplicated(arc_tfill_checked$asv_code, fromLast = TRUE),]
 
-# Define groups of ASV codes and matching species
-hydrophilidae_asvs <- c("b9991a5c09c2b936ee2f18553f10bd3e", "f737f12a2e2b2395dfe4c164307d29de")
-hydrophilidae_species <- c("Hydrophilidae sp. B-ACA3039", "Hydrophilidae")
+### By inspecting the following object, x, I found that in all cases, the species name with the most words was the most likely correct name...so use this to correct both all_arc_unmatched and the synonyms table, which is used again below.
+for(i in 1:length(tfill_dup_codes)){
+  dupi <- arc_tfill_checked[arc_tfill_checked$asv_code == tfill_dup_codes[i],]
+  nwords <- vector("numeric", length = nrow(dupi))
+  for(j in 1:nrow(dupi)){
+  nwords[j] <- length(strsplit(dupi$species_syn[j], " ")[[1]])
+  }
+  ### Put in a check here to make sure there is only ever one name with the most words
+  if(sum(nwords == max(nwords)) > 1 & !tfill_dup_codes[i] %in% c("b9991a5c09c2b936ee2f18553f10bd3e","f737f12a2e2b2395dfe4c164307d29de",
+  "f3f45492902b48eb7ad6cbd0f42ecd9c")) stop("1")
+  ### This did identify some problems that need manual correction (skipped here, and considered below)
+  if(!tfill_dup_codes[i] %in% c("b9991a5c09c2b936ee2f18553f10bd3e","f737f12a2e2b2395dfe4c164307d29de",
+  "f3f45492902b48eb7ad6cbd0f42ecd9c"))
+  arc_tfill_checked$species_syn[arc_tfill_checked$asv_code == tfill_dup_codes[i]] <- dupi$species_syn[which.max(nwords)]
+}
 
-ceratopogonidae_asvs <- c("f3f45492902b48eb7ad6cbd0f42ecd9c")
-ceratopogonidae_species <- c("Ceratopogonidae sp. B-ADR4164")
+### Note the above calls all Austroargiolestes "Austroargiolestes spp,", which I think is what we agreed on, no?  (You went with just Austroargiolestes in your commented out code below)
 
-austroargiolestes_asvs <- c(
-  "062b799d1adcdb8abd37844eec22941a", "1a4ad4c6180eb8b54b1642c56478dff1", "1dde5432529d459675250a267b87f962",
-  "2d77596c28da618c6c680b9a79621e10", "3727f376e3b97666dba0053046aabe85", "42329edf624820fd6156641277500482",
-  "473a12af5311f47f3aea36772651c27a", "47d63d01bc08eed6f26c5d48db10e353", "54a321b61138a1af3d07986a95e65765",
-  "6eed067b9ed65c71fc22c094c9d51b74", "71a874d507af847cd0f738467259c1a3", "794f9343860329a36e3568d982e54937",
-  "7bdd4bfcd59ae83b78de6ba107a8b116", "82efcc456b3a5aad7a515f3651188a17", "83efa3b551d04aaa92f170ec50a0b8c6",
-  "8c540a998add88b5f37e0d922c0a53c5", "8c85d34efd45585ac560cd57efa77d6b", "9791016b22e7ac26c4177072e0c0075a",
-  "9dd15d591d8f498e9344a3f43478bee8", "a382c62c5b1101f7ee50bfabe062c262", "a78b69b32783c342885451246ec6e803",
-  "ab95bbfbd0e53c3b1ecd51ac2ca8d2c0", "b2b35960764554ca3d403924d86d13b5", "c0e687706cd3150c763e2f80bc20d221",
-  "cfa4c4bcb6e8226938aa407fc4cc989a", "d514e7da62f32f3e58e9eade66526a53", "dac6161e66ec6b8a8bb9319a4e9fb2fe",
-  "dec9957195b4425eac5f49912e119726", "e1f489d2868a1b1dd2a86ac7bedd1933", "fc48dd933b199302ea9b9b4827c3a6de"
-)
-austroargiolestes_species <- c("Austroargiolestes")
+### The three problem asv_codes all suffer from bin_url disagreements (and were also given MC names: Enochrus sp. MC-5,  Enochrus sp. MC-5, Ceratopogonidae sp. MC-8.  For now I have just elected to make the species_syn name the original B- name to permit checking of these below
 
-bayardella_asvs <- c(
-  "0e6ca6da348567b55bb0f2c4480b8269", "13ca4d32d2ac9a5f59897109d2e779de", "1b94c2656d7680b696f2ec7241d46f38",
-  "220817ce0eb8f8922d1ab784f054753a", "22562ba01c1407a80d104d6ca1575598", "22f5d8665b170fe4f73de578ccf8d661",
-  "3210e5f5ac800b7f4bfbab60bda0ebd7", "345ffa1f5549dac7c7b4f16d4ac26575", "36aa126ab17a79d6e4c506b2976ad64a",
-  "378af4b67bb8371aa93a7b3a5518d201", "38ebbfb9ce8b62f4d24cd7a1751fc134", "4215f49e43aa75242b3716146e167605",
-  "4e63d7df1d5201ded5c6c2292bc30320", "57819f0c7457e05f2e9bd362281cd316", "7e4cbcb670e0c1796a71959724875e08",
-  "80315130d03fc894d4bcc1134f450815", "86af43cb207e71f4310462dbfe78fe4c", "884f7d58f4989d76d35858983ab0eb17",
-  "891581eae36a83b1f00661a13fe95054", "902e3ab8f4e68b269edd79667fa3f37f", "9695107a34897a126e5bf785c7a73c73",
-  "9f79f7f1ade6c2d387dba5969631c438", "a1fd05888ae0113f3e36cc954573547a", "a77c28c7fdef2a41ef7222af4c214406",
-  "a8dc176d194e5fe9361dd1320a912e8f", "ab105146970772d04f5e0596a091ac98", "ab50a8dff76cfeda3552eb09e13a10db",
-  "b9b514dcb904e951a25da99710a7dd2c", "d01d2c3e5cb682d55b68f6bfd054df33", "d740db7102dc565393420413a9378c33",
-  "d840cc07e39a90ec34876c90ad81b37e", "db80656b4bbaf67fb439b47ee80b08db", "e2f4b1ced118b9d9048d3b6d63eadc3b",
-  "e9f07efa5059a3f9d3700b29d9da3668", "f382149b16383f29c58e0484fccf40cf", "f5f9eef0a2bdc0c2cfaf6ea0100303a2"
-)
-bayardella_species <- c("Bayardella")
+arc_tfill_checked$species_syn[arc_tfill_checked$asv_code %in% c("b9991a5c09c2b936ee2f18553f10bd3e",
+                                                                "f737f12a2e2b2395dfe4c164307d29de")] <- 
+              "Hydrophilidae sp. B-ACA3039"
+arc_tfill_checked$species_syn[arc_tfill_checked$asv_code == "f3f45492902b48eb7ad6cbd0f42ecd9c"] <-      
+               "Ceratopogonidae sp. B-ADR4164"
+### having correct all the species_syn entries, duplicates can be removed by
+arc_tfill_checked <- unique(arc_tfill_checked)
 
-leptoperla_asvs <- c(
-  "3408845fd9ef21e7650dcad05a2bc40d", "3efbee16ebf463ad158886c892929348", "47e0583ede4af7ace488c318a62d4dfc",
-  "53345b75d7ca3d05abb9634f2fd40299", "561da9dd81fca9e5cfa921032f7d8e0a", "5cc9638f2ab5917366ed5513b19209e4",
-  "777e20cbc1fd426f3cd5c450285f4b9a", "7e7ea18fe8ad76cabc391eff25411bec", "8d36e89492d3a60e388f1d007a7acfe0",
-  "ae4a051349d0a89092a47cee8d211f4e", "c33838fa95091384ab55af0d7e4d52c5", "cbd27fe246730af7a90d46bc9e119baf",
-  "ce6a4c1e933398fddc2cc99fbd1b71a2", "d369e5554fdfce2a54e7579b0dd930d4", "ec13862ea7f22006b6d0ceb698cfed5a"
-)
-leptoperla_species <- c("Leptoperla")
-
-# Apply filtering
-arc_tfill_checked <- arc_tfill_checked %>%
-  filter(
-    !(
-      (asv_code %in% hydrophilidae_asvs & species_syn %in% hydrophilidae_species) |
-      (asv_code %in% ceratopogonidae_asvs & species_syn %in% ceratopogonidae_species) |
-      (asv_code %in% austroargiolestes_asvs & species_syn %in% austroargiolestes_species) |
-      (asv_code %in% bayardella_asvs & species_syn %in% bayardella_species) |
-      (asv_code %in% leptoperla_asvs & species_syn %in% leptoperla_species)
-    ))
+### So, I think the above does everything your following commented-out code does without resorting to using the asv_codes (except for the three problematic ones). Let me know if you have any reservations about the above
+# 
+# # Extract duplicated rows
+# tfill_dup_asvs <- arc_tfill_checked %>%
+#   filter(asv_code %in% tfill_dup_codes)
+# 
+# # Define groups of ASV codes and matching species
+# hydrophilidae_asvs <- c("b9991a5c09c2b936ee2f18553f10bd3e", "f737f12a2e2b2395dfe4c164307d29de")
+# hydrophilidae_species <- c("Hydrophilidae sp. B-ACA3039", "Hydrophilidae")
+# 
+# ceratopogonidae_asvs <- c("f3f45492902b48eb7ad6cbd0f42ecd9c")
+# ceratopogonidae_species <- c("Ceratopogonidae sp. B-ADR4164")
+# 
+# austroargiolestes_asvs <- c(
+#   "062b799d1adcdb8abd37844eec22941a", "1a4ad4c6180eb8b54b1642c56478dff1", "1dde5432529d459675250a267b87f962",
+#   "2d77596c28da618c6c680b9a79621e10", "3727f376e3b97666dba0053046aabe85", "42329edf624820fd6156641277500482",
+#   "473a12af5311f47f3aea36772651c27a", "47d63d01bc08eed6f26c5d48db10e353", "54a321b61138a1af3d07986a95e65765",
+#   "6eed067b9ed65c71fc22c094c9d51b74", "71a874d507af847cd0f738467259c1a3", "794f9343860329a36e3568d982e54937",
+#   "7bdd4bfcd59ae83b78de6ba107a8b116", "82efcc456b3a5aad7a515f3651188a17", "83efa3b551d04aaa92f170ec50a0b8c6",
+#   "8c540a998add88b5f37e0d922c0a53c5", "8c85d34efd45585ac560cd57efa77d6b", "9791016b22e7ac26c4177072e0c0075a",
+#   "9dd15d591d8f498e9344a3f43478bee8", "a382c62c5b1101f7ee50bfabe062c262", "a78b69b32783c342885451246ec6e803",
+#   "ab95bbfbd0e53c3b1ecd51ac2ca8d2c0", "b2b35960764554ca3d403924d86d13b5", "c0e687706cd3150c763e2f80bc20d221",
+#   "cfa4c4bcb6e8226938aa407fc4cc989a", "d514e7da62f32f3e58e9eade66526a53", "dac6161e66ec6b8a8bb9319a4e9fb2fe",
+#   "dec9957195b4425eac5f49912e119726", "e1f489d2868a1b1dd2a86ac7bedd1933", "fc48dd933b199302ea9b9b4827c3a6de"
+# )
+# austroargiolestes_species <- c("Austroargiolestes")
+# 
+# bayardella_asvs <- c(
+#   "0e6ca6da348567b55bb0f2c4480b8269", "13ca4d32d2ac9a5f59897109d2e779de", "1b94c2656d7680b696f2ec7241d46f38",
+#   "220817ce0eb8f8922d1ab784f054753a", "22562ba01c1407a80d104d6ca1575598", "22f5d8665b170fe4f73de578ccf8d661",
+#   "3210e5f5ac800b7f4bfbab60bda0ebd7", "345ffa1f5549dac7c7b4f16d4ac26575", "36aa126ab17a79d6e4c506b2976ad64a",
+#   "378af4b67bb8371aa93a7b3a5518d201", "38ebbfb9ce8b62f4d24cd7a1751fc134", "4215f49e43aa75242b3716146e167605",
+#   "4e63d7df1d5201ded5c6c2292bc30320", "57819f0c7457e05f2e9bd362281cd316", "7e4cbcb670e0c1796a71959724875e08",
+#   "80315130d03fc894d4bcc1134f450815", "86af43cb207e71f4310462dbfe78fe4c", "884f7d58f4989d76d35858983ab0eb17",
+#   "891581eae36a83b1f00661a13fe95054", "902e3ab8f4e68b269edd79667fa3f37f", "9695107a34897a126e5bf785c7a73c73",
+#   "9f79f7f1ade6c2d387dba5969631c438", "a1fd05888ae0113f3e36cc954573547a", "a77c28c7fdef2a41ef7222af4c214406",
+#   "a8dc176d194e5fe9361dd1320a912e8f", "ab105146970772d04f5e0596a091ac98", "ab50a8dff76cfeda3552eb09e13a10db",
+#   "b9b514dcb904e951a25da99710a7dd2c", "d01d2c3e5cb682d55b68f6bfd054df33", "d740db7102dc565393420413a9378c33",
+#   "d840cc07e39a90ec34876c90ad81b37e", "db80656b4bbaf67fb439b47ee80b08db", "e2f4b1ced118b9d9048d3b6d63eadc3b",
+#   "e9f07efa5059a3f9d3700b29d9da3668", "f382149b16383f29c58e0484fccf40cf", "f5f9eef0a2bdc0c2cfaf6ea0100303a2"
+# )
+# bayardella_species <- c("Bayardella")
+# 
+# leptoperla_asvs <- c(
+#   "3408845fd9ef21e7650dcad05a2bc40d", "3efbee16ebf463ad158886c892929348", "47e0583ede4af7ace488c318a62d4dfc",
+#   "53345b75d7ca3d05abb9634f2fd40299", "561da9dd81fca9e5cfa921032f7d8e0a", "5cc9638f2ab5917366ed5513b19209e4",
+#   "777e20cbc1fd426f3cd5c450285f4b9a", "7e7ea18fe8ad76cabc391eff25411bec", "8d36e89492d3a60e388f1d007a7acfe0",
+#   "ae4a051349d0a89092a47cee8d211f4e", "c33838fa95091384ab55af0d7e4d52c5", "cbd27fe246730af7a90d46bc9e119baf",
+#   "ce6a4c1e933398fddc2cc99fbd1b71a2", "d369e5554fdfce2a54e7579b0dd930d4", "ec13862ea7f22006b6d0ceb698cfed5a"
+# )
+# leptoperla_species <- c("Leptoperla")
+# 
+# # Apply filtering
+# arc_tfill_checked <- arc_tfill_checked %>%
+#   filter(
+#     !(
+#       (asv_code %in% hydrophilidae_asvs & species_syn %in% hydrophilidae_species) |
+#       (asv_code %in% ceratopogonidae_asvs & species_syn %in% ceratopogonidae_species) |
+#       (asv_code %in% austroargiolestes_asvs & species_syn %in% austroargiolestes_species) |
+#       (asv_code %in% bayardella_asvs & species_syn %in% bayardella_species) |
+#       (asv_code %in% leptoperla_asvs & species_syn %in% leptoperla_species)
+#     ))
 ```
 
 ```{r}
 # check again for duplicates.
 any(duplicated(arc_tfill_checked$asv_code))  # TRUE or FALSE
 tfill_dup_codes <- arc_tfill_checked$asv_code[duplicated(arc_tfill_checked$asv_code)] # all good now.
+
+### So, having got that far, I thought it worth checking for new bin disagreements
+bin_disagreements <- arc_tfill_checked[0, c("species_syn","bold_bin_uri","updated_species_name")]
+for(i in 1:nrow(arc_tfill_checked)){
+  if(grepl("B-", arc_tfill_checked$species_syn[i])){
+     if(!grepl(arc_tfill_checked$bold_bin_uri[i], arc_tfill_checked$species_syn[i])){
+    bin_disagreements <- rbind(bin_disagreements,
+                               arc_tfill_checked[i,c("species_syn","bold_bin_uri","updated_species_name")])
+     }
+    }
+}
+### Looking through bin_disagreements, it looks like you've captured most of these well by creating new 'group' names (e.g. Hydrozetes sp. B-ACX8442/AGE9507).  There are some that perhaps warrant a further check by you?  Have a look through bin_disagreements and you should see what I mean. (e.g. should "Tanytarsus sp. B-AAE1903" be called "Tanytarsus sp. B-AAE1903/AAE1904?)
+
+### Otherwise, this looks to be pretty much in order to me (Good work, Mel!)
 ```
 
 Next is to extract the 'tfill' record to update to up date the 'asv library' spreadsheets and also any new 'bins'. 
 ```{r}
 # Still need to do
+### Here is an attempt to do what I think needs to be done - I may have the logic wrong, so step through it and let me know if I've barked up any wrong trees!
+### First convert the tables to data.frames (I hate tibbles)
+tfill <- readxl::read_excel(paste0(wd, "/asv_library_corrected.xlsx"), sheet = 1)
+maxp <- readxl::read_excel(paste0(wd, "/asv_library_corrected.xlsx"), sheet = 2)
+### Also check and update bins table
+bins <- as.data.frame(readxl::read_excel(paste0(wd, "/asv_library_corrected.xlsx"), 
+                                         sheet = 3))
+
+### Change species names in tfill where bold updates are required and update bins table also 
+### A couple of dodgy new names to correct
+arc_tfill_checked$updated_species_name[arc_tfill_checked$updated_species_name == "Austroargiolestes sp. B-ACL1904 group ACL1904,"] <- "Austroargiolestes sp. B-ACL1904 group"
+arc_tfill_checked$updated_species_name[arc_tfill_checked$updated_species_name == "Dolichopodidae sp. B-AET0403/AFS0099/AGB7755/AET9309"] <- "Dolichopodidae sp. B-AET0403 group"
+
+### Make a copy of the original tfill for checking changes
+tfill_old <- tfill 
+### Create an empty data.frame for recording additional name changes
+cw_changes <- data.frame(species_orig = NA, species_new = NA)[0,]
+for(i in 1:nrow(arc_tfill_checked)){
+  ### Check that the species_orig is actually in tfill
+  if(!arc_tfill_checked$species_orig[i] %in% unique(tfill_old$species)) stop("1")
+  ### If update_species_name is blank, make it equal to species_orig
+  if(arc_tfill_checked$updated_species_name[i] == ""){
+    arc_tfill_checked$updated_species_name[i] <- arc_tfill_checked$species_orig[i]
+  }
+  ### If checked species not already in the bins table, add it
+  if(!arc_tfill_checked$species_orig[i] %in% unique(bins$species)){
+    bins <- rbind(bins, data.frame(species = arc_tfill_checked$updated_species_name[i],
+                                   bin_uri = arc_tfill_checked$bold_bin_uri[i]))
+  }else{
+    # If it is already in bins check that the checked bin number is already there too
+    binsi <- bins[bins$species == arc_tfill_checked$species_orig[i],]
+    ## If there is only one existing bins entry, and it is NA, and the new bin_uri matches the name, accept it and move on
+    if(nrow(binsi) == 1 & is.na(binsi$bin_uri[1]) & 
+       grepl(arc_tfill_checked$bold_bin_uri[i], binsi$species[1])){
+      bins$bin_uri[bins$species == arc_tfill_checked$species_orig[i]] <- arc_tfill_checked$bold_bin_uri[i]
+      next()
+    }
+    if(!arc_tfill_checked$bold_bin_uri[i] %in% binsi$bin_uri){
+      ### Note that here I assume that if a species already has a bin_uri and your check has added a second one, that 
+      ### the original bin_uri was correct, and the new one is additional. 
+      ### It will require a name change to any non-grouped B- species, which I do here automatically
+      ### (And record those name changes in cw_changed_names)
+    bins <- unique(rbind(bins, data.frame(species = arc_tfill_checked$species_orig[i],
+                                   bin_uri = arc_tfill_checked$bold_bin_uri[i])))
+    binsi <- bins[bins$species == arc_tfill_checked$species_orig[i],]
+  mc_name <- arc_tfill_checked$updated_species_name[i]
+    if(grepl("B-", mc_name) & 
+       ((!grepl("/",mc_name) & length(unique(binsi$bin_uri[!is.na(binsi$bin_uri)])) == 2) | 
+       (!grepl("group", mc_name) & length(unique(binsi$bin_uri[!is.na(binsi$bin_uri)])) > 2))){
+     if(sum(!is.na(binsi$bin_uri))== 2){
+        if(!(grepl(binsi$bin_uri[1], arc_tfill_checked$species_orig[i]) | 
+           grepl(binsi$bin_uri[2], arc_tfill_checked$species_orig[i]))) stop("4")
+        arc_tfill_checked$updated_species_name[i] <- paste0(arc_tfill_checked$species_orig[i],"/",
+                                                            arc_tfill_checked$bold_bin_uri[i])
+    cw_changes <- rbind(cw_changes, data.frame(species_orig = mc_name,
+                                               species_new = arc_tfill_checked$updated_species_name[i]))
+      }
+      if(sum(!is.na(binsi$bin_uri)) > 2){
+                arc_tfill_checked$updated_species_name[i] <- paste0(arc_tfill_checked$species_orig[i]," group")
+    ## If name had already been changed in this loop replace it in the cw_changes table
+    if(mc_name %in% cw_changes$species_orig){
+      cw_changes <- cw_changes[cw_changes$species_orig != mc_name,]
+    }
+    cw_changes <- rbind(cw_changes, data.frame(species_orig = mc_name,
+                                               species_new = arc_tfill_checked$updated_species_name[i]))
+      }
+    }
+    }
+    }
+  ### If the species name needs to be changed
+  if(unique(tfill_old$species[!is.na(tfill$species) & 
+                  tfill_old$species == arc_tfill_checked$species_orig[i]]) != arc_tfill_checked$updated_species_name[i]){
+  tfill$species[!is.na(tfill$species) & 
+                  tfill$species == arc_tfill_checked$species_orig[i]] <- 
+    arc_tfill_checked$updated_species_name[i]
+  }
+}
+
+### CHeck that you approve of these two changes:
+cw_changes
+
+### Add all_arc_unmatched that were not checked and with max_p_identity >=97 , 
+### which was saved as arc_unmatched_ck to tfill.
+### First problem is that arc_unmatched_ck doesn't have amplicon, class or kingdom fields
+### For now, I will create two empty fields, but you might need to go back and dig up these values from source
+arc_unmatched_ck$amplicon <- NA
+arc_unmatched_ck$kingdom <- NA
+arc_unmatched_ck$class <- NA
+names(arc_unmatched_ck)[names(arc_unmatched_ck) == "asv_seq"] <- "asv_sequence"
+### make species field = species_orig, except where arc_unmatched_ck has identified a new species_bold name
+arc_unmatched_ck$species <- arc_unmatched_ck$species_orig
+for(i in 1:nrow(arc_unmatched_ck)){
+  if(!is.na(arc_unmatched_ck$species_bold[i])){
+    if(arc_unmatched_ck$species_bold[i] != arc_unmatched_ck$species[i]){
+      arc_unmatched_ck$species[i] <- arc_unmatched_ck$species_bold[i]
+      # A couple of cases where genus name is changed with new bold name
+      if(arc_unmatched_ck$genus[i] != strsplit("",arc_unmatched_ck$species_bold)[[1]][1]){
+        stop("1")
+        arc_unmatched_ck$genus[i] <- strsplit(arc_unmatched_ck$species_bold[i]," ")[[1]][1]
+                               }
+    }
+  }
+}
+tfill <- rbind(tfill, arc_unmatched_ck[match(names(tfill), names(arc_unmatched_ck))])
+
+### You said "species revealed by searches against bold version 5 that which previously had max-p-identities below 97 but now with a 'bold_match' above 97."
+### I'm not sure where to get these cases, but you could add to maxp using similar code to what I've used above.
+
+### So am I right in thinking we are only adding to the asv_library, not making corrections to identifications derived in appendix 2? (Head spinning a bit now. Probably need a rest)
 ```
