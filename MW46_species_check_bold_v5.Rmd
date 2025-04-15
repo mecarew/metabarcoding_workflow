@@ -327,6 +327,7 @@ metabar_unmatched <- metabar_unmatched %>%
          bold_match = ID.,# % match from bold v5 check
          bold_bin_uri = bin_uri) # top bin match from bold v5 check
 
+# # decided against filtering and just looked at it all
 # metabar_unmatched_ck <- metabar_unmatched %>%
 #   filter(
 #     (
@@ -346,6 +347,11 @@ MEL: without being able to look at MW46_metabar_mismatchs (see above), I can't r
 ```{r}
 # CHRIS: this is the file you should look at
 metabar_unmatched_checked <- read.csv(paste0(wd, "/synonym_updates/MW46_metabar_unmatched_checked_all.csv"))
+# MEL - here's a few checks I ran on this table
+nrow(metabar_unmatched_checked)
+length(unique(metabar_unmatched_checked$asv_code))  
+nrow(unique(metabar_unmatched_checked[c("asv_code","asv_seq")])) 
+
 ```
 
 
