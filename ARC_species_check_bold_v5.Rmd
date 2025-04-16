@@ -3,13 +3,15 @@ title: "ARC_BOLD_v5_checks"
 author: "MCarew"
 date: "2025-04-08"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This code will prepare data for checking against BOLD version 5. Here it is applied to the entire ARC dataset (including data in the )
+This code will prepare data for checking against BOLD version 5. Here it is applied to the entire ARC dataset
 
 # read in all ARC datafiles and includubg synonyms file (find_synonyms.R and bins file (from appendix 3)
 ```{r}
@@ -51,7 +53,7 @@ bins <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabar
 
 ```
 
-Pull out the data needed for checking the species classification. This code selects asv's that is not in the tfill or max_p_identity tables (maxp). CHRIS: please note we did not include the data from miseq13 (the 10 site study) in the current library (my fault). Tt will be captured here and will be data with original species matches (max_p_identity) of >97 that do not appear in the asv library.
+Pull out the data needed for checking the species classification. This code selects asv's that is not in the tfill or max_p_identity tables (maxp). CHRIS: please note we did not include the data from miseq13 (the 10 site study) in the current library (my fault). Tt will be captured here and will be data with original species matches (max_p_identity of >97) that do not appear in the asv library.
 ```{r}
 # pulling species data for checking (and remove duplicate asvs)
 all_arc <- all_arc %>%
@@ -103,6 +105,7 @@ all_arc_unmatched <- all_arc_unmatched %>%
   left_join(synonyms %>% select(species, species_new), by = "species")
 ### The trouble with this step is that it re-introduces the 16 records I got rid of above, by introducing duplicated asv_codes.
 ### By inspecting the following object, x, I found that in all cases, the species name with the most words was the most likely correct name...so use this to correct both all_arc_unmatched and the synonyms table, which is used again below.
+#CHRIS#3 The synonyms table should be rebuilt using the 'checked' data but it may get complicated for a small number of groups where bold split a species 'sp. MC-' into two groups. This will mean it will add duplicates to the data when added.
 x <- all_arc_unmatched[duplicated(all_arc_unmatched$asv_code) | duplicated(all_arc_unmatched$asv_code, fromLast = TRUE),]
 dup_asvs <- unique(x$asv_code)
 for(i in 1:length(dup_asvs)){
@@ -124,10 +127,10 @@ all_arc_unmatched <- unique(all_arc_unmatched)
 
 # save file for check against the bold barcodeID engine manually (this can be coded in future)
 
-write.csv(all_arc_unmatched, paste0(wd, "/all_arc_unmatched_for_sequence_search.csv"), row.names = FALSE)
+write.csv(all_arc_unmatched, paste0(wd, "/all_arc_unmatched_for_sequence_search.csv"), row.names = FALSE, na = "")
 ```
 
-OK. Now I have searched all the asv sequences against against BOLD version 5 using the 'rapid species search' against the 'public+private' library manually. The 'rapid species search' can take 1000 records at a time. However, sometimes you can't download the final 'combined hits' possibly the.csv file is too large (so less sequences need to be searched)  This code brings the bold 'combined hits' .csv back into R.
+OK. Now I have searched all the asv sequences against against BOLD version 5 using the 'rapid species search' against the 'public+private' library manually. The 'rapid species search' can take 1000 records at a time. However, sometimes you can't download the final 'combined hits' possibly the.csv file is too large (so less sequences need to be searched)  This code brings the bold 'combined hits' .csv back into R. CHRIS#3: Timing is important. If I do this when it is not a peak time I can download records (i.e., on a Sunday) but it can be hit and miss as to whether the search results can be downloaded during peak time and the only way round is to search fewer sequences.
 
 ```{r}
 #set directory for results files
@@ -191,11 +194,12 @@ arc_unmatched_ck  <- arc_unmatched_ck  %>%
          bold_bin_uri = bin_uri) # top bin match from bold v5 check
 
 # exacting file to manually check species_orig, species_syn and species_bold plus bold_match and max-p-identities
-write.csv(arc_unmatched_ck, paste0(wd, "/arc_unmatched_ck_for_checking.csv", row.names = FALSE))
+write.csv(arc_unmatched_ck, paste0(wd, "/arc_unmatched_for_checking.csv"), row.names = FALSE, na = "")
 ```
 
 CHRIS: Here is the data from my manual checks (below). I suspect you may have a better way to do this in R and could check my checks. I have added two new columns: 'checked_species_name' and 'comments'. The checked species name is what the name should be change to (note not all names change from the orig_species) before adding the data to the asv library. It uses the name we have previously agreed on (source from the 'bins' file). There are two main types data in terms of what we need to add. There are the records from (likely from) the miseq13 run which have a 'max_p_identiy' and 'bold_match' above 97. These records can be added to the 'tfill' sheet. There are also new species revealed by searches against bold version 5 that which previously had max-p-identities below 97 but now with a 'bold_match' above 97. These records should be added to the 'max-p-update' sheet as the max-p-identities will require changing too. The are also a few records that may need row base update as they were fungus or bacteria on further checking. I suggest we keep a comprehensive bin database of keeping all new bins (including non-macros) for matching our current specie names in the future from the BOLD version 5 database (below:arc_unmatched_checked)
 
+CHRIS#3: Also would you like me to change my columns to 'checked_name_species', action and comments? I think I should. Can do this for the tfill and maxp too.
 ```{r}
 # read in checked file
 arc_unmatched_checked <- read.csv(paste0(wd, "/arc_unmatched_checked.csv"))
@@ -286,6 +290,7 @@ arc_maxp  <- arc_maxp  %>%
 ```
 
 Export records out for manual checking only checking records with >97 match on bold version 5 if the name in the library (species_orig) does not match the name in on bold (specie_bold). Other records can be left as they are for now but could be checked when new DNA barcodes become available
+CHRIS#3 I'll need to revisit this as I need to inspect records with a match on bold from 95 to 100 as it creates issues with species that match from vsearch but not bold. I'll fix this tomorrow. Also would you like me to change my columns to 'checked_name_species', action and comments? I think I should.
 ```{r}
 # only checking records where bold had a species match of >97 ()
 
@@ -300,11 +305,11 @@ filter(
     bold_match >= 97
   )
 
-write.csv(arc_maxp_ck, paste0(wd, "arc_maxp_for_checking.csv"), row.names = FALSE)
+write.csv(arc_maxp_ck, paste0(wd, "/arc_maxp_for_checking.csv"), row.names = FALSE, na = "")
 
 ```
 
-CHRIS: We have ots of bins to add to our database, a small number of corrections and some species that have naming updates needed (below: arc_maxp_checked)
+CHRIS: We have lots of bins to add to our database, a small number of corrections and some species that have naming updates needed (below: arc_maxp_checked)
 
 ```{r}
 # read in checked file
@@ -334,13 +339,13 @@ arc_maxp_checked <- arc_maxp_checked %>%
 Next is to extract the 'max-p-update' record update and new 'bins' to up date the 'asv library' spreadsheets. CHRIS: thinking about it some more is it worth placing the 'bin' in the asv library? Let me know what you think?
 
 ```{r}
-### Thinking about this a bit more...you know that we do already have a bins table in the asv_library, which we could add to...but it occurs to me that I have built that table using unique combinations of species names and bin_uris. While this is what I think I will put in the database, perhaps it would be more useful to have an bin_uri listed for every asv_code.  In that case, yes, lets add a bin_uri field to the tfill and maxp tables.
+### Thinking about this a bit more...you know that we do already have a bins table in the asv_library, which we could add to...but it occurs to me that I have built that table using unique combinations of species names and bin_uris. While this is what I think I will put in the database, perhaps it would be more useful to have an bin_uri listed for every asv_code.  In that case, yes, lets add a bin_uri field to the tfill and maxp tables. CHRIS#3: OK
 ```
 
 # tfill check against the BOLD v5 library
 Now I am checking all records in the tfill file against the BOLD version 5. This should update any new species or names (also any remaining errors)
 ```{r}
-write.csv(tfill, "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/asv_library_tfill_for_sequence_search.csv")
+write.csv(tfill, paste0(wd, "/arc_tfill_for_sequence_search.csv"), row.names = FALSE, na = "")
 ```
 
 As above: I have searched all the asv sequences against against BOLD version 5 using the 'rapid species search' against the 'public+private' library manually. The 'rapid species search' can take 1000 records at a time. However, sometimes you can't download the final 'combined hits' possibly the.csv file is too large (so less sequences need to be searched)  This code brings the bold 'combined hits' .csv back into R.
@@ -389,9 +394,96 @@ bold_results_tfill_all <- bold_results_tfill_all %>%
 # join with 'bins' to add current species names from the 'bins' database
 bold_results_tfill_all <- bold_results_tfill_all %>%
   left_join(bins, by = "bin_uri")
+
+### CW compilation of bold_results (tfill + maxp) to be separated later.
+### This takes few minutes to run
+### Mel, I spent too long making this next step work, and I haven't used the result to 
+### inform or check any later decisions, but perhaps you will find it useful to check 
+### your manual corrections.  There are quite a few bin_uri groups that this script hasn't
+### grouped correctly/consistently, but most of them seem to be non-aqu non-macro species
+### that I don't care about much.  Nevertheless, I recommend you run the following code
+### (It takes a few minutes), and then have a look at how the results compare to your 
+### Checked data (below - the object x created at line 545.)
+### I'm thinking this is a rabbit hole I shouldn't have gone down.
+tfill_maxp <- rbind(tfill,maxp)
+bold_ra <- as.data.frame(rbind(bold_results_tfill_all, bold_results_maxp_all))
+bold_ra_asvs <- unique(bold_ra$asv_code)
+bold_ra_asv_bins <- data.frame(asv_code = NA, species = NA, bin_uri = NA, comment = NA)[0,]
+non_matched_asvs <- vector()
+matched_no_fam_id <- vector()
+for(i in 2909:length(bold_ra_asvs)){
+  skipped <- 0
+  comment <- NA
+  bi <- bold_ra[bold_ra$asv_code == bold_ra_asvs[i] & bold_ra$ID. >= 97,]
+  if(nrow(bi) == 0){
+    non_matched_asvs <- c(non_matched_asvs, bold_ra_asvs[i])
+    skipped <- 1
+  }
+  if(nrow(bi) > 0){
+   if(sum(!is.na(unique(bi$bin_uri))) == 0){
+         non_matched_asvs <- c(non_matched_asvs, bold_ra_asvs[i])
+         skipped <- 1
+    }else{
+     if(length(unique(bi$Order)) == 1){
+      if(unique(bi$Order) == ""){
+        matched_no_fam_id <- c(matched_no_fam_id, bold_ra_asvs[i])
+     skipped <- 1
+      }}}}
+  if(skipped == 0){
+  spname <- unique(bi$species)[!is.na(unique(bi$species))]
+  bin_urisi <- unique(bi$bin_uri[!is.na(bi$bin_uri)])
+  if(bold_ra_asvs[i] == "6da41df0f8a87c6e316035ba6e3b30c9"){
+    bi <- bi[1,]
+    spname <- bi$species
+    comment <- "100% match to AAW3113 (Austropyrgus angasi) - 97.03% to AAW3122 (Austropyrgus centralia/turbatus). The former selected"
+  }
+  if(length(spname) > 1) stop("1")
+  if(length(spname) == 0) {
+    bi <- bi[bi$bold_species == bi$bold_species[bi$ID. == max(bi$ID.)][1],]
+    spname <- unique(bi$bold_species)
+    comment <- ifelse(spname == "", NA,
+                 paste0("bold species name used with sim = ", max(bi$ID.)) )
+  }
+  if(unique(spname) == ""){
+    bi_genus <- unique(bi$Genus)[!is.na(unique(bi$Genus))]
+    bi_genus <- bi_genus[bi_genus  != ""]
+    if(length(bi_genus) == 0){
+        subfam <- unique(bi$Subfamily[!is.na(bi$Subfamily)])
+        subfam <- subfam[subfam != ""]
+        fam <- unique(bi$Family[!is.na(bi$Family)])
+        fam <- fam[fam != ""]
+        bi_genus <- ifelse(length(subfam) == 0, ifelse(length(fam) == 0, "", fam), subfam)
+        if(bi_genus == ""){
+          matched_no_fam_id <- c(matched_no_fam_id, bold_ra_asvs[i])
+          next()
+        }
+      }
+    if(length(bi_genus) > 1){
+      bi$Genus <- unique(bi_genus)[1]
+      comment <- "Bold assigns this to more than one genus: the first was chosen"
+      }
+    if(length(bin_urisi) == 1){
+         spname <- paste0(bi_genus[1], " sp. B-", bin_urisi)
+    }
+    if(length(bin_urisi) == 2){
+         spname <- paste0(bi_genus[1], " sp. B-", bin_urisi[1],"/",bin_urisi[2])
+    }
+    if(length(bin_urisi) > 2){
+         spname <- paste0(bi_genus[1], " sp. B-", bin_urisi[1]," group")
+    }
+  }
+  if(substr(spname,1,3) == " sp") stop("4")
+  if(length(unique(bi$bin_uri[!is.na(bi$bin_uri)])) > 0)
+  bold_ra_asv_bins <- rbind(bold_ra_asv_bins, 
+                            data.frame(asv_code = bold_ra_asvs[i], 
+                                       species = spname, 
+                                       bin_uri = bin_urisi, 
+                                       comment = comment))
+  }
+  }
 ```
 
-Here, we perpare the data from the bold search so it can be added to the tfill dataframe
+Here, we prepare the data from the bold search so it can be added to the tfill dataframe
 ```{r}
 # summarize the bold data keeping the highest value for ID. Remove PID..BIN. column so duplicate otu_id's  can be removed.
 bold_results_tfill_all <- bold_results_tfill_all %>%
@@ -427,7 +519,7 @@ arc_tfill  <- arc_tfill  %>%
          bold_bin_uri = bin_uri) # top bin match from bold v5 check
 ```
 
-Export records out for manual checking only checking records with >97 match on bold version 5 if the name in the library (species_orig) does not match the name in on bold (specie_bold)
+Export records out for manual checking only checking records with >97 match on bold version 5 if the name in the library (species_orig) does not match the name in on bold (specie_bold) 
 ```{r}
 # pull out records that may need updating
 arc_tfill_ck <- arc_tfill %>%
@@ -437,12 +529,20 @@ filter(
     !is.na(bold_bin_uri) & bold_bin_uri != "" &
     bold_match >= 97
   )
-write.csv(arc_tfill_ck, paste0(wd, "arc_tfill_for_checking.csv"), row.names = FALSE)
+write.csv(arc_tfill_ck, paste0(wd, "arc_tfill_for_checking.csv"), row.names = FALSE, na = "")
 ```
 
 ```{r}
 # Read in checked file
 arc_tfill_checked <- read.csv(paste0(wd, "/arc_tfill_checked.csv"))
+
+### Compare to bold_ra_asv_bins species names checked above
+arc_tfill_checked$species_cw <- NA
+for(i in 1:nrow(arc_tfill_checked)){
+  if(sum(bold_ra_asv_bins$asv_code == arc_tfill_checked$asv_code[i]) > 0)
+  arc_tfill_checked$species_cw[i] <- unique(bold_ra_asv_bins$species[bold_ra_asv_bins$asv_code == arc_tfill_checked$asv_code[i]])
+}
+x <- unique(arc_tfill_checked[,c("species_orig","species_cw","updated_species_name")])
 
 # Check for and report duplicated ASV codes
 any(duplicated(arc_tfill_checked$asv_code))  # TRUE or FALSE
@@ -470,16 +570,18 @@ for(i in 1:length(tfill_dup_codes)){
   arc_tfill_checked$species_syn[arc_tfill_checked$asv_code == tfill_dup_codes[i]] <- dupi$species_syn[which.max(nwords)]
 }
 
-### Note the above calls all Austroargiolestes "Austroargiolestes spp,", which I think is what we agreed on, no?  (You went with just Austroargiolestes in your commented out code below)
+### Note the above calls all Austroargiolestes "Austroargiolestes spp,", which I think is what we agreed on, no?  (You went with just Austroargiolestes in your commented out code below) CHRIS#3: That was an error.  Austroargiolestes now has a bin so I have proposed a new name 'Austroargiolestes sp. B-ACL1904 group'
+### Actually, I think that's all good.
 
 ### The three problem asv_codes all suffer from bin_url disagreements (and were also given MC names: Enochrus sp. MC-5,  Enochrus sp. MC-5, Ceratopogonidae sp. MC-8.  For now I have just elected to make the species_syn name the original B- name to permit checking of these below
+#CHRIS#3: I'll follow these up tomorrow but I think bold identified some records but not others suggesting I lumped when maybe I should have split.
 
 arc_tfill_checked$species_syn[arc_tfill_checked$asv_code %in% c("b9991a5c09c2b936ee2f18553f10bd3e",
                                                                 "f737f12a2e2b2395dfe4c164307d29de")] <- 
               "Hydrophilidae sp. B-ACA3039"
 arc_tfill_checked$species_syn[arc_tfill_checked$asv_code == "f3f45492902b48eb7ad6cbd0f42ecd9c"] <-      
                "Ceratopogonidae sp. B-ADR4164"
-### having correct all the species_syn entries, duplicates can be removed by
+### having corrected all the species_syn entries, duplicates can be removed by
 arc_tfill_checked <- unique(arc_tfill_checked)
 
 ### So, I think the above does everything your following commented-out code does without resorting to using the asv_codes (except for the three problematic ones). Let me know if you have any reservations about the above
@@ -561,7 +663,7 @@ for(i in 1:nrow(arc_tfill_checked)){
      }
     }
 }
-### Looking through bin_disagreements, it looks like you've captured most of these well by creating new 'group' names (e.g. Hydrozetes sp. B-ACX8442/AGE9507).  There are some that perhaps warrant a further check by you?  Have a look through bin_disagreements and you should see what I mean. (e.g. should "Tanytarsus sp. B-AAE1903" be called "Tanytarsus sp. B-AAE1903/AAE1904?)
+### Looking through bin_disagreements, it looks like you've captured most of these well by creating new 'group' names (e.g. Hydrozetes sp. B-ACX8442/AGE9507).  There are some that perhaps warrant a further check by you?  Have a look through bin_disagreements and you should see what I mean. (e.g. should "Tanytarsus sp. B-AAE1903" be called "Tanytarsus sp. B-AAE1903/AAE1904?) CHRIS#3: Yep mistake by me it is Tanytarsus sp. B-AAE1903.
 
 ### Otherwise, this looks to be pretty much in order to me (Good work, Mel!)
 ```
@@ -585,7 +687,7 @@ arc_tfill_checked$updated_species_name[arc_tfill_checked$updated_species_name ==
 ### Make a copy of the original tfill for checking changes
 tfill_old <- tfill 
 ### Create an empty data.frame for recording additional name changes
-cw_changes <- data.frame(species_orig = NA, species_new = NA)[0,]
+cw_changes <- data.frame(species_orig = NA, species_mc_proposed = NA, species_cw_proposed = NA)[0,]
 for(i in 1:nrow(arc_tfill_checked)){
   ### Check that the species_orig is actually in tfill
   if(!arc_tfill_checked$species_orig[i] %in% unique(tfill_old$species)) stop("1")
@@ -608,36 +710,42 @@ for(i in 1:nrow(arc_tfill_checked)){
     }
     if(!arc_tfill_checked$bold_bin_uri[i] %in% binsi$bin_uri){
       ### Note that here I assume that if a species already has a bin_uri and your check has added a second one, that 
-      ### the original bin_uri was correct, and the new one is additional. 
+      ### the original bin_uri was correct, and the new one is additional. CHRIS#3: your logic sound correct to me
       ### It will require a name change to any non-grouped B- species, which I do here automatically
       ### (And record those name changes in cw_changed_names)
     bins <- unique(rbind(bins, data.frame(species = arc_tfill_checked$species_orig[i],
                                    bin_uri = arc_tfill_checked$bold_bin_uri[i])))
     binsi <- bins[bins$species == arc_tfill_checked$species_orig[i],]
-  mc_name <- arc_tfill_checked$updated_species_name[i]
+    mc_name <- arc_tfill_checked$updated_species_name[i]
     if(grepl("B-", mc_name) & 
        ((!grepl("/",mc_name) & length(unique(binsi$bin_uri[!is.na(binsi$bin_uri)])) == 2) | 
        (!grepl("group", mc_name) & length(unique(binsi$bin_uri[!is.na(binsi$bin_uri)])) > 2))){
      if(sum(!is.na(binsi$bin_uri))== 2){
+       binsi <- binsi[!is.na(binsi$bin_uri),]
         if(!(grepl(binsi$bin_uri[1], arc_tfill_checked$species_orig[i]) | 
-           grepl(binsi$bin_uri[2], arc_tfill_checked$species_orig[i]))) stop("4")
-        arc_tfill_checked$updated_species_name[i] <- paste0(arc_tfill_checked$species_orig[i],"/",
-                                                            arc_tfill_checked$bold_bin_uri[i])
-    cw_changes <- rbind(cw_changes, data.frame(species_orig = mc_name,
-                                               species_new = arc_tfill_checked$updated_species_name[i]))
-      }
+           grepl(binsi$bin_uri[2], arc_tfill_checked$species_orig[i]))){
+        arc_tfill_checked$updated_species_name[i] <- 
+          paste0(strsplit(arc_tfill_checked$updated_species_name[i]," ")[[1]][1],
+                                 " sp. ",binsi$bin_uri[1],"/",binsi$bin_uri[2])
+        cw_changes <- rbind(cw_changes, data.frame(species_orig = arc_tfill_checked$species_orig[i], 
+                                                   species_mc_proposed = mc_name,
+                                                   species_cw_proposed = arc_tfill_checked$updated_species_name[i]))
+        }
+       }
       if(sum(!is.na(binsi$bin_uri)) > 2){
-                arc_tfill_checked$updated_species_name[i] <- paste0(arc_tfill_checked$species_orig[i]," group")
+                arc_tfill_checked$updated_species_name[i] <- 
+                  paste0(strsplit(arc_tfill_checked$updated_species_name[i]," ")[[1]][1],
+                                 " sp. ",binsi$bin_uri[1]," group")
     ## If name had already been changed in this loop replace it in the cw_changes table
-    if(mc_name %in% cw_changes$species_orig){
-      cw_changes <- cw_changes[cw_changes$species_orig != mc_name,]
-    }
-    cw_changes <- rbind(cw_changes, data.frame(species_orig = mc_name,
-                                               species_new = arc_tfill_checked$updated_species_name[i]))
+    if(mc_name %in% cw_changes$updated_species_name){
+    cw_changes <- rbind(cw_changes, data.frame(species_orig = arc_tfill_checked$species_orig[i],
+                                               species_mc_proposed = mc_name,
+                                               species_cw_proposed = arc_tfill_checked$updated_species_name[i]))
       }
     }
     }
     }
+  }
   ### If the species name needs to be changed
   if(unique(tfill_old$species[!is.na(tfill$species) & 
                   tfill_old$species == arc_tfill_checked$species_orig[i]]) != arc_tfill_checked$updated_species_name[i]){
@@ -647,35 +755,219 @@ for(i in 1:nrow(arc_tfill_checked)){
   }
 }
 
-### CHeck that you approve of these two changes:
+### Check that you approve of these three changes - you should probably check that the pairs of bin_urls are sufficiently similar to be lumped:
 cw_changes
+#CHRIS#3: I closely check this all tomorrow with fresh eyes. Thanks though it is looking good!
 
-### Add all_arc_unmatched that were not checked and with max_p_identity >=97 , 
-### which was saved as arc_unmatched_ck to tfill.
-### First problem is that arc_unmatched_ck doesn't have amplicon, class or kingdom fields
-### For now, I will create two empty fields, but you might need to go back and dig up these values from source
-arc_unmatched_ck$amplicon <- NA
-arc_unmatched_ck$kingdom <- NA
-arc_unmatched_ck$class <- NA
-names(arc_unmatched_ck)[names(arc_unmatched_ck) == "asv_seq"] <- "asv_sequence"
-### make species field = species_orig, except where arc_unmatched_ck has identified a new species_bold name
-arc_unmatched_ck$species <- arc_unmatched_ck$species_orig
-for(i in 1:nrow(arc_unmatched_ck)){
-  if(!is.na(arc_unmatched_ck$species_bold[i])){
-    if(arc_unmatched_ck$species_bold[i] != arc_unmatched_ck$species[i]){
-      arc_unmatched_ck$species[i] <- arc_unmatched_ck$species_bold[i]
-      # A couple of cases where genus name is changed with new bold name
-      if(arc_unmatched_ck$genus[i] != strsplit("",arc_unmatched_ck$species_bold)[[1]][1]){
-        stop("1")
-        arc_unmatched_ck$genus[i] <- strsplit(arc_unmatched_ck$species_bold[i]," ")[[1]][1]
-                               }
+#### Check consistency of new bin_uris with existing bins table
+check_ck <- arc_unmatched_checked[arc_unmatched_checked$bold_bin_uri %in% unique(bins$bin_uri),] 
+name_changes <- data.frame(name_in_tfill = NA, new_name = NA, bin_url = NA)[0,]
+for(i in 1:nrow(check_ck)){
+  exist_bin_record <-  bins[!is.na(bins$bin_uri) & 
+                            bins$bin_uri == check_ck$bold_bin_uri[i],]
+  # Found Dixidae sp. MC-4 and Dixidae sp. MC-2 with same bin_uri in bins...
+  if(exist_bin_record$species[1] != check_ck$checked_species_name[i]){
+    name_changes <- rbind(name_changes, 
+                          data.frame(name_in_tfill = exist_bin_record$species, 
+                                     new_name = check_ck$checked_species_name[i], 
+                                     bin_url = check_ck$bold_bin_uri[i]))
+    }
+}
+names_changes <- unique(name_changes[name_changes$new_name != "",])
+### Mel, it might be useful to double check this list of 25 name changes before moving on
+names_changes
+### Assuming they are right, I've replaced them in the bins table.
+for(i in 1:nrow(bins)){
+  bins$species[bins$species == names_changes$name_in_tfill[i]] <- names_changes$new_name[i]
+}
+### And the following adds new records to the bins table
+for(i in 1:nrow(arc_unmatched_checked)){
+  if(arc_unmatched_checked$checked_species_name[i] %in% bins$species){
+    bini <- bins[bins$species == arc_unmatched_checked$checked_species_name[i],]
+    if(nrow(bini) == 1){
+      if(!is.na(bini$bin_uri) & is.na(arc_unmatched_checked$bold_bin_uri[i])){
+        if(bini$bin_uri != arc_unmatched_checked$bold_bin_uri[i]){
+          stop("1")
+        }
+      }
+    }else{
+      # If the bins table has an NA for this species, then assume that was because this match was missed
+      # and remove the NA record
+      if(sum(is.na(bini$bin_uri)) > 0){
+        bins <- bins[!(bins$species == arc_unmatched_checked$checked_species_name[i] & is.na(bins$bin_uri)),]
+        bini <- bins[bins$species == arc_unmatched_checked$checked_species_name[i],]
+      }
+      if(!arc_unmatched_checked$bold_bin_uri[i] %in% bins$bin_uri){
+        bins <- rbind(bins, data.frame(species = arc_unmatched_checked$checked_species_name[i],
+                                       bin_uri = arc_unmatched_checked$bold_bin_uri[i]))
+      }else{
+        # bin_uri is already listed so let it be
+      }
     }
   }
 }
-tfill <- rbind(tfill, arc_unmatched_ck[match(names(tfill), names(arc_unmatched_ck))])
+
+### Remove duplicate bin records
+bins <- unique(bins)
+
+# Check for B- names needing changing
+unq_bin_spp <- unique(bins$species)
+name_changes_bins <- data.frame(existing_name = NA, suggested_new_name = NA)[0,]
+for(i in 1:length(unq_bin_spp)){
+  bini <- bins[bins$species == unq_bin_spp[i],]
+  bini <- bini[!is.na(bini$bin_uri),]
+  if(grepl("B-",unq_bin_spp[i])){
+    if(nrow(bini) == 1 & 
+       (grepl("/",unq_bin_spp[i]) | 
+        grepl("group",unq_bin_spp[i]))){
+      name_changes_bins <- rbind(name_changes_bins, 
+                                 data.frame(existing_name = unq_bin_spp[i], 
+                                            suggested_new_name = paste0(strsplit(unq_bin_spp[i], " ")[[1]][1],
+                                                                        " sp. B-", bini$bin_uri)))
+    }
+    if(nrow(bini) == 2 & 
+       !grepl("/",unq_bin_spp[i])){
+       name_changes_bins <- rbind(name_changes_bins, 
+                                 data.frame(existing_name = unq_bin_spp[i], 
+                                            suggested_new_name = paste0(strsplit(unq_bin_spp[i], " ")[[1]][1],
+                                                                        " sp. B-", bini$bin_uri[1], "/", bini$bin_uri[2])))
+  }
+    if(nrow(bini) > 2 & 
+       !grepl("group",unq_bin_spp[i])){
+       name_changes_bins <- rbind(name_changes_bins, 
+                                 data.frame(existing_name = unq_bin_spp[i], 
+                                            suggested_new_name = paste0(strsplit(unq_bin_spp[i], " ")[[1]][1],
+                                                                        " sp. B-", bini$bin_uri[1], " group")))
+  }
+  }
+}
+
+### MEL, worth having a look through these suggested name changes.  (Particularly the ones where I have suggested dropping from a group or a "/" to a single bin_uri name.  Perhaps I am missing some important information in my input data?)
+### If some of these are in error, we can fix the code and make these name changes automatically rather than manually.
+name_changes_bins
+
+bins_bu <- bins
+
+### Check for non-B names that need changing
+bins_non_bs <- bins[grepl("sp\\.", bins$species) & !grepl("B-", bins$species) & !is.na(bins$bin_uri),]
+bins_non_bs_spp <- unique(bins_non_bs$species)
+bins_non_bs$species_corrected <- NA
+for(i in 1:length(bins_non_bs_spp)){
+  bini <- bins[bins$species == bins_non_bs_spp[i],]
+  if(nrow(bini) == 1){
+    new_name <- paste0(strsplit(bins_non_bs_spp[i], " ")[[1]][1], " sp. B-", bini$bin_uri)
+  }
+  if(nrow(bini) == 2){
+    new_name <- paste0(strsplit(bins_non_bs_spp[i], " ")[[1]][1], " sp. B-", bini$bin_uri[1], "/", bini$bin_uri[1])
+  }
+  if(nrow(bini) == 3){
+    new_name <- paste0(strsplit(bins_non_bs_spp[i], " ")[[1]][1], " sp. B-", bini$bin_uri[1], " group")
+  }
+    bins_non_bs$species_corrected[bins_non_bs$species == bins_non_bs_spp[i]] <- new_name
+    bins$species[bins$species == bins_non_bs_spp[i]] <- new_name
+    tfill$species[!is.na(tfill$species) & tfill$species == bins_non_bs_spp[i]] <- new_name
+    if(sum(arc_unmatched_checked$checked_species_name == bins_non_bs_spp[i]) > 0){
+      stop("1")
+    arc_unmatched_checked$checked_species_name[arc_unmatched_checked$checked_species_name == bins_non_bs_spp[i]] <- new_name
+    }
+    }
+
+### Mel - you should check this table. Here I try to rename these 72 species more appropriately
+### But once again, perhaps my rabbit hole work above could help with this...
+bins_non_bs <- unique(bins_non_bs$species)
+
+### Now I want to check for any remaining asv_codes that have no matching bin_uri, 
+### but have been assigned species names that do have matches. (bin_check_nas)  Could these be errors?
+### I also create vector of species names with no bin_uri at all (bin_single_nas).  
+#### I think it is worth checking both these vectors of species names for potential naming errors in the first
+#### instance.  
+bin_single_nas <- vector()
+bin_check_nas <- vector()
+for(i in 1:length(unq_bin_spp)){
+  bini <- bins[bins$species == unq_bin_spp[i],]
+  if(nrow(bini) == 1  & sum(is.na(bini$bin_uri)) > 0){
+    bin_single_nas <- c(bin_single_nas, unq_bin_spp[i])
+  }
+  if(nrow(bini) > 1  & sum(is.na(bini$bin_uri)) > 0){
+    bin_check_nas <- c(bin_check_nas, unq_bin_spp[i])
+  }
+}
+### Remove unidentified records
+bin_single_nas <- bin_single_nas[!grepl("Unident", bin_single_nas)]
+### Worth checking this full list
+bin_single_nas
+### I think that those with no matching bin but have been given a B- name need checking in particular!
+bin_single_nas[grep("B-", bin_single_nas)]
+
+### Here I find the asv_codes associated with bin_single_nas and bin_check_nas that returned  
+### no BOLD matches in my original version 4 search
+### Note that this is going to miss the non-aquatic non-macro records that remain in this set
+### (But perhaps my rabbit hole work with your bold results files will help in that regard)
+### Data loaded using line 28-42 in Appendix 2
+load("data/asv_library_97_match_list_with_bin_uris_2024-12-15.rda")
+bin_check_nas_asv <- data.frame(species = NA, asv_code = NA, asv_sequence = NA)[0,]
+for(i in 1:length(bin_single_nas)){
+  asvi <- all_arc$asv_code[all_arc$species == bin_single_nas[i]]
+  seqi <- all_arc$asv_seq[all_arc$species == bin_single_nas[i]]
+  if(length(asvi) == 0){
+    asvi <- arc_unmatched_checked$asv_code[arc_unmatched_checked$checked_species_name == bin_single_nas[i]]
+     seqi <- arc_unmatched_checked$asv_seq[arc_unmatched_checked$checked_species_name == bin_single_nas[i]]
+  }
+  if(length(asvi) > 0)
+  bin_check_nas_asv <- rbind(bin_check_nas_asv, data.frame(species = bin_single_nas[i], 
+                                                           asv_code = asvi, 
+                                                           asv_sequence = seqi))
+}
+not_matched_v4 <- bin_check_nas_asv[0,]
+not_checked_v4 <- bin_check_nas_asv[0,]
+for(i in 1:nrow(bin_check_nas_asv)){
+  if(!bin_check_nas_asv$asv_code[i] %in% names(match_list_bin_uri))
+  {
+    not_checked_v4 <- rbind(not_checked_v4, bin_check_nas_asv[i,])
+  }else{
+  matchi <- match_list_bin_uri[[bin_check_nas_asv$asv_code[i]]]
+  if(nrow(matchi) == 0){
+    not_matched_v4 <- rbind(not_matched_v4, bin_check_nas_asv[i,])
+  }
+  }
+}
+
+### Check none of these have already been checked in the arc and maxp tables (combined above)
+sum(!not_matched_v4$asv_code %in% bold_ra_asvs) # 639
+sum(!not_checked_v4$asv_code %in% bold_ra_asvs) # 71
+
+results_all <- rbind(tfill, maxp)
+results_omitted <- results_all[!results_all$asv_code %in% bold_ra_asvs,]
+
+### Mel, I think it might be worth your while doing an additional search in BOLD v5 for 
+### the 71 records that weren't checked in version 4 
+### the 639 records that weren't matched in version 4 but were assigned a species name that did match (not_matched_v4[])
+
+### Add all_arc_unmatched that were not checked and with max_p_identity >=97 , 
+### which was saved as arc_unmatched_checked to tfill.
+### First problem is that arc_unmatched_checked doesn't have amplicon, class or kingdom fields
+### For now, I will create two empty fields, but you might need to go back and dig up these values from source
+arc_unmatched_checked$amplicon <- NA
+arc_unmatched_checked$kingdom <- NA
+arc_unmatched_checked$class <- NA
+names(arc_unmatched_checked)[names(arc_unmatched_checked) == "asv_seq"] <- "asv_sequence"
+### make species field = species_orig, except where arc_unmatched_checked has identified a new species_bold name
+arc_unmatched_checked$species <- arc_unmatched_checked$species_orig
+for(i in 1:nrow(arc_unmatched_checked)){
+    if(!(arc_unmatched_checked$checked_species_name[i] %in% c("",arc_unmatched_checked$species[i]))){
+      arc_unmatched_checked$species[i] <- arc_unmatched_checked$checked_species_name[i]
+      # A couple of cases where genus name is changed with new bold name
+      if(arc_unmatched_checked$genus[i] != strsplit(arc_unmatched_checked$species[i]," ")[[1]][1]){
+        arc_unmatched_checked$genus[i] <- strsplit(arc_unmatched_checked$species[i]," ")[[1]][1]
+      }}
+}
+### Now Mel, I don't get which of these should be added to tfill...just those with max_p_identity >= 97?
+### The next commented out line is what needs to be done, but I think arc_unmatched_checked needs to be subsetted first, no?
+# tfill <- rbind(tfill, arc_unmatched_checked[match(names(tfill), names(arc_unmatched_checked))])
 
 ### You said "species revealed by searches against bold version 5 that which previously had max-p-identities below 97 but now with a 'bold_match' above 97."
 ### I'm not sure where to get these cases, but you could add to maxp using similar code to what I've used above.
 
-### So am I right in thinking we are only adding to the asv_library, not making corrections to identifications derived in appendix 2? (Head spinning a bit now. Probably need a rest)
+### So am I right in thinking we are only adding to the asv_library, not making corrections to identifications derived in appendix 2? (Head spinning a bit now. Probably need a rest...Head still spinning on day 2...I feel like I want to pull this all apart and start again...)
+#CHRIS#3: I think this could be a new notebook using the 'asv_library_corrected.csv' as the source file. The reason for this is that Appendix 2 correct mistakes where this is more about updating the bins (and a small number of errors).
 ```
