@@ -125,6 +125,8 @@ for (i in 1:nrow(combinations_to_remove)) {
                                            synonyms_revised$species_new == species_new_to_remove), ]
 }
 
+write.csv(synonyms_revised, "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/synonyms_revised.csv")
+
 syndups <- synonyms_revised %>%
 count(species) %>%
 filter(n > 1)
