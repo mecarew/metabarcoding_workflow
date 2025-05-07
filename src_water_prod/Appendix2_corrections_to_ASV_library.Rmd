@@ -151,57 +151,90 @@ maxp_ck <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workfl
 mw46unmat_ck <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/synonym_updates/MW46_metabar_unmatched_checked_all.csv")
 arc_unmat_ck  <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/arc_unmatched_checked.csv")
 
-all_MC_checks <- rbind(tfill_ck, maxp_ck, mw46unmat_ck, arc_unmat_ck)
+all_MC_checks <- rbind(tfill_ck, maxp_ck, mw46unmat_ck, arc_unmat_ck) 
+
+dup_asvs <-  all_MC_checks %>%
+  group_by(asv_code) %>%
+  filter(n() > 1) %>%
+  ungroup() # 420 duplicate asv_codes
+
+#identify all duplicated asv_codes across all_MC_checks for changing
+dup_asvs1 <- all_MC_checks %>%
+  group_by(asv_code) %>%
+  filter(n() > 1) %>%
+  pull(asv_code) %>%
+  unique()
+
+# remove these duplicates from 'mw46unmat_ck' and 'arc_unmat_ck' if they appear in tfill_ck or maxp_ck (favoring tfill_ck or maxp_ck as they have been more thoroughly check and are more up to date)
+mw46unmat_ck_clean <- mw46unmat_ck %>%
+  filter(!(asv_code %in% dup_asvs1))
+
+arc_unmat_ck_clean <- arc_unmat_ck %>%
+  filter(!(asv_code %in% dup_asvs1))
+
+# combine all the cleaned and priority dataframes
+all_MC_ck_uniq <- bind_rows(
+  tfill_ck,
+  maxp_ck,
+  mw46unmat_ck_clean,
+  arc_unmat_ck_clean
+)
+
+dup_asvs2 <-  all_MC_ck_uniq %>%
+  group_by(asv_code) %>%
+  filter(n() > 1) %>%
+  ungroup() # no duplicate bins
 
 # This code produces a species bin list for everything on bold according to my checks and can be directly checked against your 'bins' list.
-bin_list <- all_MC_checks %>%
+bin_list_MC <- all_MC_ck_uniq %>%
   filter(bold_match >= 97, bold_bin_uri != "no bin") %>%
-  distinct(bold_bin_uri, checked_species_name) # please note there are a small number of bold match without bin_uri assigned, the no bin filter followed by the script below will reveal these.
+  distinct(bold_bin_uri, checked_species_name) # 1884 bins. Please note there are a small number of bold match without bin_uri assigned, the no bin filter followed by the script below will reveal these.
 
-dup_bins <- bin_list %>%
+dup_bins <- bin_list_MC %>%
   group_by(bold_bin_uri) %>%
   filter(n() > 1) %>%
   ungroup() # no duplicate bins
 
 # This code produces a species list for everything on not bold according to my checks (either from my private library or from the GenBank database. Asv records for these species should be kept as should there max-p-identities.
-not_bold_sp_list <- all_MC_checks %>%
+not_bold_sp_list_MC <- all_MC_ck_uniq %>%
   filter(max_p_identity >= 97, stringr::str_detect(comments, stringr::regex("private|Genbank", ignore_case = TRUE))) %>%
-  distinct(checked_species_name, comments) #187 species only in private or GenBank database 
+  distinct(checked_species_name, comments) #185 species only in private or GenBank database, not on bold
 
-dup_sp <- not_bold_sp_list %>%
+dup_sp <- not_bold_sp_list_MC %>%
   group_by(checked_species_name) %>%
   filter(n() > 1) %>%
   ungroup() # no duplicate bins
 
-# fix errors and update data
+# fix errors/update data
 # update max-p-identity where bold has a more up date match this exclude almost all data private library (note I have added information from manual search for data with a match >94) create a list of data needed max-p-updated
-maxp_updates <- all_MC_checks %>%
+maxp_updates_MC <- all_MC_ck_uniq %>%
   filter(grepl("update match", action, ignore.case = TRUE) &
-         !grepl("private", comments, ignore.case = TRUE)) # 1249 records require a max_p_update after comparing to bold v5
+         !grepl("private", comments, ignore.case = TRUE)) # 1560 records require a max_p_update after comparing to bold v5
 
-# Update all_records using bold_match from max_p_errors (with max-p-identities updated/corrected notebook will adjust the taxonomic assignment to the correct level)
-all_records_MC <- all_records %>%
-  left_join(maxp_updates %>% select(asv_code, bold_match), by = "asv_code") %>%
-  mutate(max_p_identity = if_else(!is.na(bold_match), bold_match, max_p_identity)) %>%
-  select(-bold_match)
+# # Update all_records using bold_match from max_p_errors (with max-p-identities updated/corrected notebook will adjust the taxonomic assignment to the correct level)
+# all_records_MC <- all_records %>%
+#   left_join(maxp_updates %>% select(asv_code, bold_match), by = "asv_code") %>%
+#   mutate(max_p_identity = if_else(!is.na(bold_match), bold_match, max_p_identity)) %>%
+#   select(-bold_match)
 
 # Update all_records with a new species name 
-name_updates <- all_MC_checks %>%
-  filter(grepl("name", action, ignore.case = TRUE)) #4463 records require name changes after comparing to bold v5
+name_updates <- all_MC_ck_uniq %>%
+  filter(grepl("name", action, ignore.case = TRUE)) #4479 records require name changes after comparing to bold v5
 
-# this includes names that are wrong on checking (e.g. an invertebrate species in the database that was really fungi or bacteria) or have new information that means that additional taxonomic fields (not just species) will require changing CHRIS: I'm a little stuck here and am wondering if the best way to capture this information and make the necessary change to the asv library. I think a loop using the bold search data would work??
-classif_updates <- all_MC_checks %>%
-  filter(grepl("reclassify", action, ignore.case = TRUE)) #221 records have the wrong or missing taxonomy after comparing to bold v5
+# # this includes names that are wrong on checking (e.g. an invertebrate species in the database that was really fungi or bacteria) or have new information that means that additional taxonomic fields (not just species) will require changing CHRIS: I'm a little stuck here and am wondering if the best way to capture this information and make the necessary change to the asv library. I think a loop using the bold search data would work?? This is probably redundant now
+# 
+# classif_updates <- all_MC_ck_uniq %>%
+#   filter(grepl("reclassify", action, ignore.case = TRUE)) #221 records have the wrong or missing taxonomy after comparing to bold v5
 
 #groups where additional sequences in my private library suggest a sp. MC- with a match less than 97 is part of a bin forming a 'group' (similar to our overlapping bins)
-bold_priv_grps <- all_MC_checks %>%
-  filter(grepl("all same", comments, ignore.case = TRUE) )%>%
-  pull(checked_species_name) %>%
-  unique() # 7 species grps with additional sequences in the private library
+bold_priv_grps_MC <- all_MC_ck_uniq %>%
+  filter(grepl("all same", comments, ignore.case = TRUE)) %>%
+  distinct(checked_species_name) %>%
+  rename(species_group = checked_species_name) # 7 species grps with additional sequences in the private library
 
-# all records with a match => 97 in all_records_MC
-all_records_MCgt97 <- all_records_MC %>%
-  filter(max_p_identity >= 97) #16703 records with match >=97
+# # all records with a match => 97 in all_records_MC
+# all_records_MCgt97 <- all_records_MC %>%
+#   filter(max_p_identity >= 97)  records with match >=97
 
 ```
 
@@ -231,20 +264,22 @@ miseq20 <- read.csv(paste0(gsub("XX","20",dir_miseqXX),
 all_records <- rbind(miseq13[,match(names(miseq15),names(miseq13))], 
                  miseq15, miseq16, miseq17, miseq18, miseq19, miseq20)
 
-# CHRIS: I am concerned with the filteringout of 'Unassigned' records, as they may become assigned against bold v5. If they are not considered passed this point we will miss important updates. It fine to remove the Prokaryota sequences here as this ID will not change (see below)
+
 ##########
+# CHRIS: see 'Unassigned' records, assigned against bold v5. If they are not considered passed this point we will miss important updates. It fine to remove the Prokaryota sequences here as this ID will not change (see below)
 all_rec_env_rem <- all_records[grepl("environmental", all_records$species),] # 78 records
 all_rec_env_rem <- all_rec_env_rem %>%
-  left_join(all_MC_checks %>% select(asv_code, checked_species_name, action, comments),
-            by = "asv_code") # should be no issue non are invertbrates
-
-all_rec_una_rem <- all_records[grepl("Unassigned", all_records$kingdom),] #  records
+  left_join(all_MC_ck_uniq %>% select(asv_code, checked_species_name, action, comments),
+            by = "asv_code") # none are invertebrates, however for some records there is 
+sum(!is.na(all_rec_env_rem$action) & all_rec_env_rem$action == "reclassify") # however for 26 records there is additional taxonomic information
+    
+all_rec_una_rem <- all_records[grepl("Unassigned", all_records$kingdom),] # 4048 unassigned asvs
 all_rec_una_rem <- all_rec_una_rem %>%
-  left_join(all_MC_checks %>%
+  left_join(all_MC_ck_uniq %>%
               select(asv_code, bold_match, checked_species_name, action, comments) %>%
               distinct(asv_code, .keep_all = TRUE),
-            by = "asv_code")
-sum(!is.na(all_rec_una_rem$bold_match)) # 53 'Unassigned' records have a >94 match in bold v5 these records need updating 
+            by = "asv_code") 
+sum(!is.na(all_rec_una_rem$bold_match)) # 53 previously 'Unassigned' asv have a >94 match in bold v5 these records need updating. All remaining records will remain 'Unassigned'
 ###############
 
 # Remove records with kingdom Unassigned or Prokaryota 
@@ -276,7 +311,7 @@ asv_test <- unique(mw46[c("asv_code","asv_seq")])
 sum(duplicated(asv_test$asv_seq))
 asv_test[duplicated(asv_test$asv_seq) | duplicated(asv_test$asv_seq, fromLast = TRUE),]
 asv_test[duplicated(asv_test$asv_code) | duplicated(asv_test$asv_code, fromLast = TRUE),]
-# ### This sequence is the most troubling: it is associated with 4 asv_codes CHRIS: I suspect I have inadvertently dragged the otu_sequence data into 4 asv rows in excel (I know. I shouldn't have been doing this excel but this was before you had got through to me). I have gone back and checked this and I have extracted the correct sequences below. This won't be an issue for the ARC data as everything is coded. It won't happen again as I much prefer R for data wrangling now! Please check what I have done below and let me know if you are happy with it. From line 238-264. If so, you should be able to delete your commented out code below
+# ### This sequence is the most troubling: it is associated with 4 asv_codes CHRIS: I suspect I have inadvertently dragged the otu_sequence data into 4 asv rows in excel (I know. I shouldn't have been doing this excel but this was before you had gotten through to me). I have gone back and checked this and I have extracted the correct sequences below. This won't be an issue for the ARC data as everything is coded. It won't happen again Please check what I have done below and let me know if you are happy with it. From line 238-264. If so, you should be able to delete your commented out code below
 
 # dup_seq <- "TTTATCTTCAAATATTGCTCATGGAGGTGCTTCTGTAGACCTGGCAATTTTCAGATTGCACTTAGTTGGTATTTCATCTATTTTAGGTGCTGTAAATTTTATTACTACCGTGATTAATATACGATCAAACAAAATAACCTATGACCGACTTCCACTATTTGTTTGATCAGTAGCAATTACTGCTCTTCTACTTCTTCTATCTTTACCTGTTTTAGCTGGTGCTATCACCATACTTTTAACAGACCGAAATTTAAATACTACATTTTTTGATCCTGTAGGAGGAGGAGATCCAATTTTATATCAACATCTATTT"
 # dup_asv_seq_codes <- unique(mw46$asv_code[mw46$asv_seq == dup_seq])
@@ -319,6 +354,8 @@ asv_test[duplicated(asv_test$asv_code) | duplicated(asv_test$asv_code, fromLast 
 # For asv_code '9fbe986c778c5556f99611d0075a122a' i.e. 100 match to Hydrochus sp. B-AEH7112. This is sequence which was duplicated in the following asvs, so no changes are required in 'all_records'.
 #TTTATCTTCAAATATTGCTCATGGAGGTGCTTCTGTAGACCTGGCAATTTTCAGATTGCACTTAGTTGGTATTTCATCTATTTTAGGTGCTGTAAATTTTATTACTACCGTGATTAATATACGATCAAACAAAATAACCTATGACCGACTTCCACTATTTGTTTGATCAGTAGCAATTACTGCTCTTCTACTTCTTCTATCTTTACCTGTTTTAGCTGGTGCTATCACCATACTTTTAACAGACCGAAATTTAAATACTACATTTTTTGATCCTGTAGGAGGAGGAGATCCAATTTTATATCAACATCTATTT
 
+###########################
+#CHRIS: my corrections to the 4 sequences are here:
 # For asv_code '14295e7a8819dbdc4c2c972433d09d84'in 'all_records', max_p_identity, species assignment are correct i.e. 100 match to Hydrochus sp. MC-1 but asv_seq is incorrect
  mw46 <- mw46 %>%
   mutate(asv_seq = if_else(asv_code == "14295e7a8819dbdc4c2c972433d09d84", 
@@ -344,12 +381,15 @@ mw46 <- mw46 %>%
 
 asv_test <- unique(mw46[c("asv_code","asv_seq")])
 sum(duplicated(asv_test$asv_seq))  # 0 - all good. CHRIS: I also get 0
+############################
 
 ### Problem 2. asv_code b9ffeddb98f138f3aa3550b73a610dbb  has one record identified as Plecoptera sp. MC-O1 and one as kingdom Unassigned CHRIS: This one is not a big deal. The sequence is an 85% match to Plecoptera using the barcodeID. 85% put's it on the threshold of being 'Unassigned'. The 'MC-O1' part of the name means I think it's probably Plecoptera sp. but I should have been but was not consistent. I would perfer to update the record than remove it (lines 273-284)
 
 ### mw46[mw46$asv_code %in% c("b9ffeddb98f138f3aa3550b73a610dbb"),]
 # mw46 <- mw46[mw46$kingdom != "Unassigned",]
 
+############################
+#CHRIS: Let's just adjust the odd one out.
 mw46 <- mw46 %>%
   mutate(
     kingdom = if_else(asv_code == "b9ffeddb98f138f3aa3550b73a610dbb", 
@@ -362,6 +402,7 @@ mw46 <- mw46 %>%
                       "Plecoptera", order),
    species = if_else(asv_code == "b9ffeddb98f138f3aa3550b73a610dbb", 
                       "Plecoptera sp. MC-O1", species))
+########################
 
 #Remove records with kingdom unassigned or Prokaryota
 mw46 <- mw46[!mw46$kingdom %in% c("unassigned","Prokaryota"),]
@@ -371,7 +412,17 @@ mw46 <- unique(mw46[!mw46$asv_code %in% unique(all_records$asv_code),
                             "family","genus","species","max_p_identity",
                             "asv_seq","amplicon")])
 
-sum(duplicated(mw46$asv_code))  # 36. CHRIS: I now get 39
+###############################
+#CHRIS: This what I have found in the unassigned/Prokaryota asv records:
+mw46_rem <- mw46_sampledata[grepl("unassigned|Prokaryota", mw46_sampledata$kingdom, ignore.case = TRUE), ] # 1481 records
+mw46_rem <- mw46_rem %>%
+  left_join(all_MC_ck_uniq %>% select(asv_code, checked_species_name, action, comments),
+            by = "asv_code")
+sum(!is.na(mw46_rem$checked_species_name) & mw46_rem$checked_species_name != "") #48 'unassigned records have assignments after checking using bold v5
+
+##########################
+
+sum(duplicated(mw46$asv_code))  # 36. CHRIS: I get 39
 ### Investigate remaining duplicates 
 mw46_dups <- mw46[duplicated(mw46$asv_code) | duplicated(mw46$asv_code, fromLast = TRUE),]
 ### Differences in species names don't matter, as these will be checked below. Just choose
@@ -406,7 +457,7 @@ for(i in 1:length(dup_asvs)){
   }
 }
 mw46 <- unique(mw46)
-sum(duplicated(mw46$asv_code))  # 0.
+sum(duplicated(mw46$asv_code))  # 0. CHRIS: I also get 0
 
 ### For assembly of library, just asv_code -specific information is required
 all_records_sample_data <- all_records # keep all sample data for checking purposes
@@ -498,7 +549,11 @@ bold_results_1 <- rbind(
   read.csv(paste0(wd3, "/all_arc_unmatched_2001_3000_BOLD_results.csv")),
   read.csv(paste0(wd3, "/all_arc_unmatched_3001_4000_BOLD_results.csv")),
   read.csv(paste0(wd3, "/all_arc_unmatched_4001_4821_BOLD_results.csv")),
-  read.csv(paste0(wd3, "/all_arc_unmatched_4821_end_BOLD_results.csv")))
+  read.csv(paste0(wd3, "/all_arc_unmatched_4821_end_BOLD_results.csv")),
+#CHRIS: I believe I found some asvs in the arc data missing form my checks these are the seacrh results are here
+  read.csv(paste0(wd3, "/arc_missing_1_1000.csv")),
+  read.csv(paste0(wd3, "/arc_missing_1001_1600.csv")),
+  read.csv(paste0(wd3, "/arc_missing_1601_end.csv")))
 
 wd4 <- paste0(dir_0, "asv_library/maxp_boldv5_search_results")
 # read in .csv files with bold barcodeID engine results.
@@ -519,7 +574,7 @@ bold_results$bin_uri <- NA
 bold_results$bin_uri[lengths(pid_bin_split) > 1] <- 
   gsub("]", "", sapply(pid_bin_split[lengths(pid_bin_split) > 1],"[[",2))
 asv_bold <- unique(bold_results$asv_code)
-sum(asv_bold %in% all_records$asv_code)  #15,910 asv_codes with a match to BOLD (similarity >92)
+sum(asv_bold %in% all_records$asv_code)  #15,910 asv_codes with a match to BOLD (similarity >92) CHRIS: now #16138 with addition search for missing asv_codes (above)
 
 # keep a list of subfamilies (that don't consistently get used in mwbugs database)
 subfams <- unique(bold_results[c("family","subfamily")])
@@ -532,7 +587,7 @@ subfams <- subfams[subfams$subfamily != "" & !grepl("unclassified", subfams$subf
 
 all_bin_uri_asv_codes <- unique(bold_results[bold_results$similarity >= 97,c("asv_code","bin_uri")])
 ### MEL: but note below that I, from here on, reduce the dataset to include only non-aqu/non-macro records
-# CHRIS: For my papers I will need to report on the all data, not just the macroinvertebrate data. I am happy to remove the non-macroinvertebrates for following up the taxonomic names and for adding to the bug database. However, I would really prefer to using the entire data including my corrections (in the 'checked' files) as alot has changed and there will be new marcoinvetebrate identified in the dataset after applying the bold v5 updates. If you really want to do it this way I recommend after the taxonomic checking we rejoin the data (to make a complete asv dataset) and the run it through notebook6 and then subset out the freshwater macroinvertebrates data for the bugs database and further analysis.
+# CHRIS:now noted
 ### (I am not able to adequately check the taxonomy of other groups)
 ```
 
@@ -543,7 +598,7 @@ Taxonomic corrections have been made only to aquatic macroinvertebrates, excludi
 Similarly to correct genus and family names in the library, we use the taxonomic tables from the mwbugs database.
 
 ```{r}
-tfill_all <- rbind(truncated_fills_df, max_p_update_df)    # 14286 records
+tfill_all <- rbind(truncated_fills_df, max_p_update_df)    # 14286 records 
 
 # Remove all species names with "Unident." (A remnant of earlier inappropriate application of a mwbugs database convention to these data)
 tfill_all$species[grepl("Unident.", tfill_all$species)] <- NA
@@ -584,13 +639,17 @@ tfill <- only_aqu_inverts(tfill_all,
 ### MEL: is this the right thing to do, or are the environmental sample sequences supposed to be in the library? CHRIS: They can be removed. I checked all 10 sequences they were not from invertebrates and were a mixture of Chlorophyta, Proteobacteria and Ascomycota. This should be indicated in my 'checked' sheets
 tfill <- tfill[!grepl("nvironmental", tfill$species),] #10,551
 
+#########################
 #CHRIS: This is what we are removing along with my revised ids:
 tfill_env_rem <- tfill_all[grepl("nvironmental", tfill_all$species),] # 14 records
 tfill_env_rem <- tfill_env_rem %>%
-  left_join(all_MC_checks %>% select(asv_code, checked_species_name, action, comments),
-            by = "asv_code") # should be no issue to remove
+  left_join(all_MC_ck_uniq %>% select(asv_code, checked_species_name, action, comments),
+            by = "asv_code") # no invertebrates
 
-# And exclude records identified to phylum (1 Nemertea with bold match? CHRIS: There was a bold match, so leave for now
+sum(!is.na(tfill_env_rem$checked_species_name) & tfill_env_rem$checked_species_name != "") # 10 records have updated taxonomic information
+#########################
+
+# And exclude records identified to phylum (1 Nemertea with bold match? CHRIS: that's fine
 tfill <- tfill[!(is.na(tfill$class) & is.na(tfill$species)),] #10,538
 
 asvs_bin_uri <- unique(bold_results$asv_code[bold_results$similarity >= 97])  #19,786
@@ -602,91 +661,111 @@ all_records_aq_not_in_tfill <- all_records_aq[!all_records_aq$asv_code %in% tfil
 all_records_aq_not_in_tfill_bin <- all_records_aq_not_in_tfill[all_records_aq_not_in_tfill$asv_code %in% asvs_bin_uri,] #8,210
 all_records_aq_not_in_tfill_binlt97 <- all_records_aq_not_in_tfill[all_records_aq_not_in_tfill$asv_code %in% asvs_bin_uri_lt97,] #840
 ### MEL: I don't think it is appropriate to include any of the last set (<97% match in bold)...unless I am misunderstanding the max_p_update thing (See toward the end of the script where I ask for clarification on this). I'm thinking that if such records are not included in t_fill, then your process in workbook 6 will identify them if they are known...Do I have the right end of the stick here?
-#CHRIS: Nope. It will throw out important changes.  This  There are records in 'all_records_aq_not_in_tfill_binlt97'  that have >97 matches ( Most of these are species in my private library (not all my DNA barcode data is on bold yet), some are borderline detections others errors you can see my comments using the code below.
+#########################
+#CHRIS: I think I understand now what you are asking here now. I did not initially.See 'shared_asvs_df'. Yes for the most part these records are are species in my private library (not on bold yet) or only on GenBank. These record require no updating. However, some are borderline detentions ( say 97 via VSEARCH but 96 on bold v5) or errors (where I assigned a match that has since proven to be wrong when I checked all databases manually) OR there is a better match available on bold V5 (which may provide additional taxonomic information and strengthen the certainty of a higher level match e.g. a match on bold is 95 but in VSEARCH was 90 so we can be more certain we have the correct genus and family ) Here I have suggested a 'match update' from the bold match data. SHould we use the VSEARCH max_p_identity or the bold v5 match? The call I have decided to make was to reduce the borderline matches to those on bold unless the VSEARCH match (max_p_identity) was from a group where only some individuals from my private library appear (and searches against my private library suggest they are all the same species you will find these in 'bold_priv_grps_MC'). Is this OK?
 
-############
-all_records_MC <- all_records_MC %>%
-  left_join(name_updates %>% select(asv_code, checked_species_name), by = "asv_code") %>%
-  mutate(species = if_else(!is.na(checked_species_name), checked_species_name, species)) %>%
-  select(-checked_species_name)
+#See here for my checks
+all_records_MC <- all_records %>%
+  left_join(all_MC_ck_uniq %>% select(asv_code, bold_match, checked_species_name, action, comments),
+            by = "asv_code")
 
 # comparing Mel's species list to Chris's all_records_aq_not_in_tfill_binlt97
-shared_asvs <- intersect(all_records_MCgt97$asv_code, all_records_aq_not_in_tfill_binlt97$asv_code)
+shared_asvs <- intersect(all_records_MC$asv_code, all_records_aq_not_in_tfill_binlt97$asv_code)
 length(shared_asvs)
 
-# CHRIS: we should be keeping all of these records as they have matches > 97 that appear in your ' all_records_aq_not_in_tfill_binlt97' It is important that if an asv matches either GenBank only (alot of beetles) or is in my private library we keep it.
-all_records_aq_not_in_tfill_binlt97_keep <- all_records_aq_not_in_tfill_binlt97 %>%
-  filter(asv_code %in% shared_asvs) #the are 143 asvs in all_records_aq_not_in_tfill_binlt97
-
-all_records_aq_not_in_tfill_binlt97_keep <- all_records_aq_not_in_tfill_binlt97_keep %>%
- left_join(all_MC_checks %>%
-              select(asv_code, bold_match, checked_species_name, action, comments) %>%
-              distinct(asv_code, .keep_all = TRUE),
-            by = "asv_code")
-  # with species matches of >=97 most are either from my private library or GenBank
-
-##Some ids were missing from my checks. I have now added them
-# missing <- all_records %>%
-#   filter(!asv_code %in% all_MC_checks$asv_code)
-# 
-# missing_ck <- missing %>%
-#   filter(!asv_code %in% arc_unmatched_ck$asv_code)
-# 
-# write.csv(missing,"~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/arc_missing.csv" )
+shared_asvs_df <- all_records_MC %>%
+  filter(asv_code %in% shared_asvs)
 
 ####################
+
 # Add records with BOLD matches to tfill
 tfill <- rbind(tfill, all_records_aq_not_in_tfill_bin)  #18,748
 
 # ### MEL: just to check, not including the additional records file that I decided to exclude above
 # ###      results in 369 records not being added to the library. Run this commented out code to see them:
-tf2 <- read.csv(paste0(source_path, "asv_library_97_add_miseq15-20_records.csv"))[,-1]
+tf2 <- read.csv(paste0(source_path, "asv_library_97_add_miseq15-20_records.csv"))[,-1] # CHRIS: 1309 records here for me
 sum(!tf2$asv_code %in% tfill$asv_code)  #369 records previously added to tfill no longer included
 ## To inspect the full table:
 tf2[!tf2$asv_code %in% tfill$asv_code,] # 369 unique asv_codes
-
+tf2_not_in_tfill <- tf2[!tf2$asv_code %in% tfill$asv_code, ] # as a df for Mel to look at
 
 #########CHRIS: here is my checks of the records here
 tf2_excl <- tf2[!tf2$asv_code %in% tfill$asv_code, ]
 tf2_excl <- tf2 %>%
   filter(!asv_code %in% tfill$asv_code)
 tf2_excl<- tf2_excl %>%
-  left_join(all_MC_checks %>% select(asv_code, bold_match, checked_species_name, action, comments),
+  left_join(all_MC_ck_uniq %>% select(asv_code, bold_match, checked_species_name, action, comments),
             by = "asv_code") 
-# most are from my provate library some are corrections and some are bold/private library complexes
+# most are from my private library some are corrections and some are bold/private library complexes (see bold_priv_grps_MC - explained above)
 ###########
 
 excl_spp <- unique(tf2$species[!tf2$asv_code %in% tfill$asv_code]) # 80 unique species names
+excl_spp_df <- as.data.frame(excl_spp)
 
-# ### LOTS of MC species in that list of 80, and two B- species (which shouldn't be the case if they don't have a BOLD match)
-# ### MEL: Perhaps it would be worth double-checking that these 369 records weren't missed in your check of BOLD v5????
+##############
+#CHRIS: here is my break done of the error/reasons for these 80 species
+
+
+# ### LOTS of MC species in that list of 80, and two B- species (which shouldn't be the case if they don't have a BOLD match) # CHRIS: one part of the bold_priv_grps_MC (and one a naming error should have remained sp. MC-1) other are require max_p_identity changes (all in tf2_excl)
+# ### MEL: Perhaps it would be worth double-checking that these 369 records weren't missed in your check of BOLD v5???? CHRIS: see tf2_excl I have checked these records and made notes.
 # ###  (and running them through BOLD if so). If they don't match  a BOLD record, then something could be awry, no?  
 # ### Here I separate the excl_spp which have a record in tfill with the same species name, but the record in tfill also has no bold match
-# ### Are you comfortable that these 72 species are ok? (i.e. you've given them a name but there is no matching bold record)
-# ### As above, am I right in thinking that if you can't be sure of their ids it is better to leave them out of your library and leave it up to workbook 6?
-# tfill_records_not_in_bold <- tfill[!tfill$asv_code %in% asvs_bin_uri,]
-# tfill_records_in_bold <- tfill[tfill$asv_code %in% asvs_bin_uri,]
+# ### Are you comfortable that these 72 species are ok? (i.e. you've given them a name but there is no matching bold record) CHRIS: the 'max_p_identity' may be wrong or different on bold (where we should update the 'match updated" to that form bold) then any species identifications (without a max_p_identity of >97) will be removed in notebook 6. The bulk of the species should be from my private library (and are not on bold). Also I suspect the the barcodeID engine may be a little glitchy I did find some records that did not have search result in the bulk record searches but did we I searched them individually these are indicated in my check data. Missing from my checked sheets is Australysmus lacustris which should have it's match changed to that on bold.
+# ### As above, am I right in thinking that if you can't be sure of their ids it is better to leave them out of your library and leave it up to workbook 6? CHRIS: yes
+tfill_records_not_in_bold <- tfill[!tfill$asv_code %in% asvs_bin_uri,]
+tfill_records_in_bold <- tfill[tfill$asv_code %in% asvs_bin_uri,]
+##################
+#CHRIS: Some things to know. If I have marked them as "private_library_only' or 'GenBank_only' with no 'action' they are fine. Note there are some species on bold without bins (they are new or did not meet the minimum requirements for bin analysis) and a small no. of records that need a name change (below)
+tfill_records_not_in_bold <- tfill_records_not_in_bold %>%
+  left_join(all_MC_ck_uniq %>% select(asv_code, bold_match, checked_species_name, action, comments),
+            by = "asv_code")
+##########################
 # ### And as I've tried to wrap my head around this problem, I've also found an inconsistency in tfill.
 # ### Here are 93 species name in tfill that are given to records with and without BOLD matches...
-# ### Is that possible????
-# unique(tfill_records_in_bold$species)[unique(tfill_records_in_bold$species) %in% 
-#                                         unique(tfill_records_not_in_bold$species)]
-# excl_spp_with_tfill_match_but_no_bold_match <- 
-#   excl_spp[excl_spp %in% unique(tfill_records_not_in_bold$species)] #72
+# ### Is that possible???? CHRIS: Yes. If the species do not appear on bold ( and are from private or GenBank base identification) or the max_p_identity needs updating to bring it inline with bold (check my information added to tf2_excl note asv f324ada264e3a8c5efb7a907cd88ccf1 have the max-p-update changed to the bold match) However, I think something has gone amiss here as the vast majority are on bold and do have bins. 
+unique(tfill_records_in_bold$species)[unique(tfill_records_in_bold$species) %in%
+                                        unique(tfill_records_not_in_bold$species)]
+excl_spp_with_tfill_match_but_no_bold_match <-
+  excl_spp[excl_spp %in% unique(tfill_records_not_in_bold$species)] #72
+
+####################
+# CHRIS: I have pulled out these species and asvs an added my comments
+excl_spp_asvs <- tfill_records_in_bold %>%
+  filter(species %in% unique(tfill_records_not_in_bold$species)) %>%
+  group_by(species, asv_code) %>% # group by both species and asv_code
+  summarise(n = n(), .groups = 'drop') %>% # count the occurrences of each unique combination
+  select(species, asv_code) %>% #select only the species and asv_code
+  left_join(all_MC_ck_uniq %>% select(asv_code, bold_match, bold_bin_uri, checked_species_name, action, comments),
+            by = "asv_code")
+#CHRIS: OK. what I think has happened is that some records have not produced search results we they should have. I pretty sure this is bold not me. I need to isolate and re-search them. The reason for this is some seem to be missing from my 'checked' file.
+
 # ### As a result the following doesn't quite work...
 # ### I'd be particularly worried about the 20 records that don't match a BOLD record, 
 # ### but match the species name of a tfill record that DOES match a BOLD record
-# excl_spp_bold_with_tfill_match_that_do_have_a_bold_match <- 
-#   excl_spp[excl_spp %in% tfill$species[tfill$asv_code %in% asvs_bin_uri]] #20
-# # 
-# excl_spp_bold_no_tfill_or_bold_match <- 
-#   excl_spp[!excl_spp %in% c(excl_spp_with_tfill_match_but_no_bold_match,
-#            excl_spp_bold_with_tfill_match_that_do_have_a_bold_match)]
-# 
+excl_spp_bold_with_tfill_match_that_do_have_a_bold_match <-
+  excl_spp[excl_spp %in% tfill$species[tfill$asv_code %in% asvs_bin_uri]] #20
+###########
+#CHRIS: Please have a look at the 'checked_species_names', 'actions' and comments in 'filtered_excl_spp_asvs'. Again I there are some searches of some asv's against bold v5 that are missing from my searches.
+excl_spp_bold_with_tfill_match_that_do_have_a_bold_match <- as.data.frame(excl_spp_bold_with_tfill_match_that_do_have_a_bold_match)
+filtered_excl_spp_asvs <- excl_spp_asvs %>%
+  filter(species %in% excl_spp_bold_with_tfill_match_that_do_have_a_bold_match$species)
+excl_spp_bold_no_tfill_or_bold_match <-
+  excl_spp[!excl_spp %in% c(excl_spp_with_tfill_match_but_no_bold_match,
+           excl_spp_bold_with_tfill_match_that_do_have_a_bold_match)]
+#################
+
 # ### which DO match BOLD uris
-# asvs_to_check_all_369 <- tf2[!tf2$asv_code %in% tfill$asv_code,]
+# asvs_to_check_all_369 <- tf2[!tf2$asv_code %in% tfill$asv_code,] # CHRIS: this is done above with the 
 # asvs_to_check_78_inconstent <- tf2[tf2$species %in% excl_spp_bold_inconsistency,]
-#CHRIS: Please look at my tf2_excl checked names action and comment df it will explain the 369 records
+
+#CHRIS: there are definitely asv records missing from searches. I think these are the one but if you find any others please let me know and I will search them. I'll leave it for now in case we find more.
+
+tfill_records_missed_bv5_search <- tfill_records_not_in_bold %>%
+  filter(is.na(bold_match) | bold_match == "",
+         is.na(checked_species_name) | checked_species_name == "",
+         is.na(action) | action == "",
+         is.na(comments) | comments == "") #80 records that should be researched against bold v5
+
 ```
 
 Note that tfill_all records excluded from tfill will be added unchanged to the final table at the end.
@@ -756,26 +835,19 @@ The following chunk creates a new table of asv_codes, species names, and their b
 ```{r}
 ## MEL: run this commented out code to save your own copy of match_list_bin_uri_v5.rda (it take a minute or two to compile) . CHRIS:OK
 ### Convert bold_results to a list: one element per asv_code
-# create a list of asv_codes with matching bold data  (and save as it takes a few minutes to compile)
+#create a list of asv_codes with matching bold data  (and save as it takes a few minutes to compile)
 # asv_codes_with_bins <- unique(bold_results$asv_code)
 # asv_codes_with_bins <- asv_codes_with_bins[asv_codes_with_bins %in% tfill$asv_code]
 # match_list_bin_uri <- list()
 # for(i in 1:length(asv_codes_with_bins)){
-#         matchi <- bold_results[bold_results$asv_code == asv_codes_with_bins[i], 
+#         matchi <- bold_results[bold_results$asv_code == asv_codes_with_bins[i],
 #                                !names(bold_results) %in% c("asv_code","pid_bin")]
 #         matchi <- matchi[!is.na(matchi$bin_uri),]
 #   match_list_bin_uri <- c(match_list_bin_uri, list(matchi))
 # }
 # names(match_list_bin_uri) <- asv_codes_with_bins
 # save(match_list_bin_uri, file = "data/match_list_bin_uri_v5.rda")
-load("data/match_list_bin_uri_v5.rda") # CHRIS: I get an error here:
-# Error in readChar(con, 5L, useBytes = TRUE) : cannot open the connection
-# In addition: Warning message:
-# In readChar(con, 5L, useBytes = TRUE) :
-#   cannot open compressed file 'data/match_list_bin_uri_v5.rda', probable reason 'No such file or directory'
-
-# Create a tfill_spp_bins, which lists all bin_uris associated with each asv_code
-# First calculate how many bin_uris each asv_code matches with similarity>=97
+load("data/match_list_bin_uri_v5.rda") # CHRIS: All good just need to make the file in my directory it did not come through with my pull from github
 tfill$n_bold_matches <- 0
 for(i in 1:nrow(tfill)){
   if(tfill$asv_code[i] %in% names(match_list_bin_uri)){
@@ -812,7 +884,8 @@ tfill_spp_bins_bu <- tfill_spp_bins
 
 ### MEL, I'm going to overrule and earlier decision here, and call every group with > 1 bin_uri a group (i.e. not use the slash for groups with only 2 bins).
 ###   My reasoning is that, as you develop this library further, more bins are likely to appear, and will call for nuisance changes to the names of any species that increased from 2 to 3 or more bin_uris.  The 'group' convention will provide a more stable name, and it is easy to extract the bins for each group, so the slash convention didn't really help much at all.
-CHRIS: Agreed it already has start to happen
+CHRIS: Agreed it already has start to happen where existing groups with two bins now have more.
+
 Species without a formal name are given a name based on their BOLD identifiers (bin_uri).  Species that have 2 or more bin_uris are given the name of one of the (arbitrary) first bin_uri followed by "group".  The following chunks renders those names. 
 
 The first chunk ensures that the first word of the name (usually genus, but potentially a higher taxonomic level) are correct, first by making manual corrections using the BOLD database and taxonomic identifications of specimens.
@@ -862,7 +935,7 @@ tfill$species[grepl("Isopoda", tfill$species) & !is.na(tfill$family ) & tfill$fa
         tfill$species[grepl("Isopoda", tfill$species) & !is.na(tfill$family ) & tfill$family == "Sphaeromatidae"])
 
 # tfill ids as Cephalopoda sp. (Unident.) and Insecta sp. (Unident.) - BOLD says Cicadellidae! Remove
-# MEL: perhaps you would prefer to re-include these (terrestrial) records in your library: they have 100% match with AAZZ049 (Cicadellidae)
+# MEL: perhaps you would prefer to re-include these (terrestrial) records in your library: they have 100% match with AAZZ049 (Cicadellidae) CHRIS: These are the same names as in my checked files
 #  (The records get re-included later on in the script, but their species names and other taxonomic fields are not checked.)
 tfill <- tfill[!tfill$asv_code %in% c("0e34c34977ee7a978072640906d29516",
                                      "5b68e70d74f791c5449284c2accfcc39"),] #18,727
@@ -886,7 +959,7 @@ n_bins <- aggregate(tfill_spp_bins[tfill_spp_bins$asv_code %in% tfill$asv_code,]
 tfill$no_bin_match <- 0
 tfill$no_bin_match[match(n_bins$asv_code, tfill$asv_code)] <- n_bins$x
 
-#The following are changes in part from Mel's original Appendix 2 asv_code chunk changing species names, and in part from iterative checks of tfill_spp_bins
+#The following are changes in part from Mel's original Appendix 2 asv_code chunk changing species names, and in part from iterative checks of tfill_spp_bins CHRIS: Please go to my next comment I have provided a dataframe of all names I had for the bin/species below
 bold_name_corrections <- 
 c("AAE9243" = "Cheumatopsyche alampeta",
 "ACG2503" = "Coloburiscoides munionga",
@@ -1037,6 +1110,21 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 # # Adopt the above corrections
 bnc_df <- data.frame(bin_uri = names(bold_name_corrections), 
                        new_species = bold_name_corrections)
+
+##################
+#CHRIS: comparing my bin names to yours:
+bnc_df_MC <- bnc_df %>%
+  left_join(bin_list_MC %>% select(bin_uri, checked_species_name), by = "bin_uri")
+#name differences
+bin_name_df <- bnc_df_MC %>%
+  filter(new_species != checked_species_name)
+
+write.csv(bin_name_df, "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/bin_name_df.csv") 
+# CHRIS: I have checked where we go different bins and why - see comments column
+bin_name_df_comments <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/bin_name_df.csv")     
+###################
+
+                          
 bnc_df$checks <- 0
 # Check that the above names are consistent with at least one name in each BOLD match.
 for(i in 1:nrow(bnc_df)){
@@ -1071,7 +1159,7 @@ for(i in 1:nrow(bnc_df)){
   
 }
 
-### MEL: I'm electing to delete these records as they are only identified to Amphipoda (could be terrestrial) CHRIS: Agreed. That thry should not be considered aquatic without further identification
+### MEL: I'm electing to delete these records as they are only identified to Amphipoda (could be terrestrial) CHRIS: Agreed. That they should not be considered aquatic without further identification
 ###      But note that in some samples you have identified this (incorrectly) as a lumbriculid
 tfill <- tfill[!tfill$asv_code %in% tfill_spp_bins$asv_code[tfill_spp_bins$bin_uri == "AFN5257"],]
 tfill_spp_bins <- tfill_spp_bins[tfill_spp_bins$bin_uri != "AFN5257",]
@@ -1430,20 +1518,30 @@ wronguns <- check[!is.na(check$bin_uri) & check$bin_uri != right(check$species,7
 nrow(wronguns) # 0 as it should be
 
 # tfill records without a BOLD match (all of these now have NA for species...
-# MEL: perhaps you should check these! The following code is here to help) CHIRS: You should be able to use my checked files to understand what's happening here
+# MEL: perhaps you should check these! The following code is here to help) CHIRS: 
 asv_no_bold <- tfill$asv_code[!tfill$asv_code %in% unique(tfill_spp_bins$asv_code)]
+asv_no_bold <-as.data.frame(asv_no_bold)
+#######
+#CHRIS: see my asv_no_bold_MC interesting many do have matches on bold other are from my private/library, some the max_identities need changing
+asv_no_bold <-as.data.frame(asv_no_bold) # 1711 records
+colnames(asv_no_bold)[colnames(asv_no_bold) == "asv_no_bold"] <- "asv_code"
+asv_no_bold_MC <- asv_no_bold %>%
+  left_join(all_MC_ck_uniq %>%
+              select(asv_code, bold_match, bold_bin_uri, checked_species_name, action, comments),
+            by = "asv_code")
+###########
 # 211 Species names given to records in the old tables (tfille, mw46) that are now given NA for species
 no_bold_species_old <- unique(tfill$species_old[tfill$asv_code %in% asv_no_bold & !grepl("Unident", tfill$species_old)])
 # 1720 records previously called a no_bold_species_old, but now have NA for species.
 no_bold_species_old_records <- tfill[tfill$species_old %in% no_bold_species_old & is.na(tfill$species),]
 
-# MEL here I cross-check you excel spreadsheets where you have suggested name changes.  Once again, do please CHRIS: Apologies but I had not finalised the checked sheets and only just saw this commebt. I am sorry but there will be changes, but I will now not touch them again.
+# MEL here I cross-check you excel spreadsheets where you have suggested name changes.  Once again, do please CHRIS: Apologies but I had not finalized the checked sheets and only just saw this comment. I am sorry but there will be changes, but I will now not touch them again.
 # try to not use excel for changing data like this. It makes tracking changes (to find errors and to interpret 
 # reasoning) really difficult.
 ### I think these checks can be removed from this script when we are done.
 
 arc_tfill_checked <- read.csv(paste0(dir_0, "asv_library/arc_tfill_checked_all.csv"))
-### MEL: I think I am using this arc_tfill_checked file as you intend.  Please CHECK! CHRIS: see the chunk I added (near the start) this will have all the checked files that should have inspected all asvs in the MW46 and ARC dataset. As I made changes some of the comments below may not be applicable
+### MEL: I think I am using this arc_tfill_checked file as you intend.  Please CHECK! CHRIS: see the chunk I added (near the start) this will have all the checked files that should have inspected all asvs in the MW46 and ARC dataset. As I made changes some of the comments below may not be applicable. Sorry
 ### Note I am applying it to the miseq data here (probably unnecessary) - I make the same adjustments to tfill below
 change_spnames <- arc_tfill_checked[arc_tfill_checked$action == "update species name",]
 for(i in 1:nrow(change_spnames)){
@@ -1463,11 +1561,12 @@ for(i in 1:length(oth)){
 }
 # Are you happy with those exclusions?  to look at your records you wanted to exclude that were not in tfill
 change_spnames[change_spnames$asv_code %in% change_spnames_not_in_tfill,]
-# I exclude them from further consideration.
+change_spnames <- as.data.frame(change_spnames) # CHRIS: these seem to be the records I believe need name updates
+# I exclude them from further consideration.CHRIS: the records with no comments or actions (i.e. where the 'species' = the checked_species_name require no changes)
 change_spnames <- change_spnames[!change_spnames$asv_code %in% change_spnames_not_in_tfill,]
 
 metabar_matched_checked <- read.csv(paste0(dir_46,"/synonym_updates/MW46_metabar_matched_checked.csv"))
-### MEL once again please check that I have interpreted your checked file correctly here in applying it to the 46-site data
+### MEL once again please check that I have interpreted your checked file correctly here in applying it to the 46-site data CHRIS can I suggest you use my combined file instead for these checks 'all_MC_ck_unique' as there is now an additional file added (arc_unmat_ck). Plus we may need to add more 'missed' asv's and search them against bold v5
 ### first those records where a change to species name is required.  
 ### Note for the record with action = "*update match and remove species name", I don't think you mean to remove the species name
 change_spnames1 <- metabar_matched_checked[grepl("update species", metabar_matched_checked$action) |
@@ -1516,10 +1615,21 @@ tfill[tfill$asv_code == cf,] # all ok
 
 MEL: I would REALLY like to automate the re-compilation of the maxp_update table, but I am still not sure of the logic you use...
 
+CHRIS: the logic for updating the max_p_identity.
+1 - remove all species from df that are in the list of species not on bold (using 'not_bold_species list') i.e. from GenBank or my private library. The max_p_identities from VSEARCH should be correct. Also remove records for species from the 'bold_priv_groups_MC' unless they are designate 'update match' in 'all_MC_ch_uniq'
+
+2 - in the reduced df ask is the bold v5 match better than the max_p_identity. If yes overwrite max_p_identity with bold v5 match (and any new taxonomic information - we can use the bins to do this) as an improve match is now available.
+
+3- There are a small number of records marked in my 'all_MC_ch_uniq' marked as 'error' in the 'commments' column these should be corrected by using the match from bold and 'checked_species_name' if I say it is not an invertebrate it's not (the bold database still has a few errors) .
+
+4- Boarderline matches - we have a significant number of matches where bold says 95-<97 and VSEARCH says >97. For these I suggest we downgrade the VSEARCH match to what we have from bold as it will make data checking easier in the future. These records I have marked these in the 'comments' as 'downgrading match according to bold'. and update 'match' in the 'actions' In a small number of cases I manually checked an id on bold v5 for match <94 these I have entered manually into the 'bold_match' column. I can't think of a easy way to fix these max-p-identities without flagging them. If youhave a better way please let me know.
+
+I think this logic should fix the required changes to the 'max_p_identities required in the asv_library. 
+
 Recompile final ASV_library tables, adding back in the non-macroinvertebrate, non-aquatic species removed before the above BOLD matches, adding a column "cw_checked" to identify those records that have been checked by the above processes (cw_checked = 1), and species excluded by the only_aqu_inverts() function (cw_checked = 0)
 
 ```{r}
-
+#CHRIS: By the time I have gotten to this point I have a errors which makes the code stop (likely from me changing the checked files (sorry). I think it might be best if I stop here and let you have a go. Please let me to revist the code below
 ### records identified by MEL as requiring change to max_p_identity (I think)
 change_maxp <- arc_tfill_checked[grepl("match", arc_tfill_checked$action),]
 change_maxp1 <- metabar_matched_checked[grepl("match", metabar_matched_checked$action),]
@@ -1540,7 +1650,7 @@ for(i in 1:nrow(change_maxp)) {
 }
 change_maxp$bold_match[change_maxp$action == "*update match to 92"] 
 
-### MEL: This has only served to confuse me even further! CHRIS: Sorry. I hope the way I changed the sheet makes them easier to use. I will send an e-mail will explain my locgic
+### MEL: This has only served to confuse me even further! CHRIS: Sorry. I hope the way I changed the sheet makes them easier to use.
 ### The records with NA for bold_match_cw do not have a bold match at all
 ### The records with NA for max_p_identity_cw are not in tfill (perhaps in all_records or mw46...I didn't check)
 ### I see from all records that have values in both those columns that the maximum BOLD match and max_p_identity 
