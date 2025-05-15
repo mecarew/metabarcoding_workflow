@@ -820,7 +820,6 @@ tfill$no_bin_match[match(n_bins$asv_code, tfill$asv_code)] <- n_bins$x
 bold_name_corrections <- 
 c("AAE9243" = "Cheumatopsyche alampeta",
 "ACG2503" = "Coloburiscoides munionga",
-"ACV9482" = "Cricotopus tasmania",
 "ABX3893" = "Illiesoperla mayi",	
 "ACG1875" = "Rhadinosticta simplex",
 "ADJ8523" = "Limnodrilus hoffmeisteri",
@@ -828,10 +827,8 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "ABV8829" = "Ulmerochorema onychion",
 "AAU4648" = "Psychoda gemina",
 "ACV9482" = "Cricotopus tasmania",
-"AAT8936" = "Cognettia chlorophila/sphagnetorum",
 "AAF0821" = "Tanytarsus fuscithorax",
 "ACB6471" = "Chaetogaster diastrophus",
-"ABX5220" = "Austrosimulium furiosum",
 "AAW2994" = "Austrheithrus glymma",
 "ACD5693" = "Dinotoperla thwaitesi",
 "ABX4166" = "Dinotoperla walkeri/evansi",
@@ -879,7 +876,6 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "ABX1780" = "Schizonyxhelea sp. B-ABX1780", # ditto
 "AGO4768" = "Schizonyxhelea sp. B-AGO4768", # ditto
 "AFS8198" = "Chaetogaster sp. B-AFS8198", # BOLD id 
-"ACG4785" = "Orthocladiinae sp. B-ACG4785", #  BOLD has Orthocladiinae,genus either nothing, Psectrocladius, or Orthocladius (not Cricotopus); tfill Cricotopus sp. B-ACQ6787 or unidentified Chironomid.
 "ACQ6787" = "Cricotopus sp. B-ACQ6787", # BOLD  id only to genus
 "ABA7845" = "Tanytarsus sp. B-ABA7845", # BOLD has this only to Chironomidae tfill either Chironomidae or Tanytarsus MEL: have you had this confirmed as Tanytarsus? If not change this back to Chironomidae
 "ADC3509" = "Chironomidae sp. B-ADC3509", # BOLD id: tfill variously this or Diptera unident or Diptera MC-032
@@ -905,7 +901,6 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "ABW1138" = "Triaenodes sp. B-ABW1138", # BOLD has this only to Leptoceridae tfill either Leptoceridae or Triaenodes MEL: have you had this confirmed as Triaenodes? If not change this back to Leptoceridae  (and it will be removed from consideration)
 "AGD4258" = "Mesolimnophila austroalpina", # BOLD id, tfill that or Limnophila sp. EPAsp13
 "AGD4254" = "Mesolimnophila obscuripennis", # BOLD id, tfill either Limnophila sp. EPAsp13 or Mesolimnophila austroalpina. MEL: can we trust BOLD on this one?
-"ADF0137" = "Limoniidae sp. B-ADF0137", # BOLD has this only to Diptera tfill either Limoniidae sp. B-ADF0137 or Limnophila sp. EPAsp30. MEL: You give this a checked_species_name of Mesolimnophila sp. B-ADF0137. Are you sure about the species?
 "ABW2416" = "Limnophilinae sp. B-ABW2416", # BOLD id, tfill either that or Limoniidae sp. MC-1.
 "ABX1292" = "Limnophilinae sp. B-ABX1292", # BOLD id, tfill either that or Limoniidae sp. MC-2.
 "ABX1111" = "Molophilus pulchripes", # BOLD id, tfill either that or unidentified Limoniidae
@@ -939,7 +934,7 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "AGD4701" =  "Tonnoiromyia sp. B-AGD4701", # BOLD id only to family, but overlaps with ADF0531, tfill Tonnoiromyia sp. EPAsp3 and Tonnoiromyia tasmaniensis 
 "AGD4720" = "Limnophilinae sp. B-AGD4720", # BOLD id to subfamily, tfill  Diptera sp. MC-O27 and Diptera sp. (Unident.)
 "ADA8919" = "Ceratopogonidae sp. B-ADA8919", # BOLD id to family, tfill identified as Diptera sp. MC-O27
-"ADF0137" = "Diptera sp. B-ADF0137",# BOLD id to order, tfill Limnophila sp. EPAsp30 and Limoniidae sp. B-ADF0137. MEL: is this really confirmed as one of those species?
+"ADF0137" = "Diptera sp. B-ADF0137",# BOLD id to order, tfill Limnophila sp. EPAsp30 and Limoniidae sp. B-ADF0137. MEL: You give this a checked_species_name of Mesolimnophila sp. B-ADF0137. Are you sure about the species?
 "AGD4740" = "Limnophila implicita", # BOLD id, tfill that and Limnophila sp. EPAsp30
 "AGL9709" = "Dixella sp. B-AGL9709", # BOLD id to genus, tfill as Diptera sp. MC-O14 and Diptera sp. (Unident.)
 "AGQ8909" = "Chironomidae sp. B-AGQ8909", # BOLD id to family, tfill as Diptera sp. MC-O10 and Diptera sp. (Unident.)
@@ -956,20 +951,53 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "ACG8753" = "Polypedilum sp. B-ACG8753", # BOLD Chironomidae or Polypedilum, but a small overlap with AGK4964 and AGQ6047, tfill Polypedilum sp. B-ACG8753 or Polypedilum sp. MC-FS1
 "AEF3323" = "Sphaeriinae sp. B-AEF3323", # BOLD mainly identifies this as Euglesa casertana, but also many other species. This bin_uri overlaps with many others (see treatment of Sphaeriinase below)
 "AES9495" = "Muscidae sp. B-AES9495",  # BOLD identifies this as Muscidae tfill agrees
-"ACG9457" = "Riethia sp. B-ACG9457")
+"ACG9457" = "Riethia sp. B-ACG9457",
+"AGB9918" = "Diptera sp. B-AGB9918", 
+"ACG4785" = "Orthocladiinae sp. B-ACG4785", # #MEL: bold calls this both Orthocladius and Psectrocladius . Are you sure about the genus name?
+"AGD4745" = "Limnophila antennella", # BOLD id
+"ADF0063" = "Agapetus sp. B-ADF0063", # BOLD id
+"AEG5961" = "Aulodrilus pigueti", # BOLD id
+"ADC2719" = "Austroaeschna sigma", # BOLD id
+"ADC2975" = "Austrolestes psyche", # BOLD id
+"AFU5450" = " Caloca sp. B-AFU5450", # BOLD id
+"AEF5699" = "Cernosvitoviella microtheca", # BOLD id
+"AGQ9451" = "Chironomidae sp. B-AGQ9451", # BOLD id
+"ADC3923" = "Diphlebia lestoides", # BOLD id
+"AGD4707" = "Limnophilinae sp. B-AGD4707", # BOLD id
+"AEV7032"  = "Marionina argentea", # BOLD id
+"ACM3329"  = "Molophilus aphanta", # BOLD id
+"ACM3397" = "Molophilus capitatus", # BOLD id
+"ACM3428" = "Molophilus sp. B-ACM3428",# BOLD id
+"GBAAZ11256-24" = "Phreodrilidae sp. B-GBAAZ11256-24" # BOLD id
+)
 
-# # # #  #  ## Code used for checking the above  ABY8640
-# bini <- "ABX1153"  #"ABA0135" "ABX1153" "ABY3364" "ACG1634" "ACZ6583" "ADF0531"
-# spp_bini <- tfill_spp_bins[tfill_spp_bins$bin_uri %in% bini,]
-# asvs_with_mult_bins <- tfill$asv_code[tfill$no_bin_match > 1 & tfill$asv_code %in% spp_bini$asv_code]
-# unique(tfill_spp_bins[tfill_spp_bins$asv_code %in% asvs_with_mult_bins, c("species","bin_uri")])
-# spp_bini
-# bold_results[!is.na(bold_results$family) & !is.na(bold_results$bin_uri) &
-#                bold_results$bin_uri %in% bini & bold_results$similarity >= 97,]
+# # # # #  #  ## Code used for checking the above  ABY8640
+bini <- "ACM7596"
+spp_bini <- tfill_spp_bins[tfill_spp_bins$bin_uri %in% bini,]
+asvs_with_mult_bins <- tfill$asv_code[tfill$no_bin_match > 1 & tfill$asv_code %in% spp_bini$asv_code]
+unique(tfill_spp_bins[tfill_spp_bins$asv_code %in% asvs_with_mult_bins, c("species","bin_uri")])
+spp_bini
+bold_results[!is.na(bold_results$family) & !is.na(bold_results$bin_uri) &
+                bold_results$bin_uri %in% bini & bold_results$similarity >= 97,]
+check_with_bold[check_with_bold$bold_bin_uri == bini,]
 # # 
+# non-aqu taxa revealed by bin search 
+non_aqu_bins <- c("AEJ9583","AEE4516","AFS3667","ACQ3785","AFD6947","AFO3404",
+                  "AFV7101","ADC6982", "ADD9619", "AEY0933","AGR8644","AGR8283", #Chrysomelidae, Curculionidae, Diptera, Hemiptera not necessarily aquatic)
+                  "AFS0123","AFT5978","ABX3271","AFX2296","ADT5567",
+                  "ADA4572","AFI9194","AEO9062","AGR8590","ABY0923",
+                  "ACQ9362","AEV6150","GBAAZ5840-24","AGL9403","AAU4676",
+                  "AFF7326", # Enoplea- unlikely to be freshwater
+                  "AGL8425", "ADH9003","AFN9893","AAZ0768","ACQ9816", "AFJ0079",
+                  "AGB2975","ADA1282","AET4867","ADC6313","ACH7901","AFW4797",
+                  "AFU5686","ACP1899","ADU2224","AFJ0001")
+
 # # Adopt the above corrections
 bnc_df <- data.frame(bin_uri = names(bold_name_corrections), 
                        new_species = bold_name_corrections)
+# Check for duplicates
+xc <- bnc_df[duplicated(bnc_df$bin_uri) | duplicated(bnc_df$bin_uri, fromLast = TRUE),]
+xc[order(xc$bin_uri),]  # should be empty data.frame (i.e. no duplicates)
 bnc_df$checks <- 0
 ### MEL - you cross-checked your excel tables with this bnc_df here. Too early.  The names get changed below.
 
@@ -1006,10 +1034,21 @@ for(i in 1:nrow(bnc_df)){
   
 }
 
-### MEL: I'm electing to delete these records as they are only identified to Amphipoda (could be terrestrial)
+### MEL: I'm electing to remove these records from tfill and add them to tfill_nonaq
+### 1. Record only identified to Amphipoda (could be terrestrial)
 ###      But note that in some samples you have identified this (incorrectly) as a lumbriculid
+tfill_nonaq <- rbind(tfill_nonaq, 
+                     tfill[tfill$asv_code %in% tfill_spp_bins$asv_code[tfill_spp_bins$bin_uri == "AFN5257"],
+                           match(names(tfill_nonaq),names(tfill))])
 tfill <- tfill[!tfill$asv_code %in% tfill_spp_bins$asv_code[tfill_spp_bins$bin_uri == "AFN5257"],]
 tfill_spp_bins <- tfill_spp_bins[tfill_spp_bins$bin_uri != "AFN5257",]
+### 2. terrestrial species identified in bold above
+terr_to_remove <- tfill_spp_bins[tfill_spp_bins$bin_uri %in% non_aqu_bins,]
+tfill_nonaq <- rbind(tfill_nonaq, 
+                     tfill[tfill$asv_code %in% terr_to_remove$asv_code,
+                           match(names(tfill_nonaq),names(tfill))])
+tfill <- tfill[!tfill$asv_code %in% terr_to_remove$asv_code,]  #19793
+tfill_spp_bins <- tfill_spp_bins[!tfill_spp_bins$bin_uri %in% non_aqu_bins,] #22800
 
 ### MC species equivalences
 tfill$species[tfill$species %in% "Girardia sp. MC-1"] <- "Girardia sinensis" # Many overlapping bin_uris
