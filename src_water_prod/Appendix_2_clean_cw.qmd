@@ -192,7 +192,7 @@ complexes_df <- readxl::read_excel(paste0(source_path,source_file),
 Then, additional data from:
 
 - additions_asv_library_oct24.xlsx, containing additional asv records that were found with incomplete taxonomic classifications after updating the vsearch reference libraries and re-running vsearch based taxonomic assignments.
-### MEL: I take it from your response to my question at this point that your are happy not to include the additional records that I added to truncated_fills. I have thus removed the lines related to that additions (i.e. they are no longer included)
+### MEL: I take it from your response to my question at this point that your are happy not to include the additional records that I added to truncated_fills. I have thus removed the lines related to that additions (i.e. they are no longer included). CHRIS: Yes
 
 - filtered_<97_data.csv;
 
@@ -272,8 +272,8 @@ all_records <- rbind(miseq13[,match(names(miseq15),names(miseq13))],
 # 
 ### MEL: You identified # 26 'environemtal sample" records with additional taxonomic information. 
 #     There were only 4 unique asv_codes in that set  And as far as I can understand, you reclassified them as Proteobacteria
-#     Here I change the phylum and species values for those records accordingly. Correct?
-### Please also note that you are dragging me into worrying about non-aqu/non-macro records at this stage, with is (for what I need to do) a waste of my time
+#     Here I change the phylum and species values for those records accordingly. Correct? CHRIS: You don't need to add 'Proteobacteria' to the species column. Just to the phylum and 'Prokayota' to the kingdom. I want to changes these because it now means we have identifying those asv's a something we can ignore, as if there are still listed as an environmental sample it is unclear if they may be invertebrate or not.
+### Please also note that you are dragging me into worrying about non-aqu/non-macro records at this stage, with is (for what I need to do) a waste of my time CHRIS: Sorry. I guess I'm thinking long term.
 ### Remember, none of this process is about throwing out data: it is aiming at finding asv_codes that need to be added to the library.
 
 # unique(all_rec_env_rem$asv_code[!is.na(all_rec_env_rem$action) & all_rec_env_rem$action == "reclassify"])
@@ -284,7 +284,7 @@ all_records$phylum[grepl("environmental",all_records$species) & all_records$asv_
 all_records$species[grepl("environmental",all_records$species) & all_records$asv_code %in% proteos] <- NA
 
 ### MEL: You were concerned that I had removed Unassigned records from all_records (note that this is all before considering what needs to be added to tfill)
-###      Here, instead I remove only those 39935 that were Unassigned and do not appear in bold_results.  That's what you wanted to do, correct?
+###      Here, instead I remove only those 39935 that were Unassigned and do not appear in bold_results.  That's what you wanted to do, correct? CHRIS: Yep. I can live with this one!
 # Remove records with phylum = "Unassigned" and with no matching record in BOLD
 all_records <- all_records[!(all_records$kingdom == "Unassigned" & !all_records$asv_code %in% unique(bold_results$asv_code)),]
 # Update taxonomy for the 53 unassigned records that do have a bold match
@@ -322,7 +322,7 @@ for(i in 1:length(unassigned_asvs)){
       }
     }
 }
-# MEL: please inspect the bold_results table for each of the 6 unassigned_asvs_bold_ambig, e.g. 
+# MEL: please inspect the bold_results table for each of the 6 unassigned_asvs_bold_ambig, e.g. CHRIS: Agreed they can not be confidently assigned
   bold_results[bold_results$asv_code == unassigned_asvs_bold_ambig[1],]
 ## These 6 asv_codes do not have a consistent id in BOLD. For now, I will assume that they should NOT be included in tfill
   ### NOTE that by deleting them from all_records, I am not deleting them from your data, only for consideration below as to whether 
@@ -345,7 +345,7 @@ The above leaves 135,137 records from miseq runs 13-20 for consideration of incl
 ```{r}
 
 ### Results of earlier 46-site spring 2018 metabarcoding study.
-### MEL: This just imports mw46 to allow it to be combined with the other sets to get unique asv_codes. NOTE that in doing so, I found (and I think corrected) some asv_code/asv_seq inconsistencies.  You should use this code to correct the data before re-running the mw46 data in workbook 6.
+### MEL: This just imports mw46 to allow it to be combined with the other sets to get unique asv_codes. NOTE that in doing so, I found (and I think corrected) some asv_code/asv_seq inconsistencies.  You should use this code to correct the data before re-running the mw46 data in workbook 6. CHRIS: noted
 mw46 <- as.data.frame(
   readxl::read_excel(paste0(dir_46, "/spring2018_metabarcoding_Nov2023.xlsx"), 
                      sheet = 2))
@@ -371,10 +371,10 @@ other_seq <- "TTTATCTTCAAATATTGCTCATGGAGGTGCTTCTGTAGACCTGGCAATTTTCAGATTGCACTTAGC
 ### [1] "7ca9195991a6cad87374d1e98c6ab624"
 
 ### 2 of these asv_codes are in all_records already
-### MEL: NOTE I have kept my code for correcting the asv_seq problems, as it gives the same answer as your code, but provides a more transparent logic to the changes.
+### MEL: NOTE I have kept my code for correcting the asv_seq problems, as it gives the same answer as your code, but provides a more transparent logic to the changes. CHRIS: noted.
 ###       (So I have notused your correction code). The one difference between your result and mine is 
 unique(mw46$max_p_identity[mw46$asv_code == "ed3ae084977ef615af77a2eee71a2c5b"]) 
-###   My result says 99, but the notes in your code say "For asv_code 'ed3ae084977ef615af77a2eee71a2c5b' in 'mw46, the max_p_identity, species assignment (i.e., 92 match to  Hydrochus sp. MC-1) and asv_seq are all incorrect."   Did you mean to change it to 92?  I have left it as 99, but this can easily be changed.
+###   My result says 99, but the notes in your code say "For asv_code 'ed3ae084977ef615af77a2eee71a2c5b' in 'mw46, the max_p_identity, species assignment (i.e., 92 match to  Hydrochus sp. MC-1) and asv_seq are all incorrect."   Did you mean to change it to 92?  I have left it as 99, but this can easily be changed. CHRIS: Yes. I did mean to change it. I re-checked the sequence against my private library, GenBank and bold, it did not match better than 92
 
 # dup_asv_seq_codes[dup_asv_seq_codes %in% all_records$asv_code]
 # Those two are consistently called Hydrochus sp. MC-1 in both datasets
@@ -409,7 +409,7 @@ sum(duplicated(asv_test$asv_seq))  # 0 - all good.
 ### Problem 2. asv_code b9ffeddb98f138f3aa3550b73a610dbb  has one record  incorrectly identified as Plecoptera sp. MC-O1 and one as kingdom Unassigned
 ### mw46[mw46$asv_code %in% c("b9ffeddb98f138f3aa3550b73a610dbb"),]
 ### MEL: You changed the line below that deletes the incorrect record to a complicated dplyr statement that corrects it.
-###     That is unnecessary here, because all we are trying to do at this stage is assemble a unique set of asv_codes and ids.
+###     That is unnecessary here, because all we are trying to do at this stage is assemble a unique set of asv_codes and ids. CHRIS: Noted
 ###      Deleting the incorrect entry means we can just use the correct one
 mw46 <- mw46[!(mw46$kingdom == "Unassigned" & mw46$asv_code == "b9ffeddb98f138f3aa3550b73a610dbb"),]
 
@@ -456,7 +456,7 @@ for(i in 1:length(unassigned_asvs)){
 ## These 8 asv_codes do not have a consistent id in BOLD. For now, I will assume that they should NOT be included in tfill
   ### NOTE that by deleting them from mw46, I am not deleting them from your data, only for consideration below as to whether 
   ### they should be included in the library (ie. tfill) which I do below. If you think any of the 8 unassigned_asvs_bold_ambig_mw46 need to be included
-  ### please list them here with the taxonomy you want to give them. (with a justification we can include in this script)
+  ### please list them here with the taxonomy you want to give them. (with a justification we can include in this script)CHRIS: The only one that should have the taxonomy updated is 4a221f7f32a6c77153a67068011a848f BMAR1218-20[BOLD:AAO8134] Porifera Demospongiae Verongida, 94.86 BMAR1218-20 AAO8134 as I this would count as a detect of a sponge when comparing morphological and DNA data.
 
 # Remove remaining unassigned records
  mw46 <- mw46[!mw46$kingdom %in% c("Unassigned"),]
@@ -518,7 +518,7 @@ sum(duplicated(all_records$asv_code)) # 45
 ### Investigate remaining duplicates 
 all_records_dups <- all_records[duplicated(all_records$asv_code) | duplicated(all_records$asv_code, fromLast = TRUE),]
 #### MEL best to look at this by clicking on the object in the Environment pane or tyeing View(all_records_dups)
-####      and then sorting by asv_code
+####      and then sorting by asv_code CHRIS: I see your code below fixes this.
 
 ### All either cases of differing max_p_identity or one identified to higher level
 ### set max_p_identity to maximum value and re-check and pick the higher level record
@@ -539,7 +539,7 @@ for(i in 1:length(dup_asvs)){
 all_records <- unique(all_records)
 sum(duplicated(all_records$asv_code))  # 0.  Good
 
-sum(asv_bold %in% all_records$asv_code)  #16121 asv_codes with a match to BOLD (similarity >=94)
+sum(asv_bold %in% all_records$asv_code)  #16121 asv_codes with a match to BOLD (similarity >=94) CHRIS: note I get 16129.
 
 ```
 
@@ -583,7 +583,7 @@ taxon_fam <- as.data.frame(readxl::read_excel("data/taxonomy.xlsx",
                                               sheet = "taxon_fam"))
 # Corrections to be made in database (and synonym added)
 taxon_fam$family[taxon_fam$family == "Pisidiidae"] <- "Sphaeriidae"
-### MEL: re your suggested change from Brentidae to Nanophyidae, the mwbugs database is way ahead of you (type taxon_fam[taxon_fam$family == "Nanophyidae",] to see)
+### MEL: re your suggested change from Brentidae to Nanophyidae, the mwbugs database is way ahead of you (type taxon_fam[taxon_fam$family == "Nanophyidae",] to see) CHRIS: Sorry, still catching up!
 
 tfill <- only_aqu_inverts(tfill_all, 
                           non_aqu_macro_invert_already_loaded = TRUE)$include #11,869 records
@@ -595,8 +595,8 @@ tfill <- tfill[!grepl("nvironmental", tfill$species),] #11,859
 # And exclude records identified to phylum (1 Nemertea has a bold match, but not necessarily aquatic)
 tfill <- tfill[!(is.na(tfill$class) & is.na(tfill$species)),] #11,846
 
-asvs_bin_uri <- unique(bold_results$asv_code[bold_results$similarity >= 97])  #20,059
-asvs_bin_uri_lt97 <- unique(bold_results$asv_code[!bold_results$asv_code %in% asvs_bin_uri])  #1,415
+asvs_bin_uri <- unique(bold_results$asv_code[bold_results$similarity >= 97])  #20,059 CHRIS: 20070 for me
+asvs_bin_uri_lt97 <- unique(bold_results$asv_code[!bold_results$asv_code %in% asvs_bin_uri])  #1,415 
 all_records_aq <- only_aqu_inverts(all_records, 
                           non_aqu_macro_invert_already_loaded = TRUE)$include #18,820 records
 names(all_records_aq)[names(all_records_aq) == "asv_seq"] <- "asv_sequence"
@@ -607,17 +607,17 @@ all_records_aq_not_in_tfill_bin <- all_records_aq_not_in_tfill[all_records_aq_no
 all_records_aq_not_in_tfill_binlt97 <- all_records_aq_not_in_tfill[all_records_aq_not_in_tfill$asv_code %in% asvs_bin_uri_lt97,] #773
 ### Records with matches <97 are added to the ASV library and dealt with below 
 # MEL: you did a lot of cross-checking with your excel files at this stage.  
-### It would be much more efficient to do those checks after running this whole script
+### It would be much more efficient to do those checks after running this whole script CHRIS: OK. For me at the time it was about understanding each step
 
 # Add records with BOLD matches to tfill
-tfill <- rbind(tfill, all_records_aq_not_in_tfill_bin,all_records_aq_not_in_tfill_binlt97)  #19,893
+tfill <- rbind(tfill, all_records_aq_not_in_tfill_bin,all_records_aq_not_in_tfill_binlt97)  #19,893 CHRIS: For me 19,892
 
 # ### MEL: to confirm, following your comments, tfill now includes records without a bold match (tf2) - with corrections you identified taken care of below
 #         This is also where I asked you to check species that had been excluded at this stage.  Now there is only one
 excl_spp <- unique(tf2$species[!tf2$asv_code %in% tfill$asv_code])
 #         "Cernosvitoviella minor" a likely terrestrrial Enchytraeid, so I am happy with that.
 #         I also asked you here to check records without a match in bold here as well. 
-#         That looks largely fine (tfill_records_not_in_bold), but I will return to that at the checking stage later.
+#         That looks largely fine (tfill_records_not_in_bold), but I will return to that at the checking stage later. CHRIS: Just to acknowledge, I have read your comment and will continue to see what you have done below.
 ```
 
 Below, we change the term 'complex' in the asv_library to 'group' to remove any implication of true taxonomic complexes in the grouping of species. We also correct spelling errors in the source data.
@@ -637,11 +637,11 @@ tfill$species[is.na(tfill$species) & !is.na(tfill$order)] <-
 tfill$species[is.na(tfill$species) & !is.na(tfill$class)] <- 
   paste0(tfill$class[is.na(tfill$species) & !is.na(tfill$class)], " sp. (Unident.)")
 # # The remaining 15 only identified to Arthropoda or Nemertea
-#### MEL are you happy to exclude these 15 phylum-only records from the library?
+#### MEL are you happy to exclude these 15 phylum-only records from the library? CHRIS: Yes.
 tfill_phylum_only_excl <- tfill[(is.na(tfill$species) & is.na(tfill$class)),]
 # sum(tfill$asv_code[is.na(tfill$species)] %in% bold_results$asv_code) 
 # # and none of them have bold matches, so remove them.
-tfill <- tfill[!tfill$asv_code %in% tfill_phylum_only_excl$asv_code,] #19,878
+tfill <- tfill[!tfill$asv_code %in% tfill_phylum_only_excl$asv_code,] #19,878 CHRIS: I get 19,887
 
 # Correct spelling errors
 tfill$species <- gsub("  ", " ", tfill$species)
@@ -791,7 +791,7 @@ tfill$species[grepl("Isopoda", tfill$species) & !is.na(tfill$family ) & tfill$fa
         tfill$species[grepl("Isopoda", tfill$species) & !is.na(tfill$family ) & tfill$family == "Sphaeromatidae"])
 
 # tfill ids as Cephalopoda sp. (Unident.) and Insecta sp. (Unident.) - BOLD says Cicadellidae! Remove
-# MEL: You note that these notes match your correction table. I will try to incorporate your non-aqu/non-macro corrections at the re-assembly stage
+# MEL: You note that these notes match your correction table. I will try to incorporate your non-aqu/non-macro corrections at the re-assembly stage CHRIS: OK
 tfill <- tfill[!tfill$asv_code %in% c("0e34c34977ee7a978072640906d29516",
                                      "5b68e70d74f791c5449284c2accfcc39"),] #19,876
 # Coleoptera unidentified records match with terrestrial Leiodidae (99.36%) Remove # MEL as above
@@ -815,8 +815,8 @@ tfill$no_bin_match <- 0
 tfill$no_bin_match[match(n_bins$asv_code, tfill$asv_code)] <- n_bins$x
 
 #The following are changes in part from Mel's original Appendix 2 asv_code chunk changing species names, and in part from iterative checks of tfill_spp_bins
-# MEL: there are many requests for you to check name allocations in this next object, but you seem to have only answered two of them. (I've removed the second Q/A - Dixella, but your answer to the first is not clear. I have kept AEV0976 as Simuliidae, but noted that the previous script had this named as "Simulium sp. B-AEV0976", but bold only identifies it to Simuliidae.  And I asked "Are you happy with this change?" You replied "Yes. We id it in the lab" - so you only id-ed it as Simuliidae not Simulium, right?  
-# MEL: Please also respond to the remaining questions in this block
+# MEL: there are many requests for you to check name allocations in this next object, but you seem to have only answered two of them. (I've removed the second Q/A - Dixella, but your answer to the first is not clear. I have kept AEV0976 as Simuliidae, but noted that the previous script had this named as "Simulium sp. B-AEV0976", but bold only identifies it to Simuliidae.  And I asked "Are you happy with this change?" You replied "Yes. We id it in the lab" - so you only id-ed it as Simuliidae not Simulium, right? CHRIS: Sorry for my confussing response. I am happy to keep it consistent with bold as Simuliidae not Simulium.
+# MEL: Please also respond to the remaining questions in this block CHRIS: Below, if I agree with you name I have not commented. If I don't I have and said why or answered a query.
 bold_name_corrections <- 
 c("AAE9243" = "Cheumatopsyche alampeta",
 "ACG2503" = "Coloburiscoides munionga",
@@ -843,33 +843,34 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "ABX0996" = "Atrichopogon sp. B-ABX0996", # 6 bold record call this Atrichopogon (some tfill records took it to family)
 "ABX1092" = "Limnophila sp. B-ABX1092", # Bold identifies this as Limnophila (not Ozeoura convoluta as in some tfill records)
 "ACG2297" = "Notriolus sp. B-ACG2297", # Bold identifies this as Notriolus (some tfill entries took it to family)
-"ACN2323" = "Orthotrichia sp. B-ACN2323", # Bold identifies this as Orthotrichia (some tfill entries had it as Hellyethira basilobata)
+"ACN2323" = "Orthotrichia sp. B-c", # Bold identifies this as Orthotrichia (some tfill entries had it as Hellyethira basilobata)
 "ADJ9699" = "Naididae sp. B-ADJ9699", # Bold identifies this only as Naididae (some tfill entries had it as Limnodrilus hoffmeisteri)
-"AEV0976" = "Simuliidae sp. B-AEV0976", # MEL: the previous script had this named as "Simulium sp. B-AEV0976", but bold only identifies it to Simuliidae.  Are you happy with this change?
+"AEV0976" = "Simuliidae sp. B-AEV0976", # MEL: the previous script had this named as "Simulium sp. B-AEV0976", but bold only identifies it to Simuliidae.  Are you happy with this change? CHRIS: YES
 "ABX3905" = "Trinotoperla sp. B-ABX3905", # BOLD has no consensus on which Trinotoperla species this is. Some tfill entries had it as Trinotoperla montana. Will be named as a B- group below
 "AAT9499" = "Chamaedrilus varisetosus",
 "AAT9501" = "Chamaedrilus varisetosus",
 "ACQ1237" = "Chamaedrilus varisetosus",
-"AAU1095" = "Chamaedrilus varisetosus", # All 4 called Cognettia varisetosa in some cases both in tfill and in bold.
+"AAU1095" = "Chamaedrilus varisetosus", # All 4 called Cognettia varisetosa in some cases both in tfill and in bold. CHRIS: this one is a synonym issues
 "AAT8936" = "Cognettia chlorophila/sphagnetorum",# called Cognettia chlorophila and Cognettia sphagnetorum in BOLD. 2 records incorrectly called it "Chamaedrilus varisetosus" in tfill
-"ADW4709" = "Baetidae sp. B-ADW4709", # only identified to Baetidae in BOLD (some tfill entries had it as Offadens)  MEL: correct?(Your checked name say Offadens)
-"AEO9040" = "Diptera sp. B-AEO9040", # some tfill records did not record a species. MEL I have a script record of this one being Aphroteniinae, but can find no evidence for this. If it is Aphroteniinae, please change it from Diptera, and replace this comment with an explanation of where the Aphroteniinae ID has come from (for future reference) - same request applies to all the following questions please.
-"AAD2412" = "Asmicridea sp. B-AAD2412", # MEL: BOLD has one record calling this Asmicridea edwardsii  
+"ADW4709" = "Baetidae sp. B-c", # only identified to Baetidae in BOLD (some tfill entries had it as Offadens)  MEL: correct?(Your checked name say Offadens) CHRIS: The matching records from bold are mine. I id the specimens a while back but would prefer to re-check them. Happy to leave it as Baetidae for now. 
+"AEO9040" = "Diptera sp. B-AEO9040", # some tfill records did not record a species. MEL I have a script record of this one being Aphroteniinae, but can find no evidence for this. If it is Aphroteniinae, please change it from Diptera, and replace this comment with an explanation of where the Aphroteniinae ID has come from (for future reference) - same request applies to all the following questions please. CHRIS: I was confused by this one too. I could not find where Aphroteniinae came from. It will need to remain as Diptera.
+"AAD2412" = "Asmicridea sp. B-AAD2412", # MEL: BOLD has one record calling this Asmicridea edwardsii  CHRIS: The Asmicridea edwardsii is probably a error, happy to use the bin codes instead give the taxonomic ambiguity. 
 "ABV8740" = "Asmicridea sp. B-ABV8740",
 "ACG0009" = "Asmicridea sp. B-ACG0009", # BOLD Asmicridea; tfill Asmicridea edwardsii or Asmicridea sp. B-ABV8740 Asmicridea sp. B-AAD2412
-"AGO0445" = "Austroargiolestes sp. B-AGO4455", # BOLD has no consensus on which Austroargiolestes species this is
+"AGO0445" = "c sp. B-AGO4455", # BOLD has no consensus on which Austroargiolestes species this is
 "ACL1905" = "Austroargiolestes sp. B-ACL1905",  # BOLD has no consensus on which Austroargiolestes species this is
 "ACL1904" = "Austroargiolestes sp. B-ACL1904", # BOLD has no consensus on which Austroargiolestes species this is
 "ACG0290" = "Austroargiolestes sp. B-ACG0290", # BOLD has no consensus on which Austroargiolestes species this is
+# CHRIS: Austroargiolestes is a DNA barcoding mess. On my checking the the bins often overlap, so I feel it may be safer to collapse these under a group name i.e., Austroargiolestes sp. B-ACG0290 group
 "AAW3080" = "Austropsyche sp. B-AAW3080", # BOLD identifies this as "Austropsyche CJG sp. AU1". one tfill record has it as Austropsyche sp.
 "AAW3122" = "Austropyrgus centralia/turbatus", #centralia and turbatus grouped below. One tfill record had this incorrectly as Austropyrgus angasi
 "ABX5220" = "Austrosimulium furiosum", # BOLD id;  tfill had one incorrectly identifed as Austrosimulium sp. B-AEH7071
-"AGK3234" = "Scirtidae sp B-AGK3234",# BOLD id only to family, tfill variously identified this as Pseudomicrocara anthophilia or Anthocara anthophilia. MEL: Are you sure about your checked_speices_name of Pseudomicrocara anthophilia?
+"AGK3234" = "Scirtidae sp B-AGK3234",# BOLD id only to family, tfill variously identified this as Pseudomicrocara anthophilia or Anthocara anthophilia. MEL: Are you sure about your checked_speices_name of Pseudomicrocara anthophilia? CHRIS: No. I did some detective work. Both names appear on GenBank and the ids were preformed by Chris Watts, GenBank have flagged the entries and provided a correction stating Anthocara anthophilia is the correct name. Ther entry of Pseudomicrocara anthophilia is outdated.
 "ADC3729" = "Telephlebia brevicauda/godeffroyi", # BOLD has no consensus on which Telephlebia species it is. tfill had it as both
 "AAB3146" = "Anopheles annulipes", # BOLD id
 "ADW7166" = "Blepharhymenus apicornis", # BOLD id
-"ACM3453" =  "Cloeon sp. B-ACM3453", # BOLD identifies this as both Centroptilum and Cloeon # MEL:It would have been really helpful if you had just answered my question here. I had to trawl your checked file to find the answer
-"ADT1789" =  "Schizonyxhelea sp. B-ADT1789", # tfill variously Ceratopogonidae sp. MC-25,Schizonyxhelea sp. B-ABX1780, Schizonyxhelea sp. B-AFV6727, BOLD Ceratopogonidae (but overlaps with the following 5)
+"ACM3453" =  "Cloeon sp. B-ACM3453", # BOLD identifies this as both Centroptilum and Cloeon # MEL:It would have been really helpful if you had just answered my question here. I had to trawl your checked file to find the answer. CHRIS: Sorry. missed the question initially. Yes, both names are used interchangably, happy to stick with Cloen
+"ADT1789" =  "Schizonyxhelea sp. B-ADT1789", # tfill variously Ceratopogonidae sp. MC-25,Schizonyxhelea sp. B-ABX1780, Schizonyxhelea sp. B-AFV6727, BOLD Ceratopogonidae (but overlaps with the following 5) CHRIS: Should we be using a group name then?
 "AGO4766" = "Schizonyxhelea sp. B-AGO4766", # ditto
 "AGO4767" = "Schizonyxhelea sp. B-AGO4767", # ditto
 "AFV6727" = "Schizonyxhelea sp. B-AFV6727", # ditto
@@ -877,16 +878,16 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "AGO4768" = "Schizonyxhelea sp. B-AGO4768", # ditto
 "AFS8198" = "Chaetogaster sp. B-AFS8198", # BOLD id 
 "ACQ6787" = "Cricotopus sp. B-ACQ6787", # BOLD  id only to genus
-"ABA7845" = "Tanytarsus sp. B-ABA7845", # BOLD has this only to Chironomidae tfill either Chironomidae or Tanytarsus MEL: have you had this confirmed as Tanytarsus? If not change this back to Chironomidae
+"ABA7845" = "Tanytarsus sp. B-ABA7845", # BOLD has this only to Chironomidae tfill either Chironomidae or Tanytarsus MEL: have you had this confirmed as Tanytarsus? If not change this back to Chironomidae. CHRIS: No. I can seem to back track this one. Use Chironomidae
 "ADC3509" = "Chironomidae sp. B-ADC3509", # BOLD id: tfill variously this or Diptera unident or Diptera MC-032
-"AED8094" = "Tanytarsini sp. B-AED8094", # BOLD has this only to Chironomidae tfill either Chironomidae or Tanytarsini MEL: have you had this confirmed as Tanytarsini? If not change this back to Chironomidae
+"AED8094" = "Tanytarsini sp. B-AED8094", # BOLD has this only to Chironomidae tfill either Chironomidae or Tanytarsini MEL: have you had this confirmed as Tanytarsini? If not change this back to Chironomidae CHRIS: Tanytarsini is an id I made to an unpublished specimen (BR17Chir1) that matched AED8094 on bold
 "AAZ8055" = "Matasia sp. B-AAZ8055",  # formerly Matasia sp. AV1
 "ABV8714" = "Aphilorheithrus sp. B-ABV8714", #BOLD only ids to genus
 "AEW1288" = "Pristina sp. B-AEW1288", # BOLD calls this Pristina CEE
 "AEW1092" = "Monopylephorus irroratus", # BOLD id
 "AAO8233" = "Coenagrionidae sp. B-AAO8233", # BOLD only to family. Some tfill records said Ischnura heterosticta
-"ACN2272" = "Notriolus quadriplagiatus", #BOLD id, but  tfill says Notriolus sp. B-ADV4730...MEL: should we believe BOLD?
-"AGN0208" = "Contacyphon sp. B-AGN0208", # BOLD id, tfill either Contacyphon sp. G-KM376644 or Nothocyphon serratipenis
+"ACN2272" = "Notriolus quadriplagiatus", #BOLD id, but  tfill says Notriolus sp. B-ADV4730...MEL: should we believe BOLD? CHRIS: I think so. The ID came from James Anderson who works with Micheal Shackleton
+"AGN0208" = "Contacyphon sp. B-AGN0208", # BOLD id, tfill either Contacyphon sp. G-KM376644 or Nothocyphon serratipenis CHIRS: definately Nothocyphon serratipenis. The record name has been updated by Chris Watts on GenBank.
 "AEK9922" = "Coronapelopia valedon", # BOLD id, tfill either that or "Yarrhpelopia norrisi"
 "ACM3391" = "Molophilus exsertus", # BOLD id. tfill that or unidentified
 "ABW4945" = "Molophilus neboissi", # BOLD id. tfill unidentified
@@ -894,24 +895,24 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "ABA7040" = "Molophilus sp. B-ABA7040", # BOLD id, tfill that or unidentified
 "ABX1094" = "Limnophila sp. B-ABX1094", # BOLD id, tfill that or unidentified or Limnophila sp. MC-1
 "AAW0925" = "Nothorhaphium aemulans", # BOLD id, tfill that or Dolichopodidae sp. B-AAW0925
-"AGL9353" = "Enochrus sp. B-AGL9353", # BOLD id, tfill either nochrus sp. MC-5 or Hydrophilidae sp. MC-5
+"AGL9353" = "Enochrus sp. B-AGL9353", # BOLD id, tfill either Enochrus sp. MC-5 or Hydrophilidae sp. MC-5
 "AEU6610" = "Tubifex tubifex", # BOLD id, tfill either that or unidentified
 "ADZ9729" = "Hyalinella punctata", # BOLD id, tfill either that or Plumatella reticulata
-"ACG3222" = "Sphaeromatidae sp. B-ACG3222",  # BOLD has this only to Isopoda tfill either Isopoda or Sphaeromatidae MEL: have you had this confirmed as Sphaeromatidae? If not change this back to Isopoda (and it will be removed from consideration)
-"ABW1138" = "Triaenodes sp. B-ABW1138", # BOLD has this only to Leptoceridae tfill either Leptoceridae or Triaenodes MEL: have you had this confirmed as Triaenodes? If not change this back to Leptoceridae  (and it will be removed from consideration)
+"ACG3222" = "Sphaeromatidae sp. B-ACG3222",  # BOLD has this only to Isopoda tfill either Isopoda or Sphaeromatidae MEL: have you had this confirmed as Sphaeromatidae? If not change this back to Isopoda (and it will be removed from consideration) CHRIS: I can't track this one down please change to Isopoda
+"ABW1138" = "Triaenodes sp. B-ABW1138", # BOLD has this only to Leptoceridae tfill either Leptoceridae or Triaenodes MEL: have you had this confirmed as Triaenodes? If not change this back to Leptoceridae  (and it will be removed from consideration)CHRIS: I can't track this one down please change to Leptoceridae.
 "AGD4258" = "Mesolimnophila austroalpina", # BOLD id, tfill that or Limnophila sp. EPAsp13
-"AGD4254" = "Mesolimnophila obscuripennis", # BOLD id, tfill either Limnophila sp. EPAsp13 or Mesolimnophila austroalpina. MEL: can we trust BOLD on this one?
+"AGD4254" = "Mesolimnophila obscuripennis", # BOLD id, tfill either Limnophila sp. EPAsp13 or Mesolimnophila austroalpina. MEL: can we trust BOLD on this one? CHRIS: Yes. Identifying by Zac Billingham
 "ABW2416" = "Limnophilinae sp. B-ABW2416", # BOLD id, tfill either that or Limoniidae sp. MC-1.
 "ABX1292" = "Limnophilinae sp. B-ABX1292", # BOLD id, tfill either that or Limoniidae sp. MC-2.
 "ABX1111" = "Molophilus pulchripes", # BOLD id, tfill either that or unidentified Limoniidae
 "ABA3795" = "Molophilus sp. B-AEW5624", # BOLD id only to genus, but this overlaps with ABX1111
 "AEW5624" = "Paranais botniensis", # BOLD id, tfill either that or unident. naid
 "AAN7517" = "Naididae sp. B-AAN7517", # BOLD id to family, but uncertain genus. tfill either that or Tubifex tubifex
-"ACF9345" = "Pseudosmittia sp. B-ACF9345", # BOLD id only to subfamily Orthocladiinae, tfill either Pseudosmittia or Orthocladiinae. MEL: have you had this confirmed as Pseudosmittia? If not change this back to Orthocladiinae
-"ACW4137" = "Pionidae sp. B-ACW4137", # BOLD id only to family. tfill either that or Piona sp. B-ACW4137 #MEL - you suggest updating this to Piona. I think not.
+"ACF9345" = "Pseudosmittia sp. B-ACF9345", # BOLD id only to subfamily Orthocladiinae, tfill either Pseudosmittia or Orthocladiinae. MEL: have you had this confirmed as Pseudosmittia? If not change this back to Orthocladiinae. CHRIS: This id came from someone I don't fully trust so let's revert to Orthocladiinae
+"ACW4137" = "Pionidae sp. B-ACW4137", # BOLD id only to family. tfill either that or Piona sp. B-ACW4137 #MEL - you suggest updating this to Piona. I think not. CHRIS: Can't track this one down use Pionidae.
 "AAY5550" = "Lingora sp. B-AAY5550", # BOLD identifies this as Lingora aurata; tfill identifies it as Lingora aurata, Lingora sp. B-AAY5550/ADF2103 Lingora sp. B-ACC8619
 "ABY8640" = "Lingora aurata", # BOLD id - this bin_uri overlaps with "AAY5550"
-"AAY5549" = "Lingora sp. B-AAY5549", # BOLD identifies this as Lingora spAV1 (also overlaps with AAY5550); tfill identifies it as Lingora aurata, Lingora sp. B-AAY5550/ADF2103, Lingora sp. B-ACC8619
+"AAY5549" = "Lingora sp. B-AAY5549", # BOLD identifies this as Lingora spAV1 (also overlaps with AAY5550); tfill identifies it as Lingora aurata, Lingora sp. B-AAY5550/ADF2103, Lingora sp. B-ACC8619 CHRIS: Another group?
 "ACC8619" = "Lingora sp. B-ACC8619", # BOLD id only to Conoesucidae, but overlaps with AAY5550
 "ACS4478" = "Cryptochironomus sp. B-ACS4478", # BOLD id only to genus  # the bin_uris all overlap
 "ACS3865" = "Cryptochironomus sp. B-ACS3865", # BOLD id only to genus
@@ -925,8 +926,8 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "ACQ4376" = "Hydra vulgaris", # BOLD id, tfill that and Hydra sp. MC-O1
 "AEU9413" = "Chaetogaster limnaei", # BOLD id Chaetogaster limnaei CEB, tfill Chaetogaster limnaei and Chaetogaster diaphanus
 "AEX7218" = "Chaetogaster limnaei", # BOLD id Chaetogaster limnaei CEA, tfill Chaetogaster limnaei and Chaetogaster diaphanus
-"ADR9727" = "Chostonectes gigas", # OLD id, tfill that and Chostonectes johnsonii
-"ADR5837" = "Chostonectes sp. B-ADR5837", # BOLD only identified to genus, tfill both Chostonectes johnsonii and Chostonectes gigas
+"ADR9727" = "Chostonectes gigas", # OLD id, tfill that and Chostonectes johnsonii (one BIN ADR9726)
+"ADR5837" = "Chostonectes sp. B-ADR5837", # BOLD only identified to genus, tfill both Chostonectes johnsonii and Chostonectes gigas CHRIS: Definately not Chostonectes johnsonii. These are Eddie's speimens. It is quite possible it is another BIN for Chostonectes gigas given the overlap
 "ACB6731" = "Pristina aequiseta", # BOLD id, tfill only identified to that and "Pristina aequiseta/foreli" 
 "AFH3276" = "Culicoides sigmoidus", # BOLD id, tfill Culicoides sp. MC-24
 "AFN1635" = "Culicoides sigmoidus", # BOLD id, tfill Culicoides sp. MC-24
@@ -934,7 +935,7 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "AGD4701" =  "Tonnoiromyia sp. B-AGD4701", # BOLD id only to family, but overlaps with ADF0531, tfill Tonnoiromyia sp. EPAsp3 and Tonnoiromyia tasmaniensis 
 "AGD4720" = "Limnophilinae sp. B-AGD4720", # BOLD id to subfamily, tfill  Diptera sp. MC-O27 and Diptera sp. (Unident.)
 "ADA8919" = "Ceratopogonidae sp. B-ADA8919", # BOLD id to family, tfill identified as Diptera sp. MC-O27
-"ADF0137" = "Diptera sp. B-ADF0137",# BOLD id to order, tfill Limnophila sp. EPAsp30 and Limoniidae sp. B-ADF0137. MEL: You give this a checked_species_name of Mesolimnophila sp. B-ADF0137. Are you sure about the species?
+"ADF0137" = "Diptera sp. B-ADF0137",# BOLD id to order, tfill Limnophila sp. EPAsp30 and Limoniidae sp. B-ADF0137. MEL: You give this a checked_species_name of Mesolimnophila sp. B-ADF0137. Are you sure about the species? CHRIS: No. I can't track this one down. Please use Limnophila as this is the genus Zac uses.
 "AGD4740" = "Limnophila implicita", # BOLD id, tfill that and Limnophila sp. EPAsp30
 "AGL9709" = "Dixella sp. B-AGL9709", # BOLD id to genus, tfill as Diptera sp. MC-O14 and Diptera sp. (Unident.)
 "AGQ8909" = "Chironomidae sp. B-AGQ8909", # BOLD id to family, tfill as Diptera sp. MC-O10 and Diptera sp. (Unident.)
@@ -942,18 +943,18 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "AAJ0256" = "Spongillidae sp. B-AAJ0256", # BOLD has multiple genus and family ids (Lubomirskiidae, Malawispongiidae, Spongillidae), tfill has it as Spongillidae sp. B-AAJ0256, which is probably as good a name as any!
 "AGN3459" = "Ceratopogonidae sp. B-AGN3459", # BOLD Ceratopogonidae (but overlaps with ADR7325, next), tfill either Ceratopogonidae sp. MC-3 or Ceratopogonidae sp. MC-26
 "ADR7325" = "Ceratopogonidae sp. B-ADR7325",  # BOLD Ceratopogoninae, tfill either Ceratopogonidae sp. MC-3 or Ceratopogonidae sp. MC-26
-"AGL9707" = "Dixella sp. B-AGL9707", # BOLD either Dixidae or Dixella, tfill either Dixidae sp. MC-2 or Dixidae sp. MC-4 MEL: Are you happy to call this Dixella?
+"AGL9707" = "Dixella sp. B-AGL9707", # BOLD either Dixidae or Dixella, tfill either Dixidae sp. MC-2 or Dixidae sp. MC-4 MEL: Are you happy to call this Dixella? CHRIS: Yes. In fact it can be updated to Dixella humeralis identified by Chris Hardy.
 "AGL9705" = "Dixella sp. B-AGL9705", # BOLD Dixidae, but it overlaps with AGL9707, tfill either Dixidae sp. MC-2 or Dixidae sp. MC-4 
-"AGN3107" = "Dytiscidae sp. B-AGN3107", # BOLD Chostonectes, but see next, tfill Platynectes sp. MC-6
-"AGK5172" = "Dytiscidae sp. B-AGK5172", # BOLD Platynectes and Costonectes overlaps with AGN3107, so lump to family, given uncertainty, tfill Platynectes sp. MC-6
+"AGN3107" = "Dytiscidae sp. B-AGN3107", # BOLD Chostonectes, but see next, tfill Platynectes sp. MC-6 CHRIS: This is my specimen (KWG17Dyt2) identidied to genus as Chostonectes. Please use Chostonectes
+"AGK5172" = "Dytiscidae sp. B-AGK5172", # BOLD Platynectes and Costonectes overlaps with AGN3107, so lump to family, given uncertainty, tfill Platynectes sp. MC-6 CHRIS: This is my specimen (KWG17Dyt1) identified to genus as . Please use Platynectes 
 "AGQ6047" = "Polypedilum sp. B-AGQ6047", # BOLD Chironomidae, but overlaps with AGK4964 see next, tfill Polypedilum sp. B-AGQ6047 or Polypedilum sp. MC-FS1
 "AGK4964" = "Polypedilum sp. B-AGK4964", # BOLD Polypedilum, tfill Polypedilum sp. B-AGQ6047 or Polypedilum sp. MC-FS1
-"ACG8753" = "Polypedilum sp. B-ACG8753", # BOLD Chironomidae or Polypedilum, but a small overlap with AGK4964 and AGQ6047, tfill Polypedilum sp. B-ACG8753 or Polypedilum sp. MC-FS1
+"ACG8753" = "Polypedilum sp. B-ACG8753", # BOLD Chironomidae or Polypedilum, but a small overlap with AGK4964 and AGQ6047, tfill Polypedilum sp. B-ACG8753 or Polypedilum sp. MC-FS1 CHRIS: I suspect this and those above are another group
 "AEF3323" = "Sphaeriinae sp. B-AEF3323", # BOLD mainly identifies this as Euglesa casertana, but also many other species. This bin_uri overlaps with many others (see treatment of Sphaeriinase below)
 "AES9495" = "Muscidae sp. B-AES9495",  # BOLD identifies this as Muscidae tfill agrees
 "ACG9457" = "Riethia sp. B-ACG9457",
 "AGB9918" = "Diptera sp. B-AGB9918", 
-"ACG4785" = "Orthocladiinae sp. B-ACG4785", # #MEL: bold calls this both Orthocladius and Psectrocladius . Are you sure about the genus name?
+"ACG4785" = "Orthocladiinae sp. B-ACG4785", # #MEL: bold calls this both c and Psectrocladius . Are you sure about the genus name? CHRIS: No. It depends if you believe Susan E. Gresens(Psectrocladius) or Spencer K. Monckton (Orthpcladius). I know niether of them so lets go for Orthocladiinae
 "AGD4745" = "Limnophila antennella", # BOLD id
 "ADF0063" = "Agapetus sp. B-ADF0063", # BOLD id
 "AEG5961" = "Aulodrilus pigueti", # BOLD id
@@ -971,6 +972,7 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "GBAAZ11256-24" = "Phreodrilidae sp. B-GBAAZ11256-24" # BOLD id
 )
 
+
 # # # # #  #  ## Code used for checking the above  ABY8640
 bini <- "ACM7596"
 spp_bini <- tfill_spp_bins[tfill_spp_bins$bin_uri %in% bini,]
@@ -980,7 +982,7 @@ spp_bini
 bold_results[!is.na(bold_results$family) & !is.na(bold_results$bin_uri) &
                 bold_results$bin_uri %in% bini & bold_results$similarity >= 97,]
 check_with_bold[check_with_bold$bold_bin_uri == bini,]
-# # 
+# # CHRIS: > check_with_bold[check_with_bold$bold_bin_uri == bini,] gives Error: object 'check_with_bold' not found
 # non-aqu taxa revealed by bin search 
 non_aqu_bins <- c("AEJ9583","AEE4516","AFS3667","ACQ3785","AFD6947","AFO3404",
                   "AFV7101","ADC6982", "ADD9619", "AEY0933","AGR8644","AGR8283", #Chrysomelidae, Curculionidae, Diptera, Hemiptera not necessarily aquatic)
@@ -999,7 +1001,7 @@ bnc_df <- data.frame(bin_uri = names(bold_name_corrections),
 xc <- bnc_df[duplicated(bnc_df$bin_uri) | duplicated(bnc_df$bin_uri, fromLast = TRUE),]
 xc[order(xc$bin_uri),]  # should be empty data.frame (i.e. no duplicates)
 bnc_df$checks <- 0
-### MEL - you cross-checked your excel tables with this bnc_df here. Too early.  The names get changed below.
+### MEL - you cross-checked your excel tables with this bnc_df here. Too early.  The names get changed below. CHRIS: Noted
 
 # Check that the above names are consistent with at least one name in each BOLD match.
 for(i in 1:nrow(bnc_df)){
@@ -1034,7 +1036,7 @@ for(i in 1:nrow(bnc_df)){
   
 }
 
-### MEL: I'm electing to remove these records from tfill and add them to tfill_nonaq
+### MEL: I'm electing to remove these records from tfill and add them to tfill_nonaq CHRIS: Noted
 ### 1. Record only identified to Amphipoda (could be terrestrial)
 ###      But note that in some samples you have identified this (incorrectly) as a lumbriculid
 tfill_nonaq <- rbind(tfill_nonaq, 
@@ -1115,7 +1117,7 @@ tfill$genus[grep("Diptera", tfill$species)] <- NA
 ## 198 records without a species name (all from the max_p_update table)
 
 # Ensure family field is consistent with the max_p_identity rules
-# MEL in your email you said: 85–<92 = order, 92–<95 = family, 95–<97 = genus, and >97 = species). This filtering doesn’t need to be repeated in Appendix 2.
+# MEL in your email you said: 85–<92 = order, 92–<95 = family, 95–<97 = genus, and >97 = species). This filtering doesn’t need to be repeated in Appendix 2. CHRIS: Noted
 ### sum(!is.na(tfill$family[tfill$max_p_identity < 95]))  #281 records with a family value but sim <95 (some also have a genus listed)
 tfill$genus[tfill$max_p_identity < 95] <- NA
 tfill$family[tfill$max_p_identity < 92] <- NA
@@ -1402,10 +1404,10 @@ tfill$species[tfill$asv_code %in% tfill_spp_bins$asv_code] <-
 # An attempt to change max_p_identity according to MEL's rules: MEL: please check I have the logic right
 
 # 1 - remove all species from df that are in the list of species not on bold (using 'not_bold_species list') i.e. from GenBank or my private library. The max_p_identities from VSEARCH should be correct. Also remove records for species from the 'bold_priv_groups_MC' unless they are designate 'update match' in 'all_MC_ch_uniq'
-# MEL - I don't think this is necessary, pending an explanation of the logic behind your 'bold_priv_groups_MC' and  'all_MC_ch_uniq' update_match rules.  I propose we add two easily checkable columns sim_vsearch and max_sim_bold, and then move on to your next step.
+# MEL - I don't think this is necessary, pending an explanation of the logic behind your 'bold_priv_groups_MC' and  'all_MC_ch_uniq' update_match rules.  I propose we add two easily checkable columns sim_vsearch and max_sim_bold, and then move on to your next step. CHRIS: OK. 
 
 tfill$sim_vsearch <- tfill$max_p_identity
-# MEL this should be correct except for those values that you have already changed to populate your max_p_update table. Is there any way to get the original vsearch values back? (in facct it seems the asv_code=based changes that you made in the first version of appendix 2 (kept in the script below) are already applied to max_p_identity, and are thus redundant )
+# MEL this should be correct except for those values that you have already changed to populate your max_p_update table. Is there any way to get the original vsearch values back? (in facct it seems the asv_code=based changes that you made in the first version of appendix 2 (kept in the script below) are already applied to max_p_identity, and are thus redundant ) CHRIS: For the ARC data the original max_p_identity values will be in "miseqXX_vsearch_data_summary..." files for each miseq run e.g. /Volumes/2200-werg/wergStaff/MelCarew/git-data/metabarcoding_workflow/miseq15/metabarcoding_workflow/final_data_summaries/miseq15_vsearch_data_summary_26_11_2024.csv
 tfill$max_sim_bold <- NA
 for(i in 1:nrow(tfill)){
   if(tfill$asv_code[i] %in% names(match_list_bin_uri)){
@@ -1416,18 +1418,18 @@ for(i in 1:nrow(tfill)){
 
 # 2 - in the reduced df ask is the bold v5 match better than the max_p_identity. If yes overwrite max_p_identity with bold v5 match (and any new taxonomic information - we can use the bins to do this) as an improve match is now available.
 # MEL: this shows that there are 11167 records that meet this criterion (note the taxonomic update has been already done above).
-sum(tfill$max_sim_bold > tfill$sim_vsearch, na.rm = TRUE) #11167
+sum(tfill$max_sim_bold > tfill$sim_vsearch, na.rm = TRUE) #11167 CHRIS: I get 11089
 # Replace max_p_identity in all such cases (noting that the original value has not been lost - it remains a) in the source data and b) in the sim_vsearch field
 for(i in 1:nrow(tfill)){
   if(!is.na(tfill$max_sim_bold[i]) & tfill$max_sim_bold[i] > tfill$sim_vsearch[i]) 
     tfill$max_p_identity[i] <- tfill$max_sim_bold[i]
 }
 
-# 3- There are a small number of records marked in my 'all_MC_ch_uniq' marked as 'error' in the 'commments' column these should be corrected by using the match from bold and 'checked_species_name' if I say it is not an invertebrate it's not (the bold database still has a few errors) .
-## MEL: not really relevant to the max_p_identity question
+# 3- There are a small number of records marked in my 'all_MC_ch_uniq' marked as 'error' in the 'comments' column these should be corrected by using the match from bold and 'checked_species_name' if I say it is not an invertebrate it's not (the bold database still has a few errors) .
+## MEL: not really relevant to the max_p_identity question CHRIS: I only mentioned these as the matches changed in some cases
 
 #4- Boarderline matches - we have a significant number of matches where bold says 95-<97 and VSEARCH says >97. For these I suggest we downgrade the VSEARCH match to what we have from bold as it will make data checking easier in the future. These records I have marked these in the 'comments' as 'downgrading match according to bold'. and update 'match' in the 'actions' In a small number of cases I manually checked an id on bold v5 for match <94 these I have entered manually into the 'bold_match' column. I can't think of a easy way to fix these max-p-identities without flagging them. If youhave a better way please let me know.
-# MEL: how's this? (But this is somewhat confounded by my question in the checking script about whether such records should be included in your library at all..)
+# MEL: how's this? (But this is somewhat confounded by my question in the checking script about whether such records should be included in your library at all..) CHRIS: I can see these records in the tfill df e.g. 51a28478554b28741020b7ad51ee46d9 vsearch 97 bold 96.44. I can't quite work this out. Sorry
 sum(tfill$max_sim_bold[i] < 97 & tfill$sim_vsearch[i] >= 97, na.rm = TRUE)  # only 1 such case????
 for(i in 1:nrow(tfill)){
   if(!is.na(tfill$max_sim_bold[i]) & tfill$max_sim_bold[i] < 97 & tfill$sim_vsearch[i] >= 97)
@@ -1435,7 +1437,7 @@ for(i in 1:nrow(tfill)){
 }
 
 # And having corrected the max_p_identity field, repeat clean up of taxon fields
-# MEL in your email you said: 85–<92 = order, 92–<95 = family, 95–<97 = genus, and >97 = species). This filtering doesn’t need to be repeated in Appendix 2.
+# MEL in your email you said: 85–<92 = order, 92–<95 = family, 95–<97 = genus, and >97 = species). This filtering doesn’t need to be repeated in Appendix 2. CHRIS: Do you mean notebook 6?
 tfill$species[tfill$max_p_identity < 97] <- NA
 tfill$genus[tfill$max_p_identity < 95] <- NA
 tfill$family[tfill$max_p_identity < 92] <- NA
@@ -1528,7 +1530,7 @@ check <- tfill_spp_bins[!grepl("group", tfill_spp_bins$species) &
                           !grepl("/", tfill_spp_bins$species) & 
                           grepl("B-", tfill_spp_bins$species),]
 wronguns <- check[!is.na(check$bin_uri) & check$bin_uri != right(check$species,7),]
-nrow(wronguns) # 9 'wronguns' are all cases where bin_uri is non-standard (i.e the record has not been given a formal bin_uri yet)
+nrow(wronguns) # 9 'wronguns' are all cases where bin_uri is non-standard (i.e the record has not been given a formal bin_uri yet) CHRIS: This was the best way I could think of to deal with these ones. They can be updates if bins become available
 
 tfill_with_unidents <- tfill
 tfill$species[grep("Unident", tfill$species)] <- NA
