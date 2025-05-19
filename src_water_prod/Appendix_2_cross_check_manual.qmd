@@ -43,7 +43,7 @@ check_no_bold <- dplyr::mutate(check_no_bold,
 
 # Identify the check_no_bold records that share a name with records that actually have a >97% bold match
 tfill_bold <-tfill[tfill$asv_code %in% unique(tfill_spp_bins$asv_code),]  #17,048
-check_no_bold_spp_in_bold <- check_no_bold[check_no_bold$species %in% unique(tfill_bold$species),]  #9 (just those for which I haven't yet made max_p_identity 92, pending answer to question below - species names will disappear - with appropriate population of other taxon fields -if I do so)
+check_no_bold_spp_in_bold <- check_no_bold[check_no_bold$species %in% unique(tfill_bold$species),]  #9 (just those for which I haven't yet made max_p_identity 92, pending answer to question below - species names will disappear - with appropriate population of other taxon fields -if I do so) CHRIS: The max-p-identities should be lower as these species did not match on any database, so the soecies names need to disappear.
 
 # Flag (with 1) check_no_bold records that have a <97% match with bold
 check_no_bold$lt97_bold_match <- 0
@@ -54,25 +54,25 @@ View(check_no_bold)  # and then sort by bold_match descending
 ### I have several thoughts. Please respond to each below: 
 ###  1. I see checked_species_name is either blank or a genus/family/phylum name if bold_match is low.
 ###     Am I right in thinking that such records should just be removed from the library and let vsearch take care of identifying these?
-###     If I am not right, please explain your rationale for keeping them. 
-###  2. I haven't yet adjusted the max_p_identity for records that you have manually set to <94, 
+###     If I am not right, please explain your rationale for keeping them. CHRIS: I am overriding VSEARCH here as these records are mistakes in the reference library (which I really need to update)
+###  2. I haven't yet adjusted the max_p_identity for records that you have manually set to <94, CHRIS: Can I suggest we search these record using the 'genus and species search' this will provide matched to 90 CHRIS: that sounds reasonable
 ###     pending confirmation that you really want to include such records in the library. If I do so, the species names currently there will 
-###     disappear (and only family value will be retained)
-###  3. I haven't yet kept names from your private library (or GenBank). I propose that we assemble a small table of these records as a source
+###     disappear (and only family value will be retained) CHRIS: that's fine as these are overriding VSEARCH errors
+###  3. I haven't yet kept names from your private library (or GenBank). I propose that we assemble a small table of these records as a source CHRIS: That's fine. eventually these will end up on bold and the list can be updated when this happens
 ###     file for the script, but I wanted to check some details with you first. 
-###     a) Did you really check the identity of every sequence? (e.g. all 30 asv_codes called "Apsectrotanypus sp. MC-4"). If not, shouldn't your
+###     a) Did you really check the identity of every sequence? (e.g. all 30 asv_codes called "Apsectrotanypus sp. MC-4"). If not, shouldn't your 
 ###     private library (and the asv_library) only include those your have checked and let your notebook 6 process decide which sequences are adequately similar
-###     to be given the same name?
+###     to be given the same name? CHRIS: to make this codable can I suggest I provide you with the search results for these from GenBank output and from Genious? I will use the list if these as soure fie
 ###     b) related to this, some records have checked_species_name of records marked as private library, 
 ###       but are not commented as being in the private library (e.g
 check_no_bold[check_no_bold$checked_species_name == "Pontogeneiidae sp. B-AGK4900",]
 ###       Should these records be in either the asv or private library, as I asked in a)
 ###     c) Can you provide a source/justification for each id (how was the ID arrived at?) for inclusion in the private library table?
-###     d) 5 of your private library names have B- names, where they don't match BOLD >97%. 
+###     d) 5 of your private library names have B- names, where they don't match BOLD >97%. CHRIS: Providing the Geneiuos output should work for this.
 unique(check_no_bold$checked_species_name[grepl("B-", check_no_bold$checked_species_name) & grepl("private",check_no_bold$comments)])
 ###        Even though most of these have similarity to the given bin_uri close to 97%, I don't think 
 ###        this is a good idea, as when you submit them to BOLD they will be given new bin_uris, and the bins  
-###        you have matched them to, may or may not overlap.  I think you should re-name them MC-something.
+###        you have matched them to, may or may not overlap.  I think you should re-name them MC-something. 
 ###  4. I started flagging with species_name_shared_with_records_that_DO_match_BOLD = 1, are a particular problem
 ###     But these have now all gone away with your last BOLD rechecks, which is pleasing
 x <- check_no_bold[check_no_bold$species_name_shared_with_records_that_DO_match_BOLD == 1 & check_no_bold$checked_species_name != "",]
