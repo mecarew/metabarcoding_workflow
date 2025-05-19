@@ -981,7 +981,7 @@ unique(tfill_spp_bins[tfill_spp_bins$asv_code %in% asvs_with_mult_bins, c("speci
 spp_bini
 bold_results[!is.na(bold_results$family) & !is.na(bold_results$bin_uri) &
                 bold_results$bin_uri %in% bini & bold_results$similarity >= 97,]
-check_with_bold[check_with_bold$bold_bin_uri == bini,]
+#check_with_bold[check_with_bold$bold_bin_uri == bini,]
 # # CHRIS: > check_with_bold[check_with_bold$bold_bin_uri == bini,] gives Error: object 'check_with_bold' not found
 # non-aqu taxa revealed by bin search 
 non_aqu_bins <- c("AEJ9583","AEE4516","AFS3667","ACQ3785","AFD6947","AFO3404",
