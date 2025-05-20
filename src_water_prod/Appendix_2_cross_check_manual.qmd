@@ -25,19 +25,21 @@ dups <- all_MC_checks[duplicated(all_MC_checks$asv_code) | duplicated(all_MC_che
 all_MC_checks <- all_MC_checks[!duplicated(all_MC_checks$asv_code, fromLast = TRUE),]
 
 tfill <- readxl::read_excel("~/git/metabarcoding_workflow/data/asv_library_corrected.xlsx", sheet = 1)
+tfill_spp_bins <- readxl::read_excel("~/git/metabarcoding_workflow/data/asv_library_corrected.xlsx", sheet = 2)
 # tfill records without a BOLD match
-asv_no_bold <- tfill$asv_code[!tfill$asv_code %in% unique(tfill_spp_bins$asv_code)]  #2843 asv_codes
+asv_no_bold <- tfill$asv_code[!tfill$asv_code %in% unique(tfill_spp_bins$asv_code)]  #3267 asv_codes
 # 301 Species names given to records in the old tables (tfille, mw46) that are now given NA for species
-no_bold_species_old <- unique(tfill$species_old[tfill$asv_code %in% asv_no_bold & !grepl("Unident", tfill$species_old)]) #CHRIS: I might be misunderstanding what you are trying to do here, but I would rather not use 'Unident' in the species column if we aren't confident of a species it should be left blank.
-# 2843 records not in bold
+no_bold_species_old <- unique(tfill$species_old[tfill$asv_code %in% asv_no_bold & !grepl("Unident", tfill$species_old)]) #CHRIS: I might be misunderstanding what you are trying to do here, but I would rather not use 'Unident' in the species column if we aren't confident of a species it should be left blank. #Please don't worry about this - this is using the OLD species names to search
+# 3267 records not in bold - MEL - note this is more than last run of this script.
 no_bold_species_old_records <- tfill[tfill$asv_code %in% asv_no_bold,]
 # CHRIS: I have searched these records against sequences in my private library using Geneious (as this is the only way to check them outside of vsearch). You will find the results here /Volumes/2200-werg/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/Geneious_search\ -\ not_bold\ -\ Private\ DNA\ barcode\ database\ Oct\ 23\ Megablast.csv Geneious_search - not_bold - Private DNA barcode database Oct 23 Megablast.csv). Main point 1771 sequences have >97 matches in tbe private library. I would keep these match over what bold says. The remaining sequences I have tried to against GenBank but I can't seem to download the results.
+### MEL: So can you please flag the records to keep
 
 # Records checked by Mel that do not have a >97% match with BOLD (and have been given different names by MC and CW)
 check_no_bold <- all_MC_checks[all_MC_checks$asv_code %in% asv_no_bold,]
 check_no_bold$species <- tfill$species[match(check_no_bold$asv_code, tfill$asv_code)]
 check_no_bold[is.na(check_no_bold)] <- ""  # for easier matching
-check_no_bold <- check_no_bold[check_no_bold$species != check_no_bold$checked_species_name,] # 723 records
+check_no_bold <- check_no_bold[check_no_bold$species != check_no_bold$checked_species_name,] # 751 records
 check_no_bold <- dplyr::mutate(check_no_bold, 
                                max_sim_bold = tfill$max_sim_bold[match(check_no_bold$asv_code, tfill$asv_code)],
                                .after = bold_match)
@@ -93,6 +95,7 @@ no_check_no_bold
 ###  MEL: just 11 records that you haven't checked and do not have a bold match >97.  Are you happy with these 11? 
 ###       The last one is suss, given there are records in tfill that have been given this species name and do have matches to BOLD
 # CHIRS: Sciomyzidae sp. MC-2 is from my private library (so vsearch is correct in this assignment). The remainder look like boarderline differences where  vsearch puts them just over 97
+# MEL: Yes, but what about the last one??  I think this is highly suss.
 
 check_with_bold <- all_MC_checks[!all_MC_checks$asv_code %in% asv_no_bold,]
 # Exclude non_aqu/non_macros not checked by CW
@@ -113,9 +116,9 @@ check_with_bold_to_update_match[check_with_bold_to_update_match$max_sim_bold != 
 
 # Check for disagreements between checked_species_name and the name determined by the Appendix 2 script (species)
 check_with_bold <- check_with_bold[check_with_bold$species != check_with_bold$checked_species_name,]
-# 3253 records where checked_species name doesn't match species,
+# 3248 records where checked_species name doesn't match species,
 x <- unique(check_with_bold[c("checked_species_name","species")])
-nrow(x) # reduces to 119 name disagreements
+nrow(x) # reduces to 121 name disagreements
 
 # Let's break this up and reduce the list iteratively: please identify any names you think the script has got wrong at each step
 
@@ -130,7 +133,7 @@ x2[order(x2$species),]
 
 # Remove these to get
 x <- x[!x$species %in% unique(c(x2$species, x1$species)),]
-nrow(x) # reduced to 88
+nrow(x) # reduced to 90
 
 # We would expect that there will be disagreement in B- names (the script always chooses the first bin alphabetically and adds the name group)
 x3 <- x[grepl("B-", x$species) & grepl("group", x$species) & grepl("B-", x$checked_species_name),]
@@ -138,7 +141,7 @@ x3
 
 # Remove these to get
 x <- x[!x$species %in% x3$species,]
-nrow(x) # reduced to 28
+nrow(x) # reduced to 30
 
 # Now check if any of the remaining 87 disagreements are a result of Mel's "update species name" not being made
 mel_changes <- unique(check_with_bold$checked_species_name[grep("species name",check_with_bold$action)])
@@ -146,8 +149,8 @@ x4 <- x[x$checked_species_name %in% mel_changes,]
 x4 # MEL please check these. Some of them are as simple as searching for the bin_uri in Appendix_2_clean_cw.qmd and answering my question about assigning a name to that bin_uri (and if you think I have made the wrong decision, changing the explanatory comment, and changing the name in the script to the correct one.).(Or you may have already corrected these as you stepped through the script). Some are a little more difficult to get your head around: e.g. Cricotopus sp. B-ACQ6787, which your comment says is not Cricotopus parbicinctus, has been called Cricotopus parbicinctus because ACQ6787 overlaps with ACG9186 and ACV9554, which are that species. CHRIS: If you say it overlaps, then it overlaps so change it. Most other discreparies are groupings. I trust your analysis here, over my looking on bold. The only one we should change to my id is Scirtidae sp. B-AGK3234/ Pseudomicrocara anthophilia it should be change to Anthocara anthophilia (as per a correction on GenBank that is yet to picked up by bold)
 # Remove these to get 
 x <- x[!x$species %in% x4$species,]
-nrow(x) # reduced to 14, A relatively modest number for you to consider. If any are just a matter of correcting the name associated with a bin_uri, please just add lines to the bold_name_corrections object at L972 in Appendix_2_clean_cw.qmd (checking that the bin_uri isn't already in the list)
+nrow(x) # reduced to 15, A relatively modest number for you to consider. If any are just a matter of correcting the name associated with a bin_uri, please just add lines to the bold_name_corrections object at L972 in Appendix_2_clean_cw.qmd (checking that the bin_uri isn't already in the list)
 # CHRIS: All good except Contacyphon sp. B-AGN0208 should be updated to Nothocyphon serratipenis (Genbank name update), for Mirawara sp. AV1 I think we should use the bin name Mirawara sp. B-AAV0800,  sp. B-AFU5450 should be Caloca sp. B-AFU5450, Micronecta sp. B-SPAA886-23 looks alot like Proteobacteria.
-
+x
 
 ```
