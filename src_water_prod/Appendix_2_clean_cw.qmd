@@ -526,7 +526,7 @@ Similarly to correct genus and family names in the library, we use the taxonomic
 ```{r}
 
 # # Build a private library table
-## MEL note this inclusion of your checked spreadsheets is just a temporary measure while we finalise what the small 'private library' file should look like. This relies on unambiguous answers from you to my questions in the cross-check script.
+## MEL note this inclusion of your checked spreadsheets is just a temporary measure while we finalise what the small 'private library' file should look like. This relies on unambiguous answers from you to my questions in the cross-check script. CHRIS: Got it
 ## The checked files are also used temporarily to add the non-aquatic tables at the end of the script.
 tfill_ck <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/arc_tfill_checked_all.csv")
 maxp_ck <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/arc_maxp_checked_all.csv")
@@ -677,10 +677,10 @@ tfill$species[!is.na(tfill$species) & tfill$species == "Notalina sp. B-AAX5636"]
 The following chunk creates a new table of asv_codes, species names, and their bin_uris. Many asv_codes have multiple bin_uris, so this table is longer than tfill. (22,873 rows rather than 19,877). Many species names are incorrect at this stage, but are corrected below using the bold_results
 
 ```{r}
-## NOTE: the user needs to un this commented out code to save your own copy of 
-#  match_list_bin_uri_v5.rda (it take a minute or two to compile)
-### Convert bold_results to a list: one element per asv_code
-# # create a list of asv_codes with matching bold data  (and save as it takes a few minutes to compile)
+# NOTE: the user needs to un this commented out code to save your own copy of
+# match_list_bin_uri_v5.rda (it take a minute or two to compile)
+## Convert bold_results to a list: one element per asv_code
+# create a list of asv_codes with matching bold data  (and save as it takes a few minutes to compile)
 # asv_codes_with_bins <- unique(bold_results$asv_code)
 # asv_codes_with_bins <- asv_codes_with_bins[asv_codes_with_bins %in% tfill$asv_code]
 # match_list_bin_uri <- list()
@@ -699,7 +699,7 @@ The following chunk creates a new table of asv_codes, species names, and their b
 #   names(match_list_bin_uri)[length(match_list_bin_uri)] <- asv_codes_with_bins[i]
 # }
 # save(match_list_bin_uri, file = "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/match_list_bin_uri_v5.rda")
-# # Move this to osf.
+# Move this to osf.
 load("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/match_list_bin_uri_v5.rda")
 
 # Create a tfill_spp_bins, which lists all bin_uris associated with each asv_code
@@ -1383,7 +1383,6 @@ for(i in 1:nrow(tfill_asv_spp_unq)){
 ```
 
 ```{r}
-
 tfill_spp_bins$species_corrected <- 
   tfill_asv_spp_unq$species_corrected[match(tfill_spp_bins$asv_code, tfill_asv_spp_unq$asv_code)]
 
@@ -1517,12 +1516,15 @@ nmna <- all_MC_checks[!all_MC_checks$asv_code %in% tfill$asv_code,]
 nmna <- nmna[grep("name", nmna$action),]  # 487 records
 
 # MEL: there are 22 records (here, in not_in_asv_lib), most of which look aquatic that are in all_MC_checks, but not in any of the input data used to build asv_library as far as I can see.  I will ignore for now, unless you really want to include them in the library (in which case, can you please dig up their original records with the fields that match tfill?)
+#CHRIS: Looking at the nmna records above I can see 1a81e300f12b366e35d95243952e2b37 and 43409a5e755ee995f4afa01e3188fe10 should not be renamed according to my 'checked_species' name (i was mistaken) the remainder are either terrestrial (which I don't expect you to check), additional taxonomic information for available for aquatic/terrestrial species or Proteobacteria (that may be identified as invertebrate DNA in the vsearch library - some people deposit what they think the have an invert DNA sequence when they have actually have the bacteria living in the insect)
+
 not_in_asv_lib <- nmna[!nmna$asv_code %in% tfill_nonaq$asv_code & !nmna$asv_code %in% all_records_non_aq$asv_code,]
 # sum(nmna$asv_code %in% all_records_non_aq$asv_code)
+#CHRIS: On my checking all these records come from the MW46 dataset prior to any filtering.
 
 nmna <- nmna[!nmna$asv_code %in% not_in_asv_lib$asv_code,] #465 records
 
-# I presume you only want to add the non-aqu/non-macro records that were in the original asv_library plus those that you have flagged for updating? 
+# I presume you only want to add the non-aqu/non-macro records that were in the original asv_library plus those that you have flagged for updating?  CHRIS: Yes. I realise this won't involve you but I do have plans to use the terrestrial only inverts for future analyses.
 new_non_aq <- nmna[nmna$asv_code %in% all_records_non_aq$asv_code,]
 new_non_aq <- new_non_aq[!new_non_aq$asv_code %in% tfill_nonaq$asv_code,] # 141 new
 new_non_aq <- all_records_non_aq[all_records_non_aq$asv_code %in% new_non_aq,]
@@ -1536,14 +1538,14 @@ tfill_nonaq$species_old <- tfill_nonaq$species
 suss_asvs <- c("66e6cfd533d3b95ef8c6f7fa25cb87f4","a32ca296de7a063d1b3ab8c2f178dd42",
                "cef3b128e6f4d56af72ab5a1264051dd","cef3b128e6f4d56af72ab5a1264051dd",
                "d955aa346400ae117965a5710933791c") 
-# Protobacteria? or Arthropods as listed in tfill_nonaq?
+# Protobacteria? or Arthropods as listed in tfill_nonaq? CHRIS: 100% Proteobacteria (the BOLD search results should show this. note bin_uri are not assigned). This inverts names are a error from the public databases that were used to build the vsearch library.
 
 nmna <- nmna[!nmna$asv_code %in% suss_asvs,]
 nmna$bold_match <- as.numeric(nmna$bold_match)
 
 for(i in 1:nrow(nmna)){
   if(nmna$asv_code[i] %in% tfill_nonaq$asv_code & 
-     nmna$comments[i] != "Proteobacteria"){  # Can't understand what you want to do with that comment
+     nmna$comments[i] != "Proteobacteria"){  # Can't understand what you want to do with that comment CHRIS: change it the kingom to Prokaryota and phylum to Proteobacteria so the asv is not missidentified in furture as an invertebrate.
   splitname <- strsplit(nmna$checked_species_name[i]," ")[[1]]
   # correct spelling error
   if(splitname[1] == "Enchytraeida")
@@ -1652,7 +1654,7 @@ Recompile final ASV_library tables, adding back in the non-macroinvertebrate, no
 
 ```{r}
 
-# # MEL: We can combine the aquatic and non_aquatic tables when we are done, but I want to leave the aquatic separate while we are still working on cross-checking
+# # MEL: We can combine the aquatic and non_aquatic tables when we are done, but I want to leave the aquatic separate while we are still working on cross-checking CHRIS: no problem
 # tfill <- rbind(tfill, tfill_nonaq[match(names(tfill),names(tfill_nonaq))])
 # tfill_spp_bins <- rbind(tfill_spp_bins, tfill_nonaq_spp_bins)
 # tfill_spp_bins_unq <- rbind(tfill_spp_bins_unq, unique(tfill_nonaq_spp_bins[c("species","bin_uri")]))
