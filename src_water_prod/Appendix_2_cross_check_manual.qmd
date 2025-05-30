@@ -32,9 +32,10 @@ asv_no_bold <- tfill$asv_code[!tfill$asv_code %in% unique(tfill_spp_bins$asv_cod
 no_bold_species_old <- unique(tfill$species_old[tfill$asv_code %in% asv_no_bold & !grepl("Unident", tfill$species_old)]) #CHRIS: I might be misunderstanding what you are trying to do here, but I would rather not use 'Unident' in the species column if we aren't confident of a species it should be left blank. #Please don't worry about this - this is using the OLD species names to search
 # 3267 records not in bold - MEL - note this is more than last run of this script.
 no_bold_species_old_records <- tfill[tfill$asv_code %in% asv_no_bold,]
-# CHRIS: I have searched these records against sequences in my private library using Geneious (as this is the only way to check this. CHRIS: I have coded this. Please see below
 
-#read in private library
+# CHRIS: I have searched these records against sequences in my private library using Geneious (as this is the only way to check this. CHRIS: I have coded this. Please see below
+################CHRIS:you won't need this bit as I am just bring the private library and check it against v5 to ensure there are not issues with the private library ids.
+#read in private library and searches from Geneious
 priv_bar_lib <- read.csv("~/uomShare/wergStaff/MelCarew/DNAbarcode_reference_databases/priv_lib_Nov23.csv")
 # Read in combined hits .csv files with BOLD barcodeID engine results
 bold_resultsA <- read.csv( "~/uomShare/wergStaff/MelCarew/DNAbarcode_reference_databases/private_DNAbarcode_1_1000_BOLD_results.csv")
@@ -64,36 +65,58 @@ bold_results_pl_sum <- bold_results_pl %>%
 
 # Perform a left join to join bold ids to other ids
 priv_bar_lib <- priv_bar_lib %>%
-  left_join(bold_results_pl_sum %>% select(id, bold_species, ID., bin_uri), by = "id") 
+  left_join(
+    bold_results_pl_sum %>%
+      filter(ID. >= 97) %>%
+      select(id, bold_species, ID., bin_uri),
+    by = "id"
+  )
+priv_bar_lib <- priv_bar_lib %>%
+  left_join(tfill_spp_bins_unq %>% select(bin_uri, species), by = "bin_uri") %>%
+  rename(bin_species = species.y)  %>%
+  rename(priv_lib_species = species.x)
+priv_bar_lib <- priv_bar_lib %>%
+  mutate(species = coalesce(bin_species, priv_lib_species)) %>%
+  dplyr::rename(bold_match = ID.) # there are some names in the private library will require updating that are not in the arc or mw46 sties but these can be dealt with at another time
 
-#extract unpublished DNA barcoded species
+#extract bold DNA barcoded species (not bin species are those from the final tfill output)
+bold_priv_bar_lib <- priv_bar_lib %>%
+  filter(bold_match > 97)
+ 
+# extract unpublished DNA barcoded species
 unpub_priv_bar_lib <- priv_bar_lib %>%
-  filter(ID. < 97 | is.na(ID.) | ID. == "") # 413 sequences with no match >97 on bold. Of these in my private library there are some revisions if we wish to keep the >97 threshold Ceratopogonidae sp. B-ADC2818, Austroaeschna atra and Nothocyphon frater matched between 96-97 and I used these names based on database matches but my feeling is they are the correct species assignments and there is more the 3% divergence among species All other specimens were identify by myself and/or Gen. Keep in mind these are all DNA sequences generated from vouchered specimens (not metabarcodes).However, the only one I can not justify is Tasmanocoenis sp. B-ACG1634 (specimen Co18Caen5). I should not have assigned a bin here. We should use the name 'Tasmanocoenis sp. MC-1'
+  filter(is.na(bold_match))# 413 sequences with no match >97 on bold.
+species_on_bold <- unpub_priv_bar_lib %>%
+  filter(species %in% tfill_spp_bins_unq$species) # 14 species with no match on bold but their names are on bold. Of these Diplodontus haliki (is on BOlD but does not come up in the v5 search) Molophilus parvistylus (T09474') is also on bold. Ceratopogonidae sp. B-ADC2818 (V2S2DEE1R), Austroaeschna atra (TAR29Tele2,	ON09Ase2) and Nothocyphon frater(DB8Scrit2), Tenagogerris euphrosyne (MMN6Gerri1), Molophilus tenuiclavus (DC8AKElm2) matched between 96-97 and I used these names based on database matches but my feeling is they are the correct species assignments and there is more the 3% divergence among species. Orthocladiinae SO4 (SC15ASCera2, SC15ASChir2, SC15ASChir1 match 95-96% to bold but keyed out the same as my Orthocladiinae SO4 on bold (suggesting a complex) Keep in mind these are all DNA sequences generated from vouchered specimens (not metabarcodes). 
+unpub_no_match <- unpub_priv_bar_lib %>%
+  filter(stringr::str_detect(priv_lib_species, "B-")) #3
+# The only one I can not justify is Tasmanocoenis sp. B-ACG1634 (Tasmanocoenis tillyardi/riekis (pecimen Co18Caen5). I should not have assigned a bin here. We should use the name 'Tasmanocoenis sp. MC-1'
 
 # extract a list of species
 unpub_sp <- unpub_priv_bar_lib %>%
-  distinct(species) # 199 CHRIS: This is list of species in my private library that do not overlap with bold (please note not all of these species will be in the arc or mw46 datasets as this is an accumulation of DNA barcodes produced over many years)
+  distinct(priv_lib_species) # 199 CHRIS: This is list of species in my private library that do not overlap with bold (please note not all of these species will be in the arc or mw46 datasets as this is an accumulation of DNA barcodes produced over many years)
 
-# read in geneious search results of no_bold_species_old 
+
+############
+# Now back to the cross-check of the private library against the 'no_bold_species_old_records' to see if names are correct in tfill
+# read in geneious search results of no_bold_species_old_records
 genei_results  <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/geneious_search_not_bold_priv_lib.csv")
-genei_results <- genei_results %>% mutate(
-    priv_lib_species = sapply(strsplit(Name, ";"), function(x) x[7]),
-    priv_lib_species = gsub("_", " ", priv_lib_species),
-    pairwise_identity = as.numeric(gsub("%", "", pairwise_identity)))  # remove % and convert to number
-
+genei_results <- genei_results %>% 
+  dplyr::rename(geneious_match = X..Pairwise.Identity) %>%
+  dplyr::rename(asv_code = Query) %>%
+  mutate(geneious_match = as.numeric(gsub("%", "", geneious_match))) %>%
+    mutate(id = stringr::str_extract(Name, "[^_]+$")) %>%
+    left_join(priv_bar_lib %>% select(id, species),by = "id")
+# remove % and convert to number
 
 # now find out how many species in the genei_sp_results are only in the private library. Please note: 
 genei_sp_results <- genei_results %>%
-  mutate(
-    priv_lib_species = sapply(strsplit(Name, ";"), function(x) x[7]),
-    priv_lib_species = gsub("_", " ", priv_lib_species),
-    pairwise_identity = as.numeric(gsub("%", "", pairwise_identity))  # remove % and convert to number
-  ) %>%
-  filter(pairwise_identity >= 97) #1771 records in the no_bold_species_old match the private library. 
+  filter(geneious_match >= 97) #1517 records in the no_bold_species_old match the private library. 
 
-## pull out species with bin names that have bins that don't have a >97 match don't on bold but do match the private library
-genei_sp_results_bin <-  genei_sp_results %>% 
-  filter(stringr::str_detect(species_old, "sp\\. B-")) # 90 asvs
+# add names from private library for cross checks
+bold_dedup <- priv_bar_lib %>%
+  select(priv_lib_species, species) %>%
+  distinct(priv_lib_species, .keep_all = TRUE)
 
 # search these 90 again against bold
 bold_results_bin_search <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/bold_no_bin_1_90_search results.csv")
@@ -115,33 +138,78 @@ bold_results_bin_search_unq <- bold_results_bin_search %>%
   distinct(id, .keep_all = TRUE) %>%
   dplyr::rename(asv_code = id)
 # Perform a left join to join bold ids to other ids
-genei_sp_results_bin <- genei_sp_results_bin %>%
+genei_sp_results_bin <- genei_sp_results %>% 
+  filter(stringr::str_detect(species, "sp\\. B-")) %>%  # Keep only "sp. B-" species
   left_join(
     bold_results_bin_search_unq %>%
       select(asv_code, bold_species, ID., bin_uri),
-    by = "asv_code")
+    by = "asv_code"
+  )
+
+genei_results2 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/geneious_search_filtered_no_bold_gt97.csv")
+
+genei_results2 <- genei_results2 %>%
+  mutate(geneious_match = gsub("%", "", geneious_match),   # Remove %
+         geneious_match = as.numeric(geneious_match))      # Convert to numeric
+
+genei_results1 <- genei_results %>% select(-id)
+genei_combined <- bind_rows(genei_results1, genei_results2) %>%
+  distinct(asv_code, .keep_all = TRUE)  
+#filter(geneious_match >= 97)
 # CHRIS: Aphilorheithrus sp. B-ABV8709 and Lectrides sp. B-ADE9965 match >97 to bold (a missed result being returned from the first bold search, pick up now). The remainder have bold matches below 97 but greater than 96 I tend to not be to concerned if the reference sequence in the private library had a species match which is the case for all except f04bb43c4eb371dfb59f25aa8bbe88d9 (Tasmanocoenis sp. B-ACG1634) is an error form the private library this record should be Tasmanocoenis sp. MC-1. 
-name_diff <- genei_sp_results_bin %>% filter(!(species_old == priv_lib_species)) #15 records those with a match <=96 should have their names in the private library reinstated. e.g.Australopelopia sp. B-AEN1251 back to Australopelopia sp. MC-1
 
 # remove records with match to private library
+high_match_asvs <- genei_combined %>%
+  filter(geneious_match >= 97) %>%
+  pull(asv_code)
 filtered_no_bold_species <- no_bold_species_old_records %>%
-  filter(!(asv_code %in% genei_sp_results$asv_code)) #1496 some of these are matches to the private library between 96-97
+  filter(!(asv_code %in% high_match_asvs))
+  #1244 some of these are matches to the private library < 97
 
-filtered_no_bold <- filtered_no_bold_species %>%
-  left_join(genei_results %>%
-      select(asv_code, priv_lib_species, pairwise_identity),
-    by = "asv_code")
 # Sequences to check against genbank
-filtered_no_bold_gt97 <- filtered_no_bold %>%
-   filter(max_p_identity >= 97) # 144 record not on bold to check agaist genbank
+filtered_no_bold_gt97 <- filtered_no_bold_species %>%
+   filter(max_p_identity >= 97) # 314 record not on bold to check against genbank some look like bold fails
 
-gb_search_results <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/gb309Y3ZM1013_Alignment_HitTable.csv")
-# CHRIS: For these asv_codes there is a species match on genbank (#13). I can't give you the names in the search results as this not easy to get out from GenBank in batch format. The accession no. link to the taxonomic information (which link to the names provided by vsearch)
+#write.csv(filtered_no_bold_gt97, "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/filtered_no_bold_gt97.csv")
+bold_research_results <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/bold_search_filtered_no_bold_gt97.csv")
+
+bold_sp_result2 <- bold_research_results %>%
+filter(bold_match >= 97) # 
+
+filtered_no_bold_gt97 <- filtered_no_bold_gt97 %>%
+  filter(!(asv_code %in% c(bold_sp_result2$asv_code))) # 278 left removing records with match that bold missed but are on the database
+
+gb_search_results <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/blast-results-e89a0d5635a3-table.csv")
+# CHRIS: For these asv_codes there is a species match on genbank (#9). I can't give you the names in the search results as this not easy to get out from GenBank in batch format. The accession no. link to the taxonomic information (which link to the names provided by vsearch)
 gb_asv_matches <- gb_search_results %>%
-  filter(match >= 97) %>%
-  select(asv_code) #13
+  filter(match >= 97, length > 200) %>%
+  select(asv_code) #92
+# adding names from 
+tfill_unique <- tfill %>%
+  group_by(asv_code) %>%
+  slice_max(order_by = max_p_identity, n = 1, with_ties = FALSE) %>%
+  ungroup()
+# add names
+gb_asv_matches <- gb_asv_matches %>%
+  left_join(
+    tfill_unique %>%
+      select(asv_code, species, max_p_identity),
+    by = "asv_code"
+  ) 
+ 
+filtered_no_bold_gt97_nm <- filtered_no_bold_gt97 %>%
+  filter(!(asv_code %in% c(gb_asv_matches$asv_code))) # this leave 125 record with matches on vsearch but nowhere else
 
-
+# Now join with filtered_no_bold_gt97
+no_match_anywhere <- filtered_no_bold_gt97_nm %>%
+  left_join(
+    genei_combined %>% select(asv_code, species, geneious_match),
+    by = "asv_code") %>%
+  dplyr::rename(
+    geneious_species = species.y,
+    tfill_species = species.x)
+  
+###########
 # Records checked by Mel that do not have a >97% match with BOLD (and have been given different names by MC and CW)
 check_no_bold <- all_MC_checks[all_MC_checks$asv_code %in% asv_no_bold,]
 check_no_bold$species <- tfill$species[match(check_no_bold$asv_code, tfill$asv_code)]
@@ -172,14 +240,21 @@ check_no_bold <- check_no_bold %>%
     by = "asv_code")
 #CHRIS: I have checked these against what I have done above
 # remove asv that have been checked against the private library (as above)
-not_priv_lib <- anti_join(check_no_bold, genei_sp_results, by = "asv_code") # 415 don't have a match in the private library there are some I have indicated the private library but they are in that 96-97 range
+not_priv_lib <- anti_join(check_no_bold, genei_sp_results, by = "asv_code") # 1714 asvs that don't have a match in the private library in the checks above, so checking now. 
+
+priv_lib_matches <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/geneious_search_filtered_check_not_bold.csv")
+ 
+check_no_bold_in_priv <- check_no_bold %>% 
+  left_join(
+    priv_lib_matches %>% select(asv_code, geneious_match, species),
+    by = "asv_code") %>% filter(geneious_match >= 97)
 
 ### I have several thoughts. Please respond to each below: 
 ###  1. I see checked_species_name is either blank or a genus/family/phylum name if bold_match is low.
 ###     Am I right in thinking that such records should just be removed from the library and let vsearch take care of identifying these? CHRIS: In vsearch these records do not have the most up to date taxonomic information or match or the max-identity is different. I have flag these because I would like to update the vsearch results with the most upto date taxonomic information (this could be coded by using the bold search results to include genus/family/phylum names). Other cases there is more taxonomy provided a genus name with a match <95. In these situations notebook 6 will adjust the taxonomy.
 ###     If I am not right, please explain your rationale for keeping them. CHRIS: I am overriding VSEARCH here as these records are error in the asv library. Below I have provided the bold search results from the exhaustive search for in 'bold_results_90' and below 'bold_results_90_2' This should provide the matches from the searches for the record from 92-93. I'd rather correct these via the asv library in case they are wrong in the vsearch results
 bold_results_90_2 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/bold_search_to 90_2.csv")
-
+#CHRIS: can you pleaase change the vsearch max-p-identity to that in th e'geneious_match' for these records
 ###  2. I haven't yet adjusted the max_p_identity for records that you have manually set to <94, CHRIS: Can I suggest we search these record using the 'genus and species search' this will provide matched to 90 MEL: that sounds reasonable please do this. CHRIS see above
 ###     pending confirmation that you really want to include such records in the library. If I do so, the species names currently there will 
 ###     disappear (and only family value will be retained) CHRIS: Only family names will be retain if the match is between >92-<95 when I notebook 6
@@ -191,13 +266,13 @@ genei_sp_results2 <- genei_bold_ck_priv_lib %>%
   mutate(
     priv_lib_species = sapply(strsplit(Name, ";"), function(x) x[7]),
     priv_lib_species = gsub("_", " ", priv_lib_species),
-    pairwise_identity = as.numeric(gsub("%", "", pairwise_identity))  # remove % and convert to number
+    geneious_match = as.numeric(gsub("%", "", geneious_match))  # remove % and convert to number
   ) %>%
-  filter(pairwise_identity >= 97) # 20 species with >= matches to my private database
+  filter(geneious_match >= 97) # 28 species with >= matches to my private database
 gb_search_results2 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/gb30HR7DBM013_Alignment_HitTable.csv")
 gb_asv_matches2 <- gb_search_results2 %>%
   filter(match >= 97) %>%
-  select(asv_code) %>%
+  select(asv_code, match) %>%
   distinct(asv_code) # 16 asvs with >=97 match on genbank
 
 ###     a) Did you really check the identity of every sequence? (e.g. all 30 asv_codes called "Apsectrotanypus sp. MC-4"). If not, shouldn't your 
@@ -288,5 +363,108 @@ x <- x[!x$species %in% x4$species,]
 nrow(x) # reduced to 15, A relatively modest number for you to consider. If any are just a matter of correcting the name associated with a bin_uri, please just add lines to the bold_name_corrections object at L972 in Appendix_2_clean_cw.qmd (checking that the bin_uri isn't already in the list)
 # CHRIS: All good except Contacyphon sp. B-AGN0208 should be updated to Nothocyphon serratipenis (Genbank name update), for Mirawara sp. AV1 I think we should use the bin name Mirawara sp. B-AAV0800,  sp. B-AFU5450 should be Caloca sp. B-AFU5450, Micronecta sp. B-SPAA886-23 is Proteobacteria.
 x
+
+###########################################CHRIS: I have put moat of the larger checks and changes below
+# these records match the tfill table
+tfill_priv_name_ck <- tfill %>% 
+  left_join(
+    genei_sp_results %>%
+      select(asv_code, priv_species = species, id, geneious_match),
+    by = "asv_code"
+  )
+tfill_name_diff <- tfill_priv_name_ck %>%
+  mutate(priv_species = if_else(id == "Co18Caen5", "Tasmanocoenis sp. MC-1", priv_species)) %>%
+  filter(species_old != priv_species) #116 records where the species name has been removed or is different to the tfill df.
+#CHRIS: can you please use the names in the priv_species column to fill the name in the final version of the tfill table keeping the vsearch 'max_p_identity' as bold does not have these species and they must stay in the final version of the library
+
+tfill_priv_name_ck2 <- tfill %>% 
+  left_join(
+    genei_sp_results_bin %>%
+      select(asv_code, priv_species = species, id, geneious_match),
+    by = "asv_code"
+  )
+tfill_name_diff2 <- tfill_priv_name_ck2 %>%
+  filter(species != priv_species) #28 records where the species name has been removed or is different to the tfill df. CHRIS: This is a issue with the identification of two species where the bin list and tfill tables are different. I think that the tfill table is correct, so no changes need
+
+# These are instances of vsearch making a match when it should not. (possibly only match a portion of the amplicon) 
+gb_asv_matches3 <- gb_search_results %>%
+  filter(match < 80, length > 200) %>%
+  select(asv_code, match) %>%
+  distinct() %>%
+  group_by(asv_code) %>%
+  slice_max(match, n = 1, with_ties = FALSE) %>%
+  ungroup()
+# add names
+tfill_name_ck3 <- tfill %>% 
+  left_join(
+    genei_combined %>% select(asv_code, priv_species = species, geneious_match),
+    by = "asv_code"
+  ) %>%
+  left_join(
+    gb_asv_matches3 %>% select(asv_code, genbank_match = match),
+    by = "asv_code"
+  ) %>%
+  filter(asv_code %in% filtered_no_bold_gt97_nm$asv_code)
+#CHRIS: can you please change the max-p-identity to the match from the geneious_match abd genbank_match for these records using the tfill_name_ck3 df. These records should not have species ids.
+
+tfill_name_ck4 <- tfill %>% 
+  left_join(bold_sp_result2
+     %>% select(asv_code, Species, bold_match, bin_uri),  by = "asv_code"
+  )
+tfill_name_diff4 <- tfill_name_ck4 %>%
+  filter(species != Species) # no changes needed from bold
+
+tfill_name_ck5 <- tfill %>% 
+  left_join(gb_asv_matches
+     %>%
+      select(asv_code, species, max_p_identity),
+    by = "asv_code"
+  )
+tfill_name_diff5 <- tfill_name_ck5 %>%
+  filter(species.x != species.y)# 0 no changes needed from genbank
+
+# check_no_bold_in_priv against tfill
+tfill_name_ck5 <- tfill %>% 
+  left_join(check_no_bold_in_priv
+     %>%
+      select(asv_code, priv_species =species.y, geneious_match),
+    by = "asv_code"
+  )
+tfill_name_diff5 <- tfill_name_ck5 %>%
+  filter(geneious_match >= 97) #24 records
+#CHRIS: can you please use the names in the priv_species column to fill the name in the final version of the tfill table keeping the vsearch 'max_p_identity' as bold does not have these species and they must stay in the final version of the lasv library.
+
+# genei_bold_ck_priv_lib@_in_priv against tfill
+tfill_name_ck6 <- tfill %>% 
+  left_join(genei_bold_ck_priv_lib
+     %>%
+      select(asv_code, priv_species = species, geneious_match),
+    by = "asv_code"
+  )
+tfill_name_diff6<- tfill_name_ck6 %>%
+  filter(geneious_match >= 97) #CHRIS: There are 11 or the 12 records here should have a speices assigned and a the geneious_match used rather thay than the max_p_identity 
+
+gb_asv_matches4 <- gb_search_results2 %>%
+  filter(match < 80, length > 200) %>%
+  select(asv_code, match) %>%
+  distinct() %>%
+  group_by(asv_code) %>%
+  slice_max(match, n = 1, with_ties = FALSE) %>%
+  ungroup()
+# add names
+tfill_name_ck7 <- tfill %>% 
+  left_join(gb_asv_matches4
+     %>% select(asv_code, match),
+    by = "asv_code"
+  ) %>%
+  left_join(
+    gb_asv_matches4 %>% select(asv_code, genbank_match = match),
+    by = "asv_code"
+  ) %>%
+  filter(asv_code %in% check_no_bold$asv_code)
+
+tfill_name_diff7 <- tfill_name_ck7  %>%
+  filter(genbank_match >= 97) # nothhing to change
+
 
 ```
