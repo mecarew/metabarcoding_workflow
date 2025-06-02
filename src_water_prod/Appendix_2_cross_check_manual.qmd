@@ -442,7 +442,7 @@ tfill_name_ck6 <- tfill %>%
     by = "asv_code"
   )
 tfill_name_diff6<- tfill_name_ck6 %>%
-  filter(geneious_match >= 97) #CHRIS: There are 11 or the 12 records here should have a speices assigned and a the geneious_match used rather thay than the max_p_identity 
+  filter(geneious_match >= 97) #CHRIS: There are 11 or the 12 records here should have a speices assigned and a the geneious_match used rather than the max_p_identity 
 
 gb_asv_matches4 <- gb_search_results2 %>%
   filter(match < 80, length > 200) %>%
@@ -464,7 +464,52 @@ tfill_name_ck7 <- tfill %>%
   filter(asv_code %in% check_no_bold$asv_code)
 
 tfill_name_diff7 <- tfill_name_ck7  %>%
-  filter(genbank_match >= 97) # nothhing to change
+  filter(genbank_match >= 97) # nothing to change
+##################################################CHRIS2: final 293 checks
 
+check_no_bold_293 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/check_no_bold_293.csv")
 
+check_no_bold_293 <- check_no_bold_293 %>% 
+  left_join(tfill %>% select(asv_code, asv_sequence),
+    by = "asv_code") %>% 
+  left_join(mw46 %>% select(asv_code, asv_seq),
+    by = "asv_code")
+write.csv(check_no_bold_293, "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/check_no_bold_293_seq.csv")
+
+genei_results293 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/geneious_search_293.csv")
+
+bold_results293 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/bold_search_293.csv")
+
+# rename all results to match other dataframes
+bold_results293 <- bold_results293 %>%
+  dplyr::rename(asv_code = Query.ID) %>%
+  dplyr::rename(bold_match = ID.)
+#  extract 'bin_url' and place in a new column
+bold_results293 <- bold_results293 %>%
+  mutate(bin_uri = stringr::str_extract(PID..BIN., "(?<=:)(.*?)(?=])"))
+
+bold_results293 <- bold_results293 %>%
+  select(-"PID..BIN.")
+
+# summarise so there is one result per row
+bold_results293_sum <- bold_results293 %>%
+  group_by(asv_code) %>%
+  slice_max(order_by = bold_match, n = 1) %>%
+  ungroup() %>%
+  distinct(asv_code, .keep_all = TRUE) %>%
+  left_join(
+    tfill_spp_bins_unq %>% select(bin_uri, bold_species = species),
+    by = "bin_uri"
+  ) %>%
+  mutate(bold_species = ifelse(bold_match >= 97, bold_species, NA))
+
+check_no_bold_293 <- check_no_bold_293 %>% 
+  left_join(genei_results293 %>% select(asv_code, geneious_match, geneious_species),
+    by = "asv_code") %>% 
+left_join(bold_results293_sum %>% select(asv_code, bold_match , bold_species),
+    by = "asv_code")
+
+View(check_no_bold_293)
+
+#CHRIS2:The vast majority of these are from my private library where they match =>97. The names for may have change since I did my vsearch library so they should appear in the final tfill table. The ones not in my private library are on bold by not in your tfill_spp_bins_unq my 'checked_species names should be used here.
 ```

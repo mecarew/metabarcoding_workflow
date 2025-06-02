@@ -348,8 +348,8 @@ other_seq <- "TTTATCTTCAAATATTGCTCATGGAGGTGCTTCTGTAGACCTGGCAATTTTCAGATTGCACTTAGC
 ### [1] "7ca9195991a6cad87374d1e98c6ab624"
 
 ### 2 of these asv_codes are in all_records already
-### MEL: NOTE I have kept my code for correcting the asv_seq problems, as it gives the same answer as your code, but provides a more transparent logic to the changes. CHRIS: noted.
-###       (So I have notused your correction code). The one difference between your result and mine is 
+### MEL: NOTE I have kept my code for correcting the asv_seq problems, as it gives the same answer as your code, but provides a more transparent logic to the changes. CHRIS2: noted.
+###       (So I have not used your correction code). The one difference between your result and mine is 
 unique(mw46$max_p_identity[mw46$asv_code == "ed3ae084977ef615af77a2eee71a2c5b"]) 
 ###   My result says 99, but the notes in your code say "For asv_code 'ed3ae084977ef615af77a2eee71a2c5b' in 'mw46, the max_p_identity, species assignment (i.e., 92 match to  Hydrochus sp. MC-1) and asv_seq are all incorrect."   Did you mean to change it to 92?  I have left it as 99, but this can easily be changed. CHRIS: Yes. I did mean to change it. I re-checked the sequence against my private library, GenBank and bold, it did not match better than 92  # CW: CHECK THIS AT THE END
 
@@ -941,8 +941,8 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "ADR7325" = "Ceratopogonidae sp. B-ADR7325",  # BOLD Ceratopogoninae, tfill either Ceratopogonidae sp. MC-3 or Ceratopogonidae sp. MC-26
 "AGL9707" = "Dixella humeralis", # BOLD either Dixidae or Dixella but Dixella humeralis id by Chris Hardy has been confirmed.
 "AGL9705" = "Dixella sp. B-AGL9705", # BOLD Dixidae, but it overlaps with AGL9707, tfill either Dixidae sp. MC-2 or Dixidae sp. MC-4 
-"AGN3107" = "Dytiscidae sp. B-AGN3107", # BOLD Chostonectes, but see next, tfill Platynectes sp. MC-6 CHRIS: This is my specimen (KWG17Dyt2) identidied to genus as Chostonectes. Please use Chostonectes  # MEL: I have to insist on using the family name (or alternatively you need to decide which species "AGN3107" and "AGK5172" are, and give them that name). # MEL: I have to insist on using the family name (or alternatively you need to decide which species "AGN3107" and "AGK5172" are, and give them that name). These two bins have 100% similarity and cannot be given different genus names.
-"AGK5172" = "Dytiscidae sp. B-AGK5172", # BOLD Platynectes and Costonectes overlaps with AGN3107, so lump to family, given uncertainty, tfill Platynectes sp. MC-6 CHRIS: This is my specimen (KWG17Dyt1) identified to genus as . Please use Platynectes #MEL:see the previous bin_uri
+"AGN3107" = "Dytiscidae sp. B-AGN3107", # BOLD Chostonectes, but see next, tfill Platynectes sp. MC-6 CHRIS: This is my specimen (KWG17Dyt2) identified to genus as Chostonectes. Please use Chostonectes  # MEL: I have to insist on using the family name (or alternatively you need to decide which species "AGN3107" and "AGK5172" are, and give them that name). # MEL: I have to insist on using the family name (or alternatively you need to decide which species "AGN3107" and "AGK5172" are, and give them that name). These two bins have 100% similarity and cannot be given different genus names.
+"AGK5172" = "Dytiscidae sp. B-AGK5172", # BOLD  Platynectes and Costonectes overlaps with AGN3107, so lump to family, given uncertainty, tfill Platynectes sp. MC-6 CHRIS: This is my specimen (KWG17Dyt1) identified to genus as . Please use Platynectes #MEL:see the previous bin_uri CHRIS2: I remember addressing this maybe it was in the other .qmd. Please use Dytiscidae (not the genus names at this point). Looking back can see I have create this confusion and need to correct it on BOLD. I'm pretty sure it is Chostonectes and Platynectes is wrong, but I really need to go back a check the specimens.
 "AGQ6047" = "Polypedilum sp. B-AGQ6047", # BOLD Chironomidae, but overlaps with AGK4964 see next, tfill Polypedilum sp. B-AGQ6047 or Polypedilum sp. MC-FS1
 "AGK4964" = "Polypedilum sp. B-AGK4964", # BOLD Polypedilum, tfill Polypedilum sp. B-AGQ6047 or Polypedilum sp. MC-FS1
 "ACG8753" = "Polypedilum sp. B-ACG8753", # BOLD Chironomidae or Polypedilum, but a small overlap with AGK4964 and AGQ6047, tfill Polypedilum sp. B-ACG8753 or Polypedilum sp. MC-FS1 
@@ -1423,7 +1423,7 @@ The following logic is used to adjust max_p_identity values:
 
 2. if max_sim_bold is  <97, and sim_vsearch is >=97, change max_p_identity to the max_sim_bold value.
 
-3. MEL: what I do with the <94 matches ...depends on answers to my questions I sought clarification on in the email on Tuesday.
+3. MEL: what I do with the <94 matches ...depends on answers to my questions I sought clarification on in the email on Tuesday. CHRIS2: I assume this is 293 sequences that you send me. I'll deal with these at the end of the Appendix_2_cross_check_manual.qmd
 
 
 ```{r}
@@ -1489,10 +1489,9 @@ tfill$species[grep("Unident", tfill$species)] <- NA
 
 ```
 
-Non-aquatic/non-macroinvertebrate records were checked and corrected by Mel Carew in a separate, non-scripted process. These records are corrected and added to tfill here using a file compiled from Mel's correction spreadsheets.  MEL: this is not going to be 100% right (I know some of the taxonomic fields are not fully populated - I am not familiar enough with the taxonomy of these species to do any more), but it will be better than if it was uncorrected. I've wasted too much time on your non-aquatic records to spend any more time on this.
+Non-aquatic/non-macroinvertebrate records were checked and corrected by Mel Carew in a separate, non-scripted process. These records are corrected and added to tfill here using a file compiled from Mel's correction spreadsheets.  MEL: this is not going to be 100% right (I know some of the taxonomic fields are not fully populated - I am not familiar enough with the taxonomy of these species to do any more), but it will be better than if it was uncorrected. I've wasted too much time on your non-aquatic records to spend any more time on this. CHRIS2: I will deal with these. Pretty sure I know how to tackle it.
 
 ```{r}
-
 # Some ad-hoc corrections to max_p_update not captured with the above being restricted to aquatic records
 tfill_nonaq$genus[!is.na(tfill_nonaq$genus) & tfill_nonaq$genus == "Cernosvitoviella aggtelekiensis"] <- "Cernosvitoviella"
 tfill_nonaq$species[!is.na(tfill_nonaq$genus) & tfill_nonaq$genus == "Miselaoma"] <- "Miselaoma sinistra"
@@ -1511,7 +1510,8 @@ nmna <- all_MC_checks[!all_MC_checks$asv_code %in% tfill$asv_code,]
 nmna <- nmna[grep("name", nmna$action),]  # 526 records
 
 # MEL: there are 13 records (here, in not_in_asv_lib: MEL: this was 22 in the last version), most of which look aquatic that are in all_MC_checks, but not in any of the input data used to build asv_library as far as I can see.  I will ignore for now, unless you really want to include them in the library (in which case, can you please dig up their original records with the fields that match tfill?)
-#CHRIS: Looking at the nmna records above I can see 1a81e300f12b366e35d95243952e2b37 and 43409a5e755ee995f4afa01e3188fe10 should not be renamed according to my 'checked_species' name (i was mistaken) the remainder are either terrestrial (which I don't expect you to check), additional taxonomic information for available for aquatic/terrestrial species or Proteobacteria (that may be identified as invertebrate DNA in the vsearch library - some people deposit what they think the have an invert DNA sequence when they have actually have the bacteria living in the insect)
+#CHRIS: Looking at the nmna records above I can see 1a81e300f12b366e35d95243952e2b37 and 43409a5e755ee995f4afa01e3188fe10 should not be renamed according to my 'checked_species' name (i was mistaken) the remainder are either terrestrial (which I don't expect you to check), additional taxonomic information for available for aquatic/terrestrial species or Proteobacteria (that may be identified as invertebrate DNA in the vsearch library - some people deposit what they think the have an invert DNA sequence when they have actually have the bacteria living in the insect) CHRIS2: please read in the file below for explanations
+not_in_asv_lib_exp <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/not_in_asv_lib_reasons.csv")
 
 not_in_asv_lib <- nmna[!nmna$asv_code %in% tfill_nonaq$asv_code & 
                          !nmna$asv_code %in% all_records_non_aq$asv_code & 
@@ -1519,7 +1519,9 @@ not_in_asv_lib <- nmna[!nmna$asv_code %in% tfill_nonaq$asv_code &
                          !nmna$asv_code %in% all_records$asv_code,]
 # sum(nmna$asv_code %in% all_records_non_aq$asv_code)
 #CHRIS: On my checking all these records come from the MW46 dataset prior to any filtering.
-# MEL: I still haven't included these in tfill. The two records you identify above are from mw46 and have no match with BOLD (according to bold_results), and therefore should not keep their original names of Micronecta sp. B-ACG1960 and Nais sp. B-AAF9652.  A few other records in nmna are aquatic, but I cannot find them in any of the source files I have been working with (e.g. "f6a0d1f9bec02a7dc7e59e894a3e874d", "0d73b0f475b83e1069d9f2e38f4b5758"). Unless you can point me to their original records, I will continue to not include these records
+# MEL: I still haven't included these in tfill. The two records you identify above are from mw46 and have no match with BOLD (according to bold_results), and therefore should not keep their original names of Micronecta sp. B-ACG1960 and Nais sp. B-AAF9652.  A few other records in nmna are aquatic, but I cannot find them in any of the source files I have been working with (e.g. "f6a0d1f9bec02a7dc7e59e894a3e874d", "0d73b0f475b83e1069d9f2e38f4b5758"). Unless you can point me to their original records, I will continue to not include these records. CHRIS2: I suspect the source file you has been filtered by you and used the version on your database for subsequent checks, You will find the records without filtering here:
+MW46_unfiltered <- readxl::read_xlsx("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/All_MW46_metabarcoding_data.xlsx", sheet = "raw_data")
+
 
 nmna <- nmna[!nmna$asv_code %in% not_in_asv_lib$asv_code,] #513 records
 
@@ -1671,7 +1673,7 @@ Recompile final ASV_library tables, adding back in the non-macroinvertebrate, no
 
 ```{r}
 
-# # MEL: We can combine the aquatic and non_aquatic tables when we are done, but I want to leave the aquatic separate while we are still working on cross-checking CHRIS: no problem
+# # MEL: We can combine the aquatic and non_aquatic tables when we are done, but I want to leave the aquatic separate while we are still working on cross-checking CHRIS2: no problem.
 # Create a column flagging those aquatic records (checked by cw), and non-aquatic records (only partly checked by cw)
 tfill$aqu <- 1
 tfill_nonaq <- 0
