@@ -34,16 +34,24 @@ data_files <- c("taxonomy.xlsx","non_aqu_macro_invert.csv",
                 "additions_asv_library_oct24.xlsx",
                 "asv_library_97_add_miseq15-20_records.csv",
                 "asv_library_97_aug24.xlsx",
-                "filtered_97_data.csv")
+                "filtered_97_data.csv",
+                "match_list_bin_uri_v5.rda",
+                "match_bold_v5.csv",
+                "genbank_matches_not_bold.csv",
+                "taxon_subfams_partial.csv")
 missing <- data_files[!data_files %in% dir("data")]
 if(length(missing) > 0){
  dl_files <- osfr::osf_retrieve_node("hvx69") %>% osfr::osf_ls_files()
  osfr::osf_download(dl_files, path = "data", conflicts = "skip")
 }
 
+genbank_matches_not_bold <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/genbank_matches_not_bold.csv")
+priv_lib_spp <- readxl::read_excel("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/priv_lib_asv_mc.xlsx")
+
 # TO DO with OSF repository.
 # replace "asv_library_97_match_list_to_BOLD_2024-12-15.rda" with compiled BOLD results table (this will require a separate data compilation script.)
-# replace "asv_library_97_match_list_to_BOLD_2024-12-15.rda" with list compiled in this scrip
+# replace "asv_library_97_match_list_to_BOLD_2024-12-15.rda" with list compiled in this script
+#genbank_matches_not_bold.csv
 
 ```
 
@@ -67,104 +75,12 @@ Taxonomic information, match results, ASV codes (asv_code), and sequences (asv_s
 
 Records were divided into three groups for sequence searches: 'unmatched' (any record not found in either max-p-update or tfill), maxp (max-p-update dataframe), and tfill (the tfill dataframe). This was done to simplify processing, as each dataset required different attention. The tfill dataset includes matches at 97% or higher and primarily requires species name updates. The max-p-update dataset may require taxonomic name updates and possibly max_p_identity adjustments. The unmatched dataset includes sequences that are not present in either of the other two tables and need to be added appropriately: to max-p-update if the max_p_identity needs updating (typically any unmatched record from MiSeq runs 13–20), or to tfill if the record is from MiSeq run 13, had a species match from VSEARCH, and is not already in the tfill library.
 
+The resulting tables were compiled in a separate script (compilation_of_osf_files.R) into a single table (bold_results) and a list of bold matches for each asv_code of aquatic macroinvertebrate species (match_list_bin_uri), with a table for each asv_code (each table's name = its asv_code.)
+
 ```{r}
-
-### Results of search of the all_records asv sequences against BOLD version 5 
-### using the 'rapid species search' against the 'public+private' library manually
-dir_0 <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/"
-dir_asv_lib <- paste0(dir_0,"asv_library/tfill_boldv5_search_results/")
-bold_results_tfill <- rbind(
-  read.csv(paste0(dir_asv_lib, "tfill_1_600BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_600_1201BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_1201-1800BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_1801_2200BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_2201_3000BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_2701_endBOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_3001_3600BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_3601_4000BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_4001_4800BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_4801_5400BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_5401_6000BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_6001_6800BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_6801_7600BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_7601_8200BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_8801_9400BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_9400_10200BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_10201_11000BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_11001_11600BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_11600_12200BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_12201_12700BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_12701_13100BOLD_results.csv")),
-  read.csv(paste0(dir_asv_lib, "tfill_13100_endBOLD_results.csv")))
-
-dir_46 <- "~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/"
-wd2 <- paste0(dir_46,"/synonym_updates/BOLDv5_search_results/")
-bold_results_mw46 <- rbind(
-  read.csv(paste0(wd2, "MW46_unmatched_1_999_BOLDsearch_results.csv")),
-  read.csv(paste0(wd2, "MW46_unmatched_1000_1999_BOLDsearch_results.csv")),
-  read.csv(paste0(wd2, "MW46_unmatched_2000_2999_BOLDsearch_results.csv")),
-  read.csv(paste0(wd2, "MW46_unmatched_3000_3999_BOLDsearch_results.csv")),
-  read.csv(paste0(wd2, "MW46_unmatched_4000_4999_BOLDsearch_results.csv")),
-  read.csv(paste0(wd2, "MW46_unmatched_5000_5999_BOLDsearch_results.csv")),
-  read.csv(paste0(wd2, "MW46_unmatched_6000_6999_BOLDsearch_results.csv")),
-  read.csv(paste0(wd2, "MW46_unmatched_7000_7999_BOLDsearch_results.csv")),
-  read.csv(paste0(wd2, "MW46_unmatched_8000_8999_BOLDsearch_results.csv")),
-  read.csv(paste0(wd2, "MW46_unmatched_9000_end_BOLDsearch_results.csv")),
-  read.csv(paste0(wd2, "MW46_unmatched_1_700_extras_BOLDsearch_results.csv")),
-  read.csv(paste0(wd2, "MW46_unmatched_701_1400_extras_BOLDsearch_results.csv")),
-  read.csv(paste0(wd2, "MW46_unmatched_1401_end_extras_BOLDsearch_results.csv")))
-
-wd3 <- paste0(dir_0, "asv_library/unmatched_boldv5_search_results")
-bold_results_1 <- rbind(
-  read.csv(paste0(wd3, "/all_arc_unmatched_1_1000_BOLD_results.csv")),
-  read.csv(paste0(wd3, "/all_arc_unmatched_1001_2000_BOLD_results.csv")),
-  read.csv(paste0(wd3, "/all_arc_unmatched_2001_3000_BOLD_results.csv")),
-  read.csv(paste0(wd3, "/all_arc_unmatched_3001_4000_BOLD_results.csv")),
-  read.csv(paste0(wd3, "/all_arc_unmatched_4001_4821_BOLD_results.csv")),
-  read.csv(paste0(wd3, "/all_arc_unmatched_4821_end_BOLD_results.csv")),
-  # and some results missing from the first searches
-  read.csv(paste0(wd3, "/arc_missing_1_1000.csv")),
-  read.csv(paste0(wd3, "/arc_missing_1001_1600.csv")),
-  read.csv(paste0(wd3, "/arc_missing_1601_end.csv")),
-  read.csv(paste0(wd3, "/BOLDrechecks_700_1283.csv")),
-  read.csv(paste0(wd3, "/BOLDrechecks_1_700.csv")),
-  read.csv(paste0(wd3, "/BOLD_rechecks_1_12.csv")))
-
-wd4 <- paste0(dir_0, "asv_library/maxp_boldv5_search_results")
-# read in .csv files with bold barcodeID engine results.
-bold_results_maxp <- rbind(
-  read.csv(paste0(wd4, "/maxp_1_1000BOLD_results.csv")),
-  read.csv(paste0(wd4, "/maxp_1000_endBOLD_results.csv")))
-
-# rename bold output fields
-bold_results <- rbind(bold_results_tfill, bold_results_mw46,
-                      bold_results_1, bold_results_maxp)
-
-names(bold_results)[names(bold_results) == "Query.ID"] <- "asv_code" 
-names(bold_results)[names(bold_results) == "PID..BIN."] <- "pid_bin" 
-names(bold_results)[names(bold_results) == "ID."] <- "similarity"
-names(bold_results) <- tolower(names(bold_results))
-pid_bin_split <- strsplit(bold_results$pid_bin, "\\[BOLD:")
-bold_results$id <- sapply(pid_bin_split,"[[",1)
-bold_results$bin_uri <- NA
-bold_results$bin_uri[lengths(pid_bin_split) > 1] <- 
-  gsub("]", "", sapply(pid_bin_split[lengths(pid_bin_split) > 1],"[[",2))
-bold_results$bin_uri[lengths(pid_bin_split) == 1] <- 
-  gsub("]", "", sapply(pid_bin_split[lengths(pid_bin_split) == 1],"[[",1))
-asv_bold <- unique(bold_results$asv_code)
-
-# keep a list of subfamilies (that don't consistently get used in mwbugs database)
-subfams <- unique(bold_results[c("family","subfamily")])
-subfams <- subfams[subfams$subfamily != "" & !grepl("unclassified", subfams$subfamily) &
-                     !grepl("unassigned", subfams$subfamily),]
-
-### For reference before non-aquatic/non-macroinvertebrate records are set aside in this script,
-### create a table of bin_uris for all records
-all_bin_uri_asv_codes <- unique(bold_results[bold_results$similarity >= 97,c("asv_code","bin_uri")])
-
-
+load("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/match_list_bin_uri_v5.rda")
+bold_results <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/match_bold_v5.csv")
 ```
-
 
 # Read in source data 
 
@@ -250,6 +166,7 @@ The truncated_fills_df and max_p_update tables of the asv_library are combined f
 ```{r}
 # Import all miseq records for checking against the library
 ### MEL/CHRIS: New large files to be added to repository or another repository
+dir_0 <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/"
 miseq13 <- read.csv(paste0(dir_0, 
                       "miseq13/metabarcoding_workflow/ten_site_data_summaries/",
                       "data_for_analysis/ten_sites_long_format_25_02_2025.csv"))
@@ -323,6 +240,7 @@ The above leaves 135,137 records from miseq runs 13-20 for consideration of incl
 ```{r}
 
 ### Results of earlier 46-site spring 2018 metabarcoding study.
+dir_46 <- "~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/"
 mw46 <- as.data.frame(
   readxl::read_excel(paste0(dir_46, "/spring2018_metabarcoding_Nov2023.xlsx"), 
                      sheet = 2))
@@ -348,10 +266,8 @@ other_seq <- "TTTATCTTCAAATATTGCTCATGGAGGTGCTTCTGTAGACCTGGCAATTTTCAGATTGCACTTAGC
 ### [1] "7ca9195991a6cad87374d1e98c6ab624"
 
 ### 2 of these asv_codes are in all_records already
-### MEL: NOTE I have kept my code for correcting the asv_seq problems, as it gives the same answer as your code, but provides a more transparent logic to the changes. CHRIS2: noted.
-###       (So I have not used your correction code). The one difference between your result and mine is 
-unique(mw46$max_p_identity[mw46$asv_code == "ed3ae084977ef615af77a2eee71a2c5b"]) 
-###   My result says 99, but the notes in your code say "For asv_code 'ed3ae084977ef615af77a2eee71a2c5b' in 'mw46, the max_p_identity, species assignment (i.e., 92 match to  Hydrochus sp. MC-1) and asv_seq are all incorrect."   Did you mean to change it to 92?  I have left it as 99, but this can easily be changed. CHRIS: Yes. I did mean to change it. I re-checked the sequence against my private library, GenBank and bold, it did not match better than 92  # CW: CHECK THIS AT THE END
+# Hydrochus sp. MC-1 only has 92% match to Genbank
+all_records$max_p_identity[all_records$asv_code == "ed3ae084977ef615af77a2eee71a2c5b"] <- 92 
 
 # dup_asv_seq_codes[dup_asv_seq_codes %in% all_records$asv_code]
 # Those two are consistently called Hydrochus sp. MC-1 in both datasets
@@ -505,7 +421,8 @@ for(i in 1:length(dup_asvs)){
 all_records <- unique(all_records)
 sum(duplicated(all_records$asv_code))  # 0.  Good
 
-sum(asv_bold %in% all_records$asv_code)  #16127 asv_codes with a match to BOLD (similarity >=94) 
+asv_bold <- unique(bold_results$asv_code)
+sum(asv_bold %in% all_records$asv_code)  #16136 asv_codes with a match to BOLD (some with similarity <94 after addition of genus matches) 
 
 ```
 
@@ -525,7 +442,7 @@ maxp_ck <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workfl
 mw46unmat_ck <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/synonym_updates/MW46_metabar_unmatched_checked_all.csv")
 arc_unmat_ck  <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/arc_unmatched_checked.csv")
 # 
-# CW Leave this uncommented out for the moment while still checking
+# CW to remove all these complicated file import steps and create a set of source tables to be read from OSF
 all_MC_checks <- rbind(tfill_ck, maxp_ck, mw46unmat_ck, arc_unmat_ck)
 # Remove duplicates and unnecessary fields
 all_MC_checks <- unique(all_MC_checks[c("asv_code","checked_species_name", "bold_match","bold_bin_uri","action","comments")])
@@ -541,25 +458,41 @@ private_lib <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_wo
 
 tfill_all <- rbind(truncated_fills_df, max_p_update_df)    # 15595 records
 
-# Put aside all Proteobacteria records (erroneous attributions of arthropods in public databases),
+# Put aside all non_animal records (proteobacteria, at least, are erroneous attributions of arthropods in public databases),
 # To be added to tfill at the end of the script
+bact_bold_asvs <- unique(bold_results$asv_code[bold_results$phylum %in% c("Proteobacteria","Ciliophora") |
+                                                 grepl("mycota", bold_results$phylum) |
+                                                 grepl("phyta", bold_results$phylum)])
+# MEL: I broadened this 'put-aside' criterion because many of your "Proteobacteria" comments 
+# in your check files were in fact other things captured by this new criterion                                             
 bact_records <- all_MC_checks$asv_code[all_MC_checks$checked_species_name == "Proteobacteria" | 
                                 all_MC_checks$comments == "Proteobacteria"]
+# MEL: 2 of the 47 in bact_records (i.e. records you identified as bacteria) are not in bold_results
+bact_records[!bact_records %in% bact_bold_asvs]
+#      The second one has BOLD records suggesting insecta.  For now, I will assume you are right, but you might want to check.
+bold_results[bold_results$asv_code %in% bact_records[!bact_records %in% bact_bold_asvs],]
+
+bact_records <- unique(c(bact_bold_asvs, bact_records))
 names(all_records)[names(all_records) == "asv_seq"] <- "asv_sequence"
 bact_records <- rbind(tfill_all[tfill_all$asv_code %in% bact_records,],
                       all_records[all_records$asv_code %in% bact_records,])
-bact_records$kingdom <- "Prokaryota"
-bact_records$phylum <- "Proteobacteria"
-bact_records$class <- bact_records$order <- bact_records$family <- 
-   bact_records$genus <- bact_records$species <- NA
+# Change those records formerly ided as Arthropoda (or no Phylum at all) to Proteobacteria
+### MEL: is this the right logic? ((note all these records get re-included in tfill at the end of the script))
+pb <- which(is.na(bact_records$phylum) | 
+            (!is.na(bact_records$phylum) & bact_records$phylum == "Arthropoda"))
+bact_records$kingdom[pb] <- "Prokaryota"
+bact_records$phylum[pb] <- "Proteobacteria"
+bact_records$phylum[is.na(bact_records$phylum)] <- "Proteobacteria"
+bact_records$class[pb] <- bact_records$order[pb] <- bact_records$family[pb] <- 
+   bact_records$genus[pb] <- bact_records$species[pb] <- NA
 other_bact_records <- unique(rbind(tfill_all[tfill_all$kingdom == "Prokaryota",],
                              all_records[all_records$kingdom == "Prokaryota",]))
 bact_records <- unique(rbind(other_bact_records, bact_records[!bact_records$asv_code %in% 
                                                          other_bact_records$asv_code,]))
 # 1 duplicate with differeing max_p_identity
 bact_records <- bact_records[!duplicated(bact_records$asv_code, fromLast = TRUE),]
-tfill_all <- tfill_all[!tfill_all$asv_code %in% bact_records$asv_code,]  #15,532
-all_records <- all_records[!all_records$asv_code %in% bact_records$asv_code,] #22,280
+tfill_all <- tfill_all[!tfill_all$asv_code %in% bact_records$asv_code,]  #15,359
+all_records <- all_records[!all_records$asv_code %in% bact_records$asv_code,] #22,095
 
 # A classification error to correct
 tfill_all[tfill_all$asv_code == "5148a3678b70de5db884a99af7734de4",c("order","family","genus")] <- c("Sarcoptiformes",NA,NA)
@@ -572,9 +505,8 @@ source("https://tools.thewerg.unimelb.edu.au/data/mwbugs/bug_database_functions.
 # Record of how non_aqu_macroinvert.csv was created
 # db <- RPostgres::dbConnect(drv = RPostgres::Postgres(), dbname = "mwbugs")
 # non_aqu_macro_invert <- DBI::dbReadTable(db, "non_aqu_macro_invert")
-# write.csv(non_aqu_macro_invert,
-#           "~/git/metabarcoding_workflow/data/non_aqu_macro_invert.csv",
-#           row.names = FALSE)
+# write.csv(non_aqu_macro_invert, "data/non_aqu_macro_invert.csv", row.names = FALSE)
+non_aqu_macro_invert <- read.csv("data/non_aqu_macro_invert.csv")
 
 # Record of how taxonomy.xlsx was created, noting that when complete this can be read 
 # directly from the mwbugs downloads page (not yet updated)
@@ -583,42 +515,38 @@ source("https://tools.thewerg.unimelb.edu.au/data/mwbugs/bug_database_functions.
 # taxon_fam <- DBI::dbReadTable(db, "taxon_fam")
 # WriteXLS::WriteXLS(list(taxon_gen = taxon_gen, taxon_fam = taxon_fam),
 #           "~/git/metabarcoding_workflow/data/taxonomy.xlsx")
-non_aqu_macro_invert <- read.csv("data/non_aqu_macro_invert.csv")
 taxon_gen <- as.data.frame(readxl::read_excel("data/taxonomy.xlsx", 
                                               sheet = "taxon_gen"))
-# Correction now made in database
-taxon_gen$genus[taxon_gen$genus == "Megogota"] <- "Megogata"
 taxon_fam <- as.data.frame(readxl::read_excel("data/taxonomy.xlsx", 
                                               sheet = "taxon_fam"))
-# Corrections to be made in database (and synonym added)
-taxon_fam$family[taxon_fam$family == "Pisidiidae"] <- "Sphaeriidae"
 
 tfill <- only_aqu_inverts(tfill_all, 
                           non_aqu_macro_invert_already_loaded = TRUE)$include #11,858 records
 # Keep excluded records aside for recompilation below
 tfill_nonaq <- only_aqu_inverts(tfill_all, 
-                          non_aqu_macro_invert_already_loaded = TRUE)$exclude #3,670 records
+                          non_aqu_macro_invert_already_loaded = TRUE)$exclude #3,501 records
 # And exclude records identified to phylum (1 Nemertea has a bold match, but not necessarily aquatic)
-tfill_nonaq <- rbind(tfill_nonaq, tfill[is.na(tfill$class) & is.na(tfill$species),]) #3,683
+tfill_nonaq <- rbind(tfill_nonaq, tfill[is.na(tfill$class) & is.na(tfill$species),]) #3,514
 tfill <- tfill[!(is.na(tfill$class) & is.na(tfill$species)),] #11,845
 
 asvs_bin_uri <- unique(bold_results$asv_code[bold_results$similarity >= 97])  #20,070
-asvs_bin_uri_lt97 <- unique(bold_results$asv_code[!bold_results$asv_code %in% asvs_bin_uri])  #1,415 
+asvs_bin_uri_lt97 <- unique(bold_results$asv_code[!bold_results$asv_code %in% asvs_bin_uri])  #1,424 
+
 all_records_aq <- only_aqu_inverts(all_records, 
-                          non_aqu_macro_invert_already_loaded = TRUE)$include #18,813 records
+                          non_aqu_macro_invert_already_loaded = TRUE)$include #18,808 records
 names(all_records_aq)[names(all_records_aq) == "asv_seq"] <- "asv_sequence"
 all_records_non_aq <- only_aqu_inverts(all_records, 
-                          non_aqu_macro_invert_already_loaded = TRUE)$exclude #3,467 records
-all_records_aq_not_in_tfill <- all_records_aq[!all_records_aq$asv_code %in% tfill$asv_code,] #11,623
-all_records_aq_not_in_tfill_bin <- all_records_aq_not_in_tfill[all_records_aq_not_in_tfill$asv_code %in% asvs_bin_uri,] #7,272
-all_records_aq_not_in_tfill_binlt97 <- all_records_aq_not_in_tfill[all_records_aq_not_in_tfill$asv_code %in% asvs_bin_uri_lt97,] #768
+                          non_aqu_macro_invert_already_loaded = TRUE)$exclude #3,287 records
+all_records_aq_not_in_tfill <- all_records_aq[!all_records_aq$asv_code %in% tfill$asv_code,] #11,618
+all_records_aq_not_in_tfill_bin <- all_records_aq_not_in_tfill[all_records_aq_not_in_tfill$asv_code %in% asvs_bin_uri,] #7,271
+all_records_aq_not_in_tfill_binlt97 <- all_records_aq_not_in_tfill[all_records_aq_not_in_tfill$asv_code %in% asvs_bin_uri_lt97,] #764
 all_records_aq_only_in_private_lib <- all_records_aq_not_in_tfill[all_records_aq_not_in_tfill$asv_code %in% private_lib$asv_code,] #522
 ### Records with matches <97 are added to the ASV library and dealt with below 
 
 # Add records with BOLD matches to tfill
 tfill <- rbind(tfill, all_records_aq_not_in_tfill_bin,
                all_records_aq_not_in_tfill_binlt97, 
-               all_records_aq_only_in_private_lib)  #20,407
+               all_records_aq_only_in_private_lib)  #20,402
 #   Check species that had been excluded at this stage.  Only one
 excl_spp <- unique(tf2$species[!tf2$asv_code %in% tfill$asv_code])
 #         "Cernosvitoviella minor" a likely terrestrrial Enchytraeid.
@@ -659,6 +587,7 @@ tfill$species <- gsub("complex", "group", tfill$species)
 tfill$species <- gsub("Iilliesoperla","Illiesoperla",tfill$species)
 tfill$species <- gsub("ParaLimnophila","Paralimnophila",tfill$species)
 tfill$species <- gsub("Physa ", "Physella ", tfill$species)
+tfill$species <- gsub("Aeschnidae", "Aeshnidae", tfill$species)
 
 tfill$genus[grep("Physa", tfill$genus)] <- "Physella"
 tfill$species[!is.na(tfill$species) & tfill$species == "Pristina osborni sp. (Unident.)"] <- "Pristina osborni"
@@ -685,34 +614,22 @@ tfill$species[!is.na(tfill$species) & tfill$species == "Helicophida queenslanden
 tfill$species[!is.na(tfill$species) & tfill$species == "Riethia zeylandica"] <- "Riethia sp. B-ADU5431" 
 tfill$species[!is.na(tfill$species) & tfill$species == "Notalina bifara group B-ABV8023"] <- "Notalina bifara group"
 tfill$species[!is.na(tfill$species) & tfill$species == "Notalina sp. B-AAX5636"] <- "Notalina bifara group"
+tfill$species[!is.na(tfill$species) & tfill$species == "Mirawara sp. AV1"] <- "Mirawara sp. B-AAV0800"
 ```
 
 The following chunk creates a new table of asv_codes, species names, and their bin_uris. Many asv_codes have multiple bin_uris, so this table is longer than tfill. (22,872 rows rather than 20,399). Many species names are incorrect at this stage, but are corrected below using the bold_results
 
 ```{r}
-# NOTE: the user needs to un this commented out code to save your own copy of
-# match_list_bin_uri_v5.rda (it take a minute or two to compile)
-## Convert bold_results to a list: one element per asv_code
-# create a list of asv_codes with matching bold data  (and save as it takes a few minutes to compile)
-# asv_codes_with_bins <- unique(bold_results$asv_code)
-# asv_codes_with_bins <- asv_codes_with_bins[asv_codes_with_bins %in% tfill$asv_code]
-# match_list_bin_uri <- list()
-# for(i in 1:length(asv_codes_with_bins)){
-#         matchi <- bold_results[bold_results$asv_code == asv_codes_with_bins[i],
-#                                !names(bold_results) %in% c("asv_code","pid_bin")]
-#         matchi <- matchi[!is.na(matchi$bin_uri),]
-#         # if there is at least one registered bin_uri remove temp id records
-#         if(nrow(matchi) == 0) stop("1")
-#         if(nrow(matchi) > 0){
-#           if(sum(nchar(matchi$bin_uri) == 7) > 0){
-#             matchi <- matchi[nchar(matchi$bin_uri) == 7,]
-#           }
-#         }
-#   match_list_bin_uri <- c(match_list_bin_uri, list(matchi))
-#   names(match_list_bin_uri)[length(match_list_bin_uri)] <- asv_codes_with_bins[i]
-# }
-# save(match_list_bin_uri, file = "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/match_list_bin_uri_v5.rda")
-# Move this to osf.
+
+# Find the maximum BOLD similarity for each record (for adding acceptably close matches, in this chunk, and for adjusting max_p_identity toward the end of the script)
+tfill$max_sim_bold <- NA
+for(i in 1:nrow(tfill)){
+  if(tfill$asv_code[i] %in% names(match_list_bin_uri)){
+  matchi <- match_list_bin_uri[[tfill$asv_code[i]]]
+  tfill$max_sim_bold[i] <- max(matchi$similarity, na.rm = TRUE)
+  }
+}
+
 load("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/match_list_bin_uri_v5.rda")
 
 # Create a tfill_spp_bins, which lists all bin_uris associated with each asv_code
@@ -727,24 +644,97 @@ for(i in 1:nrow(tfill)){
   }}
 
 tfill_spp_bins <- data.frame(tfill[tfill$n_bold_matches > 0, c("asv_code","species")],
-                             bin_uri = NA)
+                             bin_uri = NA, similarity = NA)
 add_bins <- tfill_spp_bins[0,]
 for(i in 1:nrow(tfill_spp_bins)){
     matchi <- match_list_bin_uri[[tfill_spp_bins$asv_code[i]]]
-    bins <- matchi$bin_uri[matchi$similarity >= 97]
-    bins <- unique(bins[!is.na(bins) & !bins == ""])
-  if(length(unique(bins)) == 0){
+    bins <- matchi[matchi$similarity >= 97,]
+    bins <- aggregate(bins["similarity"],by = list(bin_uri = bins$bin_uri), FUN = max)
+  if(nrow(bins) == 0){
      stop("1")
     }else{
-    tfill_spp_bins$bin_uri[i] <- unique(bins)[1]
-    if(length(unique(bins)) > 1){
+      if(sum(duplicated(bins$bin_uri)) > 0) stop("2")
+    tfill_spp_bins$bin_uri[i] <- bins$bin_uri[1]
+    tfill_spp_bins$similarity[i] <- bins$similarity[1]
+    if(nrow(bins) > 1){
       add_bins <- rbind(add_bins, 
                               data.frame(asv_code = tfill_spp_bins$asv_code[i],
                               species = tfill$species[tfill$asv_code == tfill_spp_bins$asv_code[i]],      
-                              bin_uri =bins[-1]))
+                              bin_uri = bins$bin_uri[-1],
+                              similarity = bins$similarity[-1]))
     }
     }
 }
+tfill_spp_bins <- rbind(tfill_spp_bins, add_bins)
+
+# Some records with acceptably close matches to a bin to be considered the same species
+
+acceptably_close <- c("Triplectides truncatus" = 96.4,
+                      "Austropeplea tomentosa" = 96.4,
+                      "Australysmus lacustris" = 96.1,
+                      "Austrosimulium sp. B-AEH7071" = 96.9,
+                      "Eukiefferiella sp. MC-A" = 96.65,
+                      "Micronecta sp. MC-2" = 96.9,
+                      "Polypedilum sp. B-AED8040" = 96.1,
+                      "Austrogammarus sp. MC-CNB47" = 96.05,
+                      "Pontogeneiidae sp. MC-1" = 96.5, # MEL: This covers 2 Pontogeneiidae sp. MC-1 records that are similar to bin_uri AGK4900: there are 8 others with substantially lower match than this: are they really the same species?
+                      "Pseudomoera fontana" = 95.61, # MEL: do you really want to go this low? there are 3 with this name with sim >96.5, and 4 with lower sim 
+                      "Sclerocyphon striatus" = 96.45,
+                      "Stratiomyidae sp. MC-1" = 96.45,
+                      "Tanytarsini sp. B-AED8094" = 96.1,
+                      "Austropsyche sp. MC-1" = 96.1) #,
+                      # MEL: the following are cases where my first instinct is to think you are pushing similarities too far.
+                      # (I don't really understand your explanation: "Keep in mind these are all DNA sequences generated 
+                      # from vouchered specimens (not metabarcodes)." I think it would be worth you adding an explanation/justification
+                      # For using such low thresholds in comments on each line, or at least at the end of the statement)
+                      # (94 seems very low given this is below the threshold for genus level, but I've selected the lowest value for each 
+                      # species...this results in for instance, Apsectrotanypus sp. MC-1 and Apsectrotanypus sp. MC-4 overlapping, and 
+                      # requiring to be grouped - same for Austrochiltonia sp. MC-1 and Austrochiltonia australis, 
+                      # which had some records overlapping already...
+### Actually, I chickened out of this approach. As well as feeling uncomfortable about it, I am also fairly sure it is going to 
+###  introduce problems with my code below combining species into groups.
+###  Can I get you to have a good hard look at check_no_bold after it has been reduced to 300 records (L70 of the cross-check document, having run this whole document) and think carefully about what you want to do with all of those private library entries with low matches to BOLD.  If you really want to include them, perhaps it would be easiest just to add them to the private library file that I have produced (and load above), which currently includes only those records that you have shown to be valid....or you could just accept my code's decision to only give them a taxonomic level appropriate to their match. Orthocladiinae SO4 is one that worries me in particular: we have some records of that species with 100% match to bin_uris, but several of your private library SO4 records have similarity <95%. Doesn't that suggest different families?
+                      # "Apsectrotanypus sp. MC-1" = 94.2,
+                      # "Apsectrotanypus sp. MC-4" = 94.2,
+                      # "Aulodrilus sp. MC-4" = 95.45,
+                      # "Australopelopia sp. MC-1" = 94.3,
+                      # "Austrochiltonia sp. MC-1" = 94.6,
+                      # "Austrogammarus sp. MC-BGC" = 94.45,
+                      # "Cardiocladius sp. MC-Cun1" = 93.99,
+                      # "Ceratopogonidae sp. MC-2" = 95.2,
+                      # "Cricotopus sp. MC-A" = 95.1,
+                      # "Cricotopus sp. MC-BC1" = 94.1,
+                      # "Dicrotendipes lindae" = 94.0
+                      # )
+
+#  #Austroaeschna atra (TAR29Tele2,	ON09Ase2) and Nothocyphon frater(DB8Scrit2),
+# # Tenagogerris euphrosyne (MMN6Gerri1), Molophilus tenuiclavus (DC8AKElm2) matched
+# # between 96-97 and I used these names based on database matches but my feeling is
+# # they are the correct species assignments and there is more the 3% divergence among species.
+# # Orthocladiinae SO4 (SC15ASCera2, SC15ASChir2, SC15ASChir1 match 95-96% to bold but keyed out
+# # the same as my Orthocladiinae SO4 on bold (suggesting a complex). 
+                      
+acceptably_close <- data.frame(species_old = names(acceptably_close),
+                               min_acceptable = unname(acceptably_close))
+add_bins <- tfill_spp_bins[0,]
+for(i in 1:nrow(acceptably_close)){
+asvsi <- tfill$asv_code[!is.na(tfill$max_sim_bold) & !is.na(tfill$species_old) & 
+                          tfill$species_old == acceptably_close$species_old[i] & 
+                          !is.na(tfill$max_sim_bold) & tfill$max_sim_bold < 97 & 
+                          tfill$max_sim_bold > acceptably_close$min_acceptable[i]] 
+for(j in 1:length(asvsi)){
+binsj <- match_list_bin_uri[[asvsi[j]]]
+maxsimj <- max(binsj$similarity)
+if(maxsimj < acceptably_close$min_acceptable[i]) stop("maxsimj should be less than min_acceptable")
+binsj <-unique(binsj$bin_uri[binsj$similarity == maxsimj])
+exist_binsj <- tfill_spp_bins[tfill_spp_bins$bin_uri %in% binsj,]
+add_bins <- rbind(add_bins, data.frame(asv_code = asvsi[j],
+                                       species = acceptably_close$species_old[i], 
+                                       bin_uri = binsj,
+                                       similarity = maxsimj))
+}
+}
+
 tfill_spp_bins <- rbind(tfill_spp_bins, add_bins)
 tfill_spp_bins <- tfill_spp_bins[order(tfill_spp_bins$species),]
 
@@ -794,18 +784,12 @@ tfill$genus[tfill$asv_code %in% naid_asvs] <- NA
 tfill[tfill$asv_code == "9cb0fd3c74a7d78345ce9dab0d7f1a87", c("class","order","family","species")] <- 
                        c("Clitellata", "Enchytraeida", "Enchytraeidae","Enchytraeidae sp. B-AAG4407")
 
-# CW: check this!
-# # Sphaeromatid given too-conservative names
-# tfill$species[grepl("Isopoda", tfill$species) & !is.na(tfill$family ) & tfill$family == "Sphaeromatidae"] <- 
-#     gsub("Isopoda","Sphaeromatidae",
-#         tfill$species[grepl("Isopoda", tfill$species) & !is.na(tfill$family ) & tfill$family == "Sphaeromatidae"])
-
 # ambiguous ids that are unlikely to be freshwater macroinvertebrates
 ambig_ids <- c("Talitridae sp. (Unident.)","Hemiptera sp. (Unident.)","Cephalopoda sp. (Unident.)",
   "Insecta sp. (Unident.)","Malacostraca sp. (Unident.)", "Coleoptera sp. (Unident.)")
-tfill_non_aq <- rbind(tfill_nonaq, tfill[tfill$species %in% ambig_ids,
+tfill_nonaq <- rbind(tfill_nonaq, tfill[tfill$species %in% ambig_ids,
                           match(names(tfill_nonaq), names(tfill))])
-tfill <- tfill[!tfill$species %in% ambig_ids,] #20,399
+tfill <- tfill[!tfill$species %in% ambig_ids,] #20,292
 
 n_bins <- aggregate(tfill_spp_bins[tfill_spp_bins$asv_code %in% tfill$asv_code,]$bin_uri, 
       by = list(asv_code = tfill_spp_bins[tfill_spp_bins$asv_code %in% tfill$asv_code,]$asv_code), 
@@ -941,8 +925,10 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "ADR7325" = "Ceratopogonidae sp. B-ADR7325",  # BOLD Ceratopogoninae, tfill either Ceratopogonidae sp. MC-3 or Ceratopogonidae sp. MC-26
 "AGL9707" = "Dixella humeralis", # BOLD either Dixidae or Dixella but Dixella humeralis id by Chris Hardy has been confirmed.
 "AGL9705" = "Dixella sp. B-AGL9705", # BOLD Dixidae, but it overlaps with AGL9707, tfill either Dixidae sp. MC-2 or Dixidae sp. MC-4 
+
 "AGN3107" = "Dytiscidae sp. B-AGN3107", # BOLD Chostonectes, but see next, tfill Platynectes sp. MC-6 CHRIS: This is my specimen (KWG17Dyt2) identified to genus as Chostonectes. Please use Chostonectes  # MEL: I have to insist on using the family name (or alternatively you need to decide which species "AGN3107" and "AGK5172" are, and give them that name). # MEL: I have to insist on using the family name (or alternatively you need to decide which species "AGN3107" and "AGK5172" are, and give them that name). These two bins have 100% similarity and cannot be given different genus names.
 "AGK5172" = "Dytiscidae sp. B-AGK5172", # BOLD  Platynectes and Costonectes overlaps with AGN3107, so lump to family, given uncertainty, tfill Platynectes sp. MC-6 CHRIS: This is my specimen (KWG17Dyt1) identified to genus as . Please use Platynectes #MEL:see the previous bin_uri CHRIS2: I remember addressing this maybe it was in the other .qmd. Please use Dytiscidae (not the genus names at this point). Looking back can see I have create this confusion and need to correct it on BOLD. I'm pretty sure it is Chostonectes and Platynectes is wrong, but I really need to go back a check the specimens.
+
 "AGQ6047" = "Polypedilum sp. B-AGQ6047", # BOLD Chironomidae, but overlaps with AGK4964 see next, tfill Polypedilum sp. B-AGQ6047 or Polypedilum sp. MC-FS1
 "AGK4964" = "Polypedilum sp. B-AGK4964", # BOLD Polypedilum, tfill Polypedilum sp. B-AGQ6047 or Polypedilum sp. MC-FS1
 "ACG8753" = "Polypedilum sp. B-ACG8753", # BOLD Chironomidae or Polypedilum, but a small overlap with AGK4964 and AGQ6047, tfill Polypedilum sp. B-ACG8753 or Polypedilum sp. MC-FS1 
@@ -965,7 +951,16 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "ACM3329"  = "Molophilus aphanta", # BOLD id
 "ACM3397" = "Molophilus capitatus", # BOLD id
 "ACM3428" = "Molophilus sp. B-ACM3428",# BOLD id
-"GBAAZ11256-24" = "Phreodrilidae sp. B-GBAAZ11256-24" # BOLD id
+"GBAAZ11256-24" = "Phreodrilidae sp. B-GBAAZ11256-24", # BOLD id
+"ACM3390" ="Molophilus exsertus", # BOLD id
+"AAE0234" = "Bulinus forskalii", # BOLD id
+"AFN5257" = "Amphipoda sp. B-AFN5257", # BOLD id
+"ABV8709" = "Aphilorheithrus sp. B-ABV8709", # BOLD id
+"ADE9965" = "Lectrides sp. B-ADE9965", # BOLD id
+"AFN5257" = "Amphipoda sp. B-AFN5257",
+"AGL8425" = "Fridericia maculata",
+"AAU4676" = "Fridericia auritoides",
+"ACV8324" = "Contacyphon lindensis"
 )
 
 # # # # # #  #  ## Code used for checking the above  ABY8640
@@ -989,7 +984,7 @@ non_aqu_bins <- c("AEJ9583","AEE4516","AFS3667","ACQ3785","AFD6947","AFO3404",
                   "AGB2975","ADA1282","AET4867","ADC6313","ACH7901","AFW4797",
                   "AFU5686","ACP1899","ADU2224","AFJ0001")
 
-# missing bins c("ACV8324","ABV8714","AAW3092","ACG1960","AAZ8934","ABW1132","AAW2994","ADX1240","ADF0434","AFN4160","ABW1138","AAE7976")
+# missing bins c("ABV8714","AAW3092","ACG1960","AAZ8934","ABW1132","AAW2994","ADX1240","ADF0434","AFN4160","ABW1138","AAE7976")
 # tfill record with missing bin_uri "ABV8714"
 
 # # Adopt the above corrections
@@ -999,6 +994,8 @@ bnc_df <- data.frame(bin_uri = names(bold_name_corrections),
 xc <- bnc_df[duplicated(bnc_df$bin_uri) | duplicated(bnc_df$bin_uri, fromLast = TRUE),]
 xc[order(xc$bin_uri),]  # should be empty data.frame (i.e. no duplicates)
 bnc_df$checks <- 0
+
+subfams <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/taxon_subfams_partial.csv")
 
 # Check that the above names are consistent with at least one name in each BOLD match.
 for(i in 1:nrow(bnc_df)){
@@ -1043,7 +1040,6 @@ for(i in 1:nrow(bnc_df)){
   # This is just checking for consistency within bnc_df
 }
 # No stops mean that there are no inconsistencies with genus names (Chostonectes and Platynectes above were a problem)
-# CW check that 86b33bf13e66c6c67d3f5474293b571e gets corrected to Cheumatopsyche alampeta
 
 for(i in 1:nrow(bnc_df)){
   asvcodei <- tfill_spp_bins$asv_code[!is.na(tfill_spp_bins$bin_uri) & 
@@ -1133,10 +1129,10 @@ tfill$genus[grep("Diptera", tfill$species)] <- NA
 ## 198 records without a species name (all from the max_p_update table)
 
 # Ensure family field is consistent with the max_p_identity rules
-sum(!is.na(tfill$family[tfill$max_p_identity < 95]))  #281 records with a family value but sim <95 (some also have a genus listed)
+sum(!is.na(tfill$family[tfill$max_p_identity < 95]))  #296 records with a family value but sim <95 (some also have a genus listed)
 tfill$genus[tfill$max_p_identity < 95] <- NA
 tfill$family[tfill$max_p_identity < 92] <- NA
-### sum(!is.na(tfill$order[tfill$max_p_identity < 92])) #280 records with an order value but sim < 92
+### sum(!is.na(tfill$order[tfill$max_p_identity < 92])) #225 records with an order value but sim < 92
 tfill$order[tfill$max_p_identity < 85] <- NA
 # Leave genus values for now.
 
@@ -1196,7 +1192,7 @@ tfill_spp_bins$species <- tfill$species[match(tfill_spp_bins$asv_code, tfill$asv
 tfill_spp_bins_unq <- unique(tfill_spp_bins[,2:3])
 tfill_spp_bins_unq <- tfill_spp_bins_unq[!is.na(tfill_spp_bins_unq$bin_uri),]
 
-### And re-run the tfill_spp_bins compilation...maybe not necessary?
+### And re-run the tfill_spp_bins compilation---necessary to include the bin_uri definitions above
 tfill$n_bold_matches <- 0
 for(i in 1:nrow(tfill)){
   if(tfill$asv_code[i] %in% names(match_list_bin_uri)){
@@ -1207,29 +1203,53 @@ for(i in 1:nrow(tfill)){
   }}
 
 tfill_spp_bins <- data.frame(tfill[tfill$n_bold_matches > 0, c("asv_code","species")],
-                             bin_uri = NA)
+                             bin_uri = NA, similarity = NA)
 add_bins <- tfill_spp_bins[0,]
 for(i in 1:nrow(tfill_spp_bins)){
     matchi <- match_list_bin_uri[[tfill_spp_bins$asv_code[i]]]
-    bins <- matchi$bin_uri[matchi$similarity >= 97]
-    bins <- unique(bins[!is.na(bins) & !bins == ""])
-  if(length(unique(bins)) == 0){
+    bins <- matchi[matchi$similarity >= 97,]
+    bins <- aggregate(bins["similarity"],by = list(bin_uri = bins$bin_uri), FUN = max)
+  if(nrow(bins) == 0){
      stop("1")
     }else{
-    tfill_spp_bins$bin_uri[i] <- unique(bins)[1]
-    if(length(unique(bins)) > 1){
-      add_bins <- rbind(add_bins, 
+      if(sum(duplicated(bins$bin_uri)) > 0) stop("2")
+    tfill_spp_bins$bin_uri[i] <- bins$bin_uri[1]
+    tfill_spp_bins$similarity[i] <- bins$similarity[1]
+    if(nrow(bins) > 1){
+      add_bins <- rbind(add_bins,
                               data.frame(asv_code = tfill_spp_bins$asv_code[i],
-                              species = tfill$species[tfill$asv_code == tfill_spp_bins$asv_code[i]],      
-                              bin_uri =bins[-1]))
+                              species = tfill$species[tfill$asv_code == tfill_spp_bins$asv_code[i]],
+                              bin_uri = bins$bin_uri[-1],
+                              similarity = bins$similarity[-1]))
     }
     }
 }
+tfill_spp_bins <- rbind(tfill_spp_bins, add_bins)
+add_bins <- tfill_spp_bins[0,]
+for(i in 1:nrow(acceptably_close)){
+asvsi <- tfill$asv_code[!is.na(tfill$max_sim_bold) & !is.na(tfill$species_old) &
+                          tfill$species_old == acceptably_close$species_old[i] &
+                          !is.na(tfill$max_sim_bold) & tfill$max_sim_bold < 97 &
+                          tfill$max_sim_bold > acceptably_close$min_acceptable[i]]
+for(j in 1:length(asvsi)){
+binsj <- match_list_bin_uri[[asvsi[j]]]
+maxsimj <- max(binsj$similarity)
+if(maxsimj < acceptably_close$min_acceptable[i]) stop("maxsimj should be less than min_acceptable")
+binsj <-unique(binsj$bin_uri[binsj$similarity == maxsimj])
+exist_binsj <- tfill_spp_bins[tfill_spp_bins$bin_uri %in% binsj,]
+add_bins <- rbind(add_bins, data.frame(asv_code = asvsi[j],
+                                       species = acceptably_close$species_old[i],
+                                       bin_uri = binsj,
+                                       similarity = maxsimj))
+}
+}
+
 tfill_spp_bins <- rbind(tfill_spp_bins, add_bins)
 tfill_spp_bins <- tfill_spp_bins[order(tfill_spp_bins$species),]
 
 tfill_spp_bins_bu <- tfill_spp_bins
 tfill_bu <- tfill
+
 ```
 
 With genus and family fields correct, correct species names, using the following rules:
@@ -1258,8 +1278,8 @@ tfill_spp_bins_unq <- unique(tfill_spp_bins[,2:3])
 tfill_spp_bins_unq <- tfill_spp_bins_unq[!is.na(tfill_spp_bins_unq$bin_uri),]
 tfill_spp_bins_bu <- tfill_spp_bins
 
-tfill_spp_bins <- tfill_spp_bins_bu
-tfill <- tfill_bu
+# tfill_spp_bins <- tfill_spp_bins_bu
+# tfill <- tfill_bu
 
 tfill_asv_spp_unq <- unique(tfill_spp_bins[,1:2])
 sum(duplicated(tfill_asv_spp_unq$asv_code)) # 0.  Only a single name per asv_code
@@ -1272,14 +1292,20 @@ form_gps <- inc_gps <- list()
 # Create a check list that contains all bin_uris associated with species_corrected names created in the following loop
 bin_check <- data.frame(species_corrected = NA, bin_uri = NA)
 for(i in 1:nrow(tfill_asv_spp_unq)){
-  # Find all bin_uris associated with the current asv_code
+  species_sim <- 97 # Except for exceptions identified by Mel Carew as being species at a lower similarity
+  if(min(tfill_spp_bins$similarity[tfill_spp_bins$asv_code == tfill_asv_spp_unq$asv_code[i]]) < 97){
+    if(!tfill_asv_spp_unq$species[i] %in% acceptably_close$species_old) stop("check")
+    species_sim <- acceptably_close$min_acceptable[acceptably_close$species_old == tfill_asv_spp_unq$species[i]]
+  }
+  # Find all bin_uris associated with the current asv_code at an acceptably similar level.
   binis <-  unique(bold_results$bin_uri[bold_results$asv_code == tfill_asv_spp_unq$asv_code[i] & 
-                                         bold_results$similarity >= 97])
+                                         bold_results$similarity >= species_sim])
+  if(min(tfill_spp_bins$similarity[tfill_spp_bins$asv_code == tfill_asv_spp_unq$asv_code[i]]) < species_sim) stop("CW check")
   binis2 <- c(binis, binis)
-  # Iteratively extract all bin_uris from bold_results that overlap with binis with similarity >= 97
+  # Iteratively extract all bin_uris from bold_results that overlap with binis with similarity >= species_sim
   while(length(binis2) > length(binis)){
   asvsi <- tfill_spp_bins$asv_code[tfill_spp_bins$bin_uri %in% unique(binis2)]
-  binis2 <- unique(bold_results$bin_uri[bold_results$asv_code %in% asvsi & bold_results$similarity >= 97])
+  binis2 <- unique(bold_results$bin_uri[bold_results$asv_code %in% asvsi & bold_results$similarity >= species_sim])
   binis <- binis2[order(binis2)]
   }
   binis <- binis[!is.na(binis)]
@@ -1433,17 +1459,9 @@ tfill$max_p_update[tfill$asv_code %in% max_p_update_df$asv_code] <- 1
 
 # Keep a record of the original vsearch max_p_identity (where this field hasn't already been changed: see above)
 tfill$sim_vsearch <- tfill$max_p_identity
-# Find the maximum BOLD similarity for each record
-tfill$max_sim_bold <- NA
-for(i in 1:nrow(tfill)){
-  if(tfill$asv_code[i] %in% names(match_list_bin_uri)){
-  matchi <- match_list_bin_uri[[tfill$asv_code[i]]]
-  tfill$max_sim_bold[i] <- max(matchi$similarity, na.rm = TRUE)
-  }
-}
 
 # 1. replace max_p_identity with max_sim_bold if the latter is higher.
-sum(tfill$max_sim_bold > tfill$sim_vsearch, na.rm = TRUE) #10888 
+sum(tfill$max_sim_bold > tfill$sim_vsearch, na.rm = TRUE) #11041
 for(i in 1:nrow(tfill)){
   if(!is.na(tfill$max_sim_bold[i]) & tfill$max_sim_bold[i] > tfill$sim_vsearch[i]) {
     tfill$max_p_identity[i] <- tfill$max_sim_bold[i]
@@ -1461,8 +1479,222 @@ for(i in 1:nrow(tfill)){
 }
 
 # And having corrected the max_p_identity field, repeat clean up of taxon fields
-tfill$species[tfill$max_p_identity < 97] <- NA
+tfill$species[tfill$max_p_identity < 97 & !tfill$species_old %in% acceptably_close$species_old] <- NA
+# Remove species names from 'acceptably close' species if max_p_identity is less than acceptably close
+for(i in 1:nrow(acceptably_close)){
+  tfill$species[tfill$species_old == acceptably_close$species_old[i] & 
+                  tfill$max_p_identity < acceptably_close$min_acceptable[i]] <- NA
+}
+# Check and correct genus values for records with genus-level similarity to BOLD
+acceptables <- tfill_spp_bins$asv_code[tfill_spp_bins$similarity >= 95 & tfill_spp_bins$similarity < 97]
+gen_levels <- tfill[tfill$max_p_identity <97 & tfill$max_p_identity >=95 & !tfill$asv_code %in% acceptables,
+                    c("asv_code","genus","species","genus_old")]
+gen_levels$genus_bold <- NA
+check1 <- tfill[0,c("asv_code","genus","species","genus_old")]
+check2 <- tfill[1,c("asv_code","genus","species","genus_old")]
+check2$genus_bold <- NA
+check2 <- check2[0,]
+for(i in 1:nrow(gen_levels)){
+  matchi <- bold_results[bold_results$asv_code == gen_levels$asv_code[i],]
+  matchi <- matchi[matchi$genus != "",]
+  if(nrow(matchi) == 0){
+     if(!is.na(gen_levels$genus[i]))
+      check1 <- rbind(check1, gen_levels[i,]) # if there are no matches in bold, save records in check1
+  }else{
+  gen_match <- aggregate(matchi$genus,by = list(genus = matchi$genus), FUN = length)
+  if(nrow(gen_match) == 0){  # if there are no gen_matches in bold, save records in check1
+    check1 <- rbind(check1, gen_levels[i,])
+  }else{
+    if(nrow(gen_match) > 1){  
+      # if bold lists more than 1 genus name, and if that name is by far the most common, select that one
+      if(max(gen_match$x) >= 0.75*sum(gen_match$x)){
+      gen_match <- gen_match[gen_match$x == max(gen_match$x),]
+            }else{  # and if there is no predominately common name, flag BOLD's uncertainty
+             gen_match <- data.frame(genus = "BOLD uncertain", x= 1)                 
+            }    
+      }
+    if(is.na(gen_levels$genus[i]) | (!is.na(gen_levels$genus[i]) & gen_match$genus != gen_levels$genus[i])){
+      # if tfill gen entry doesn't match bold, save records in check2
+      gen_levels$genus_bold[i] <- gen_match$genus
+      check2 <- rbind(check2, gen_levels[i,])
+    }
+    } 
+  }
+}
+
+# MEL: the above creation of check1 and check2 concerns records with no species name, but a genus name  (or potentially should have one)
+# MEL: you might want to check these 22 records for which you have nominated a genus name, but BOLD doesn't
+#      I have assumed you are right, and have left the genus names as they were
+check1
+# MEL: and you should check these 11 records where your genus name differs from BOLD's genus name, and 75 where genus was empty
+#      In these cases I have assumed BOLD is right and changed the genus name (and higher taxon names - below-, as many were wildly different!) (except  where BOLD was uncertain, where I have left the values as you had them)
+# # MEL: 
+# # On visually checking BOLD uncertains for records that have been identified as Physella, Procorticacarus, the original genus attribution seems fine, and they have been left.
+# "5a84cdcd6ee9eda0fed0fbdc6ab4ace5" # - Bold has ids of both a mosquito and a chironomid.I tentatively remove this record from the library altogether. OK?
+# "7376b4eacf0e1abd830fc61287b7dae1" # BOLD ids are all over the place, and certainly not Tanyderidae that this record was identified as. I tentatively remove this record from the library altogether. OK?
+# "a7b681bebe2741ff1dc9e4cb9eeb7cc9" # BOLD genus IDs are all over the place, but they agree it is Sphaeriidae.  I opted to remove genus name from this record.
+check2
+
+for(i in 1:nrow(check2)){
+  if(check2$genus_bold[i] != "BOLD uncertain"){
+    if(!check2$genus[i] %in% c("Procorticacarus","Physella"))
+  tfill$genus[tfill$asv_code == check2$asv_code[i]] <- check2$genus_bold[i]
+  }else{
+    tfill$genus[tfill$asv_code == check2$asv_code[i]] <- NA
+  }
+}
+# Delete the two highly uncertain records as above
+tfill_deleted <- tfill[tfill$asv_code %in% c("5a84cdcd6ee9eda0fed0fbdc6ab4ace5",
+                                      "a7b681bebe2741ff1dc9e4cb9eeb7cc9"),]
+tfill <- tfill[!tfill$asv_code %in% tfill_deleted$asv_code,]
+
+# Add species names from Mel Carew's private library and Genbank
+tfill$species[match(genbank_matches_not_bold$asv_code,tfill$asv_code)] <- genbank_matches_not_bold$species
+# for the purpose of adjusting max_p_identity below, make max_sim_bold = genbank_match
+tfill$max_sim_bold[match(genbank_matches_not_bold$asv_code,tfill$asv_code)] <- genbank_matches_not_bold$match
+
+tfill$species[match(priv_lib_spp$asv_code,tfill$asv_code)] <- priv_lib_spp$species
+# Fix up taxonomy fields (they were ok for Genbank)
+for(i in which(tfill$asv_code %in% priv_lib_spp$asv_code)){
+  if(grepl("Haplotaxida",tfill$species[i])){
+    tfill$genus[i] <- NA
+    tfill$family[i] <- NA
+  }else{
+  if(right(strsplit(tfill$species[i]," ")[[1]][1],2) == "ae"){
+    tfill$family[i] <- strsplit(tfill$species[i]," ")[[1]][1]
+    tfill$genus[i] <- NA
+  }else{
+    tfill$genus[i] <- strsplit(tfill$species[i]," ")[[1]][1]
+    tfill$family[i] <- taxon_fam$family[taxon_fam$famcode == taxon_gen$famcode[taxon_gen$genus == tfill$genus[i]]]
+  }
+    }
+}
+
+# for the purpose of adjusting max_p_identity below, make max_sim_bold = geneious similarity
+tfill$max_sim_bold[match(priv_lib_spp$asv_code,tfill$asv_code)] <- as.numeric(gsub("%","",priv_lib_spp$similarity))
+
+substr(tfill$species,"[[",1)
+
+ # Non-aquatic taxon without full taxonomic information to permit exclusion
+tfill$family[!is.na(tfill$genus) & tfill$genus == "Paralaoma"] <- "Punctidae"
+tfill$class[!is.na(tfill$genus) & tfill$genus == "Paralaoma"] <- "Stylommatophora"
+tfill$family[!is.na(tfill$genus) & tfill$genus == "Scaptodrosophila"] <- "Drosophilidae"
+tfill$family[!is.na(tfill$genus) & tfill$genus == "Drosophila"] <- "Drosophilidae"
+tfill$family[!is.na(tfill$genus) & tfill$genus == "Suillia"] <- "Heleomyzidae"
+tfill$family[!is.na(tfill$genus) & tfill$genus == "Arcitalitrus"] <- "Arcitalitridae"
+tfill$family[tfill$asv_code %in% c("f251aa85d6ecc3e8fedafc698430805d","d04662b4e87344af2c424be5dad04f")] <- "Geoplanidae"
+tfill$species[tfill$asv_code %in% c("f251aa85d6ecc3e8fedafc698430805d","d04662b4e87344af2c424be5dad04f")] <- "Geoplanidae sp. B-GBAAZ5840-24"
+tfill$family[tfill$asv_code %in% c("074891d304dfbcf3f878d1aa7b61570c","e49f409d7a1dbbdc41ccfb813e1bd600",
+                                   "15c1be639cf13bb49993551104af96ea")] <- "Oribatulidae"
+tfill$genus[tfill$asv_code %in% c("074891d304dfbcf3f878d1aa7b61570c","e49f409d7a1dbbdc41ccfb813e1bd600",
+                                   "15c1be639cf13bb49993551104af96ea")] <- "Sellnickia"
+tfill$species[tfill$asv_code %in% c("074891d304dfbcf3f878d1aa7b61570c","e49f409d7a1dbbdc41ccfb813e1bd600",
+                                   "15c1be639cf13bb49993551104af96ea")] <- "Sellnickia sp. B-AFW4797"
+tfill$species[tfill$asv_code %in% c("aed25d46de2267f52cc666a1981d7d8c")] <- "Parasitus sp. B-ACQ9816"
+tfill$genus[tfill$asv_code %in% c("aed25d46de2267f52cc666a1981d7d8c")] <- "Parasitus"
+tfill$order[tfill$asv_code %in% c("aed25d46de2267f52cc666a1981d7d8c")] <- "Sarcoptiformes"
+tfill$species[tfill$asv_code %in% c("33f2f5165abbc1f94df8aac34abbefae")] <- "Psychidae sp. B-ADA1282"
+tfill$family[tfill$asv_code %in% c("33f2f5165abbc1f94df8aac34abbefae")] <- "Psychidae"
+tfill$species[tfill$asv_code %in% c("877833103d539ec57f9c04e017e3f18e")] <- "Pselaphinae sp. B-AFJ0079"
+tfill$family[tfill$asv_code %in% c("877833103d539ec57f9c04e017e3f18e")] <- "Pselaphinae"
+
+to_exclude <- only_aqu_inverts(tfill,
+                          non_aqu_macro_invert_already_loaded = TRUE)$exclude # 18
+tfill_nonaq <- rbind(tfill_nonaq,tfill[tfill$asv_code %in% to_exclude$asv_code,
+                                       match(names(tfill_nonaq),names(tfill))]) #3642
+tfill <- tfill[!tfill$asv_code %in% to_exclude$asv_code,] #20269
+
+ # Check/Revise all family names for all records in tfill
+all_gen <- unique(tfill$genus)
+all_gen <- all_gen[!is.na(all_gen)]
+for(i in 1:length(all_gen)){
+  if(all_gen[i] != "Sellnickia"){  # one terrestrial genus fixed manually
+  taxon_fam_tabi <- taxon_fam[taxon_fam$famcode == taxon_gen$famcode[taxon_gen$genus == all_gen[i]],]
+  taxon_fami <- taxon_fam_tabi$family
+      # If the genus is a Tubificid, make the family field "Naididae"
+    if(taxon_fam_tabi$famcode == "LO04"){
+         taxon_fami <- "Naididae"
+        }
+    # If the genus is a chironomid make the family field the subfamily
+    if(grepl("QDA",taxon_fam_tabi$famcode)){
+        taxon_fami <- taxon_fam_tabi$subfamily
+        }
+  tfill$family[!is.na(tfill$genus) & tfill$genus == all_gen[i]] <- taxon_fami
+}
+}
 tfill$genus[tfill$max_p_identity < 95] <- NA
+
+fam_levels <- tfill[tfill$max_p_identity <92 & tfill$max_p_identity >=85 & !tfill$asv_code %in% acceptables,
+                    c("asv_code","family","species","family_old")]
+fam_levels$family_bold <- NA
+check3 <- tfill[0,c("asv_code","family","species","family_old")]
+check4 <- tfill[1,c("asv_code","family","species","family_old")]
+check4$family_bold <- NA
+check4 <- check4[0,]
+for(i in 1:nrow(fam_levels)){
+  matchi <- bold_results[bold_results$asv_code == fam_levels$asv_code[i],]
+  matchi <- matchi[matchi$family != "",]
+  if(nrow(matchi) == 0){
+     if(!is.na(fam_levels$family[i]))
+      check3 <- rbind(check3, fam_levels[i,]) # if there are no matches in bold, save records in check3
+  }else{
+  fam_match <- aggregate(matchi$family,by = list(family = matchi$family), FUN = length)
+  if(nrow(fam_match) == 0){  # if there are no fam_matches in bold, save records in check3
+    check3 <- rbind(check3, fam_levels[i,])
+  }else{
+    if(nrow(fam_match) > 1){  
+      # if bold lists more than 1 genus name, and if that name is by far the most common, select that one
+      if(max(fam_match$x) >= 0.75*sum(fam_match$x)){
+      fam_match <- fam_match[fam_match$x == max(fam_match$x),]
+            }else{  # and if there is no predominately common name, flag BOLD's uncertainty
+             fam_match <- data.frame(family = "BOLD uncertain", x= 1)                 
+            }
+    }
+    if(is.na(fam_levels$family[i]) | (!is.na(fam_levels$family[i]) & fam_match$family != fam_levels$family[i]))
+      # if tfill gen entry doesn't match bold, save records in check4
+      check4 <- rbind(check4, fam_levels[i,])
+      check4$family_bold[nrow(check4)] <- fam_match$family
+  } 
+  }
+}
+
+# MEL: the above creation of check3 and check4 concerns records with no species or genus names, but a family name (or potentially should have one)
+# MEL:  check3 suggests there are no cases where you have nominated a family name, but BOLD doesn't  (so no need for you to check)
+check3
+# MEL: check4 is fine too (so no need for you to check). It adds a few non-macro/non-aqu family names. I will fix all of them here
+check4
+
+for(i in 1:nrow(check4)){
+  tfill$family[tfill$asv_code == check4$asv_code[i]] <- check4$family_bold[i]
+}
+
+ # Check/Revise all class/order/phylum names for all records in tfill.
+ # Rather than use the mwbugs taxon tables with some differences at these high levels, 
+ # I will use the most commonly applied names for each family
+all_fam <- unique(tfill$family)
+all_fam <- all_fam[!is.na(all_fam)]
+for(i in 1:length(all_fam)){
+  tfill_classi <- aggregate(tfill$class[tfill$family == all_fam[i]],
+                            by = list(class = tfill$class[tfill$family == all_fam[i]]),
+                            FUN = length)
+  tfill_classi <- tfill_classi[which.max(tfill_classi$x),]
+  if(nrow(tfill_classi) > 1) stop("1")
+  tfill_orderi <- aggregate(tfill$order[tfill$family == all_fam[i]],
+                            by = list(order = tfill$order[tfill$family == all_fam[i]]),
+                            FUN = length)
+  tfill_orderi <- tfill_orderi[which.max(tfill_orderi$x),]
+  if(nrow(tfill_orderi) > 1) stop("2")
+  tfill_phylumi <- aggregate(tfill$phylum[tfill$family == all_fam[i]],
+                            by = list(phylum = tfill$phylum[tfill$family == all_fam[i]]),
+                            FUN = length)
+  tfill_phylumi <- tfill_phylumi[which.max(tfill_phylumi$x),]
+  if(nrow(tfill_phylumi) > 1) stop("3")
+  tfill$class[!is.na(tfill$family) & tfill$family == all_fam[i]] <- tfill_classi$class
+  if(nrow(tfill_orderi) > 0) # "Aeolosomatidae" has no order in tfill
+  tfill$order[!is.na(tfill$family) & tfill$family == all_fam[i]] <- tfill_orderi$order
+  tfill$phylum[!is.na(tfill$family) & tfill$family == all_fam[i]] <- tfill_phylumi$phylum
+}
+
 tfill$family[tfill$max_p_identity < 92] <- NA
 ### sum(!is.na(tfill$order[tfill$max_p_identity < 92])) #280 records with an order value but sim < 92
 tfill$order[tfill$max_p_identity < 85] <- NA
@@ -1472,20 +1704,46 @@ tfill$order[tfill$max_p_identity < 85] <- NA
 
 ```{r}
 # Check that tfill and tfill_spp_bins are consistent.
+tfill_spp_bins <- tfill_spp_bins[tfill_spp_bins$asv_code %in% tfill$asv_code,] #22833
 for(i in 1:nrow(tfill_spp_bins)){
   if(unique(tfill$species[tfill$asv_code == tfill_spp_bins$asv_code[i]]) != tfill_spp_bins$species[i])
     stop("Check")
 }
+
 tfill_spp_bins_unq <- unique(tfill_spp_bins[,c("species","bin_uri")])
 
 check <- tfill_spp_bins[!grepl("group", tfill_spp_bins$species) & 
                           !grepl("/", tfill_spp_bins$species) & 
                           grepl("B-", tfill_spp_bins$species),]
 wronguns <- check[!is.na(check$bin_uri) & check$bin_uri != right(check$species,7),]
-nrow(wronguns) # 6, all on BOLD, but without registered bins, so they are ok.
+nrow(wronguns) # 6, all on BOLD, but without registered bin, so they are ok.
 
 tfill_with_unidents <- tfill
 tfill$species[grep("Unident", tfill$species)] <- NA
+
+# Final corrections after check:
+# Cantharidae (terrestrial) incorrectly ided as a mite
+tfill$family[tfill$asv_code == "e0e4295f952841ffdce6ef8a8d9f47a4"] <- unique(match_list_bin_uri$`e0e4295f952841ffdce6ef8a8d9f47a4`$family)
+tfill$order[tfill$asv_code == "e0e4295f952841ffdce6ef8a8d9f47a4"] <- unique(match_list_bin_uri$`e0e4295f952841ffdce6ef8a8d9f47a4`$order)
+tfill$class[tfill$asv_code == "e0e4295f952841ffdce6ef8a8d9f47a4"] <- unique(match_list_bin_uri$`e0e4295f952841ffdce6ef8a8d9f47a4`$class)
+# move this record to non_aqu table
+tfill_nonaq <- rbind(tfill_nonaq, tfill[tfill$asv_code == "e0e4295f952841ffdce6ef8a8d9f47a4",match(names(tfill_nonaq),names(tfill))])
+tfill <- tfill[tfill$asv_code != "e0e4295f952841ffdce6ef8a8d9f47a4",]
+
+tfill$class[tfill$asv_code %in% c("5ee6f843edebd5f09f03f17b02bb7d49","9baaed70254ca767c234a821ee00c228",
+                                  "d610c4e9de8595451e503c3dc76eb9e4")] <- "Ostracoda"
+tfill$family[tfill$asv_code %in% c("5ee6f843edebd5f09f03f17b02bb7d49","9baaed70254ca767c234a821ee00c228",
+                                   "d610c4e9de8595451e503c3dc76eb9e4")] <- "Cyprididae"
+tfill$genus[tfill$asv_code %in% c("5ee6f843edebd5f09f03f17b02bb7d49","9baaed70254ca767c234a821ee00c228",
+                                   "d610c4e9de8595451e503c3dc76eb9e4")] <- NA
+tfill$species[tfill$asv_code %in% c("5ee6f843edebd5f09f03f17b02bb7d49","9baaed70254ca767c234a821ee00c228",
+                                   "d610c4e9de8595451e503c3dc76eb9e4")] <- "Cyprididae sp. MC-BC4"
+tfill_nonaq <- rbind(tfill_nonaq, tfill[tfill$asv_code %in% c("5ee6f843edebd5f09f03f17b02bb7d49","9baaed70254ca767c234a821ee00c228",
+                                   "d610c4e9de8595451e503c3dc76eb9e4")
+                                   ,match(names(tfill_nonaq),names(tfill))])
+tfill <- tfill[!tfill$asv_code  %in% c("5ee6f843edebd5f09f03f17b02bb7d49","9baaed70254ca767c234a821ee00c228",
+                                   "d610c4e9de8595451e503c3dc76eb9e4"),]
+tfill$species[tfill$asv_code == "481a60f22ae6085452ec29c76c4b93b9"] <- "Trombidioidea sp. MC-1"
 
 ```
 
@@ -1507,7 +1765,7 @@ tfill_nonaq$species[!is.na(tfill_nonaq$family) & is.na(tfill_nonaq$genus) & grep
 # non-macro non-aqu checked records
 nmna <- all_MC_checks[!all_MC_checks$asv_code %in% tfill$asv_code,]
 # Only those records identified as requiring a change 
-nmna <- nmna[grep("name", nmna$action),]  # 526 records
+nmna <- nmna[grep("name", nmna$action),]  # 512 records
 
 # MEL: there are 13 records (here, in not_in_asv_lib: MEL: this was 22 in the last version), most of which look aquatic that are in all_MC_checks, but not in any of the input data used to build asv_library as far as I can see.  I will ignore for now, unless you really want to include them in the library (in which case, can you please dig up their original records with the fields that match tfill?)
 #CHRIS: Looking at the nmna records above I can see 1a81e300f12b366e35d95243952e2b37 and 43409a5e755ee995f4afa01e3188fe10 should not be renamed according to my 'checked_species' name (i was mistaken) the remainder are either terrestrial (which I don't expect you to check), additional taxonomic information for available for aquatic/terrestrial species or Proteobacteria (that may be identified as invertebrate DNA in the vsearch library - some people deposit what they think the have an invert DNA sequence when they have actually have the bacteria living in the insect) CHRIS2: please read in the file below for explanations
@@ -1519,9 +1777,9 @@ not_in_asv_lib <- nmna[!nmna$asv_code %in% tfill_nonaq$asv_code &
                          !nmna$asv_code %in% all_records$asv_code,]
 # sum(nmna$asv_code %in% all_records_non_aq$asv_code)
 #CHRIS: On my checking all these records come from the MW46 dataset prior to any filtering.
+
 # MEL: I still haven't included these in tfill. The two records you identify above are from mw46 and have no match with BOLD (according to bold_results), and therefore should not keep their original names of Micronecta sp. B-ACG1960 and Nais sp. B-AAF9652.  A few other records in nmna are aquatic, but I cannot find them in any of the source files I have been working with (e.g. "f6a0d1f9bec02a7dc7e59e894a3e874d", "0d73b0f475b83e1069d9f2e38f4b5758"). Unless you can point me to their original records, I will continue to not include these records. CHRIS2: I suspect the source file you has been filtered by you and used the version on your database for subsequent checks, You will find the records without filtering here:
 MW46_unfiltered <- readxl::read_xlsx("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/All_MW46_metabarcoding_data.xlsx", sheet = "raw_data")
-
 
 nmna <- nmna[!nmna$asv_code %in% not_in_asv_lib$asv_code,] #513 records
 
@@ -1589,33 +1847,34 @@ for(i in 1:nrow(nmna)){
 bact_records$species_old <- NA
 tfill_nonaq <- rbind(tfill_nonaq, bact_records)
 
-
 # build tfill_nonaq_spp_bin
 tfill_nonaq$n_bold_matches <- 0
 for(i in 1:nrow(tfill_nonaq)){
-  if(tfill_nonaq$asv_code[i] %in% names(match_list_bin_uri)){
-    matchi <- match_list_bin_uri[[tfill_nonaq$asv_code[i]]]
+  if(tfill_nonaq$asv_code[i] %in% unique(bold_results$asv_code)){
+    matchi <- bold_results[bold_results$asv_code == tfill_nonaq$asv_code[i],]
     matchi_97 <- matchi[matchi$similarity >= 97,]
     if(nrow(matchi_97) > 0)
     tfill_nonaq$n_bold_matches[i] <- length(unique(matchi_97$bin_uri))
   }}
 
 tfill_nonaq_spp_bins <- data.frame(tfill_nonaq[tfill_nonaq$n_bold_matches > 0, c("asv_code","species")],
-                             bin_uri = NA)
+                             bin_uri = NA, similarity = NA)
 add_bins <- tfill_nonaq_spp_bins[0,]
 for(i in 1:nrow(tfill_nonaq_spp_bins)){
-    matchi <- match_list_bin_uri[[tfill_nonaq_spp_bins$asv_code[i]]]
-    bins <- matchi$bin_uri[matchi$similarity >= 97]
-    bins <- unique(bins[!is.na(bins) & !bins == ""])
-  if(length(unique(bins)) == 0){
+    matchi <- bold_results[bold_results$asv_code == tfill_nonaq_spp_bins$asv_code[i],]
+    bins <- matchi[matchi$similarity >= 97,]
+    bins <- aggregate(bins["similarity"],by = list(bin_uri = bins$bin_uri), FUN = max)
+  if(nrow(bins) == 0){
      stop("1")
     }else{
-    tfill_nonaq_spp_bins$bin_uri[i] <- unique(bins)[1]
-    if(length(unique(bins)) > 1){
+    tfill_nonaq_spp_bins$bin_uri[i] <- bins$bin_uri[1]
+    tfill_nonaq_spp_bins$similarity[i] <- bins$similarity[1]
+    if(nrow(bins) > 1){
       add_bins <- rbind(add_bins, 
                               data.frame(asv_code = tfill_nonaq_spp_bins$asv_code[i],
-                              species = tfill$species[tfill$asv_code == tfill_nonaq_spp_bins$asv_code[i]],      
-                              bin_uri =bins[-1]))
+                              species = tfill_nonaq$species[tfill_nonaq$asv_code == tfill_nonaq_spp_bins$asv_code[i]],      
+                              bin_uri = bins$bin_uri[-1],
+                              similarity = bins$similarity[-1]))
     }
     }
 }
@@ -1655,7 +1914,6 @@ for(i in 1:nrow(tfill_nonaq)){
     tfill_nonaq$max_p_update[i] <- 1
     }
 }
-
 # And having corrected the max_p_identity field, repeat clean up of taxon fields
 tfill_nonaq$species[tfill_nonaq$max_p_identity < 97] <- NA
 tfill_nonaq$genus[tfill_nonaq$max_p_identity < 95] <- NA
@@ -1672,8 +1930,11 @@ tfill_nonaq <- tfill_nonaq[tfill_nonaq$kingdom != "Unassigned",]  # reduced to 3
 Recompile final ASV_library tables, adding back in the non-macroinvertebrate, non-aquatic species removed before the above BOLD matches, adding a column "cw_checked" to identify those records that have been checked by the above processes (cw_checked = 1), and species excluded by the only_aqu_inverts() function (cw_checked = 0)
 
 ```{r}
-
 # # MEL: We can combine the aquatic and non_aquatic tables when we are done, but I want to leave the aquatic separate while we are still working on cross-checking CHRIS2: no problem.
+
+#| eval: false
+#| 
+
 # Create a column flagging those aquatic records (checked by cw), and non-aquatic records (only partly checked by cw)
 tfill$aqu <- 1
 tfill_nonaq <- 0
