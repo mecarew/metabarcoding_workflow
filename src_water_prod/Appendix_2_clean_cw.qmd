@@ -463,13 +463,13 @@ tfill_all <- rbind(truncated_fills_df, max_p_update_df)    # 15595 records
 bact_bold_asvs <- unique(bold_results$asv_code[bold_results$phylum %in% c("Proteobacteria","Ciliophora") |
                                                  grepl("mycota", bold_results$phylum) |
                                                  grepl("phyta", bold_results$phylum)])
-# MEL: I broadened this 'put-aside' criterion because many of your "Proteobacteria" comments 
+# MEL: I broadened this 'put-aside' criterion because many of your "Proteobacteria" comments CHRIS2: OK
 # in your check files were in fact other things captured by this new criterion                                             
 bact_records <- all_MC_checks$asv_code[all_MC_checks$checked_species_name == "Proteobacteria" | 
                                 all_MC_checks$comments == "Proteobacteria"]
-# MEL: 2 of the 47 in bact_records (i.e. records you identified as bacteria) are not in bold_results
+# MEL: 2 of the 47 in bact_records (i.e. records you identified as bacteria) are not in bold_results CHRIS2: I am confident these 2 records are bacteria
 bact_records[!bact_records %in% bact_bold_asvs]
-#      The second one has BOLD records suggesting insecta.  For now, I will assume you are right, but you might want to check.
+#      The second one has BOLD records suggesting insecta.  For now, I will assume you are right, but you might want to check.CHRIS2: This is an error on bold, the other sequences that are close matches are bacteria.
 bold_results[bold_results$asv_code %in% bact_records[!bact_records %in% bact_bold_asvs],]
 
 bact_records <- unique(c(bact_bold_asvs, bact_records))
@@ -477,7 +477,7 @@ names(all_records)[names(all_records) == "asv_seq"] <- "asv_sequence"
 bact_records <- rbind(tfill_all[tfill_all$asv_code %in% bact_records,],
                       all_records[all_records$asv_code %in% bact_records,])
 # Change those records formerly ided as Arthropoda (or no Phylum at all) to Proteobacteria
-### MEL: is this the right logic? ((note all these records get re-included in tfill at the end of the script))
+### MEL: is this the right logic? ((note all these records get re-included in tfill at thf1af7c78e098ac3d8f195adadae2a33ce end of the script)) CHRIS2:Yes. These id's are bacteria but the people depositing them it the databases thought they were arthropods. For us it is about assigning them correctly so we can ignore them.
 pb <- which(is.na(bact_records$phylum) | 
             (!is.na(bact_records$phylum) & bact_records$phylum == "Arthropoda"))
 bact_records$kingdom[pb] <- "Prokaryota"
@@ -677,23 +677,24 @@ acceptably_close <- c("Triplectides truncatus" = 96.4,
                       "Micronecta sp. MC-2" = 96.9,
                       "Polypedilum sp. B-AED8040" = 96.1,
                       "Austrogammarus sp. MC-CNB47" = 96.05,
-                      "Pontogeneiidae sp. MC-1" = 96.5, # MEL: This covers 2 Pontogeneiidae sp. MC-1 records that are similar to bin_uri AGK4900: there are 8 others with substantially lower match than this: are they really the same species?
-                      "Pseudomoera fontana" = 95.61, # MEL: do you really want to go this low? there are 3 with this name with sim >96.5, and 4 with lower sim 
+                      "Pontogeneiidae sp. MC-1" = 96.5, # MEL: This covers 2 Pontogeneiidae sp. MC-1 records that are similar to bin_uri AGK4900: there are 8 others with substantially lower match than this: are they really the same species? CHRIS2: OK. so I have gone into my private library and check this using phylogenetic trees of 11 specimens I have full DNA barcodes for. Pontogeneiidae sp. MC-1 seems to from two closely related groups. I have called all Pontogeneiidae sp. MC-1. Looking more are these two groups I think I should have used two different names as the distances between the groups looks to be sufficently different to justify calling them two different species. I only submitted sequences for one of these groups to bold. I account for this in the tfill table I suggest we use the bold name (Pontogeneiidae sp. B-AGK4900) for the sequence that are a close match for the 8 sequences that are more distant use 'Pontogeneiidae sp. MC-1'. When I submit all the sequences to bold, they will be mostly assigned a new bin_uri which will fix the issue permanently. I have included a tree in my e-mail so you can see what I see
+                      "Pseudomoera fontana" = 95.61, # MEL: do you really want to go this low? there are 3 with this name with sim >96.5, and 4 with lower sim CHRIS2:For Pseudomoera fontana there are two specimens in my private library (both from the upper Yarra, which are also on bold), so it is possible there is more genetic diversity not captured in the reference specimens that is in the metabarcoding dataset, I would need to DNA barcode more specimens to determine this. I think we can justify keeping records that are matched of >96 as Pseudomoera fontana  but for records with matches <96 lets leave them at family level. 
                       "Sclerocyphon striatus" = 96.45,
                       "Stratiomyidae sp. MC-1" = 96.45,
                       "Tanytarsini sp. B-AED8094" = 96.1,
                       "Austropsyche sp. MC-1" = 96.1) #,
-                      # MEL: the following are cases where my first instinct is to think you are pushing similarities too far.
+                      # MEL: the following are cases where my first instinct is to think you are pushing similarities too far. CHRIS2: I have been indecisive with this record. Austropsyche sp. MC-1 is a specimen I DNA sequenced which matches a specimen on bold (Austropsyche sp. B-AAW3080) at 96.5, then I have matched to a asv at 96.1. I am happy for you to leave this at genus level. I agree I am grasp for an id here 
                       # (I don't really understand your explanation: "Keep in mind these are all DNA sequences generated 
-                      # from vouchered specimens (not metabarcodes)." I think it would be worth you adding an explanation/justification
+                      # from vouchered specimens (not metabarcodes)." I think it would be worth you adding an explanation/justification CHRIS2: What I am saying here is a >=97 match to the private library should have the same weight as a >=97 match to bold, as the asv is matching a sequence generated from a reference specimen.
                       # For using such low thresholds in comments on each line, or at least at the end of the statement)
                       # (94 seems very low given this is below the threshold for genus level, but I've selected the lowest value for each 
                       # species...this results in for instance, Apsectrotanypus sp. MC-1 and Apsectrotanypus sp. MC-4 overlapping, and 
                       # requiring to be grouped - same for Austrochiltonia sp. MC-1 and Austrochiltonia australis, 
+#CHRIS#2: I have provide a trees in email for Apsectrotanypus and Austrochiltonia  There were only single individuals sequence for Apsectrotanypus sp. MC-1 and Apsectrotanypus sp. MC-4 and they were closely related to Apsectrotanypus sp. B-ACD5991. If there are matches >=97 in the private library to Apsectrotanypus sp. MC-1 and Apsectrotanypus sp. MC-4 use these names. For Austrochiltonia sp. MC-1 and Austrochiltonia australis, they are very close, there appears to be one specimen in my private library named Austrochiltonia sp. MC-1 when it groups with Austrochiltonia australis. This will make it appear that there is overlap when there may not be. I suggest any specimen that matches Austrochiltonia australis in bold v5 at >=97 stay Austrochiltonia australis and any that does not but matches Austrochiltonia sp. MC-1 in the private library >= 97 be called Austrochiltonia sp. MC-1.
                       # which had some records overlapping already...
 ### Actually, I chickened out of this approach. As well as feeling uncomfortable about it, I am also fairly sure it is going to 
 ###  introduce problems with my code below combining species into groups.
-###  Can I get you to have a good hard look at check_no_bold after it has been reduced to 300 records (L70 of the cross-check document, having run this whole document) and think carefully about what you want to do with all of those private library entries with low matches to BOLD.  If you really want to include them, perhaps it would be easiest just to add them to the private library file that I have produced (and load above), which currently includes only those records that you have shown to be valid....or you could just accept my code's decision to only give them a taxonomic level appropriate to their match. Orthocladiinae SO4 is one that worries me in particular: we have some records of that species with 100% match to bin_uris, but several of your private library SO4 records have similarity <95%. Doesn't that suggest different families?
+###  Can I get you to have a good hard look at check_no_bold after it has been reduced to 300 records (L70 of the cross-check document, having run this whole document) and think carefully about what you want to do with all of those private library entries with low matches to BOLD.  If you really want to include them, perhaps it would be easiest just to add them to the private library file that I have produced (and load above), which currently includes only those records that you have shown to be valid....or you could just accept my code's decision to only give them a taxonomic level appropriate to their match. Orthocladiinae SO4 is one that worries me in particular: we have some records of that species with 100% match to bin_uris, but several of your private library SO4 records have similarity <95%. Doesn't that suggest different families? CHRIS2: For Orthocladiinae SO4 see my e-mail there is only 1 of 5 reference specimens on bold. I still think it should be grouped.
                       # "Apsectrotanypus sp. MC-1" = 94.2,
                       # "Apsectrotanypus sp. MC-4" = 94.2,
                       # "Aulodrilus sp. MC-4" = 95.45,
@@ -706,8 +707,8 @@ acceptably_close <- c("Triplectides truncatus" = 96.4,
                       # "Cricotopus sp. MC-BC1" = 94.1,
                       # "Dicrotendipes lindae" = 94.0
                       # )
-
-#  #Austroaeschna atra (TAR29Tele2,	ON09Ase2) and Nothocyphon frater(DB8Scrit2),
+#CHRIS2: these matches from bold v5? because all these species are from my private library. If the show a match to my private library please use that match not the one from bold. The only discrepacy will be Aulodrilus sp. MC-4 (called Haplotaxia sp. MC-5 in my private library but the sequence had a genus match to Aulodrilus on bold). if these matches are from my private library, then they should not have species names
+#  #Austroaeschna atra (TAR29Tele2,	ON09Ase2) and Nothocyphon frater (DB8Scrit2),
 # # Tenagogerris euphrosyne (MMN6Gerri1), Molophilus tenuiclavus (DC8AKElm2) matched
 # # between 96-97 and I used these names based on database matches but my feeling is
 # # they are the correct species assignments and there is more the 3% divergence among species.
@@ -925,10 +926,8 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "ADR7325" = "Ceratopogonidae sp. B-ADR7325",  # BOLD Ceratopogoninae, tfill either Ceratopogonidae sp. MC-3 or Ceratopogonidae sp. MC-26
 "AGL9707" = "Dixella humeralis", # BOLD either Dixidae or Dixella but Dixella humeralis id by Chris Hardy has been confirmed.
 "AGL9705" = "Dixella sp. B-AGL9705", # BOLD Dixidae, but it overlaps with AGL9707, tfill either Dixidae sp. MC-2 or Dixidae sp. MC-4 
-
-"AGN3107" = "Dytiscidae sp. B-AGN3107", # BOLD Chostonectes, but see next, tfill Platynectes sp. MC-6 CHRIS: This is my specimen (KWG17Dyt2) identified to genus as Chostonectes. Please use Chostonectes  # MEL: I have to insist on using the family name (or alternatively you need to decide which species "AGN3107" and "AGK5172" are, and give them that name). # MEL: I have to insist on using the family name (or alternatively you need to decide which species "AGN3107" and "AGK5172" are, and give them that name). These two bins have 100% similarity and cannot be given different genus names.
-"AGK5172" = "Dytiscidae sp. B-AGK5172", # BOLD  Platynectes and Costonectes overlaps with AGN3107, so lump to family, given uncertainty, tfill Platynectes sp. MC-6 CHRIS: This is my specimen (KWG17Dyt1) identified to genus as . Please use Platynectes #MEL:see the previous bin_uri CHRIS2: I remember addressing this maybe it was in the other .qmd. Please use Dytiscidae (not the genus names at this point). Looking back can see I have create this confusion and need to correct it on BOLD. I'm pretty sure it is Chostonectes and Platynectes is wrong, but I really need to go back a check the specimens.
-
+"AGN3107" = "Dytiscidae sp. B-AGN3107", # BOLD Chostonectes, but overlaps with AGK5172, identified as Platynectes.  THus conservatively called Dytiscidae
+"AGK5172" = "Dytiscidae sp. B-AGK5172", # BOLD Platynectes: see previous entry
 "AGQ6047" = "Polypedilum sp. B-AGQ6047", # BOLD Chironomidae, but overlaps with AGK4964 see next, tfill Polypedilum sp. B-AGQ6047 or Polypedilum sp. MC-FS1
 "AGK4964" = "Polypedilum sp. B-AGK4964", # BOLD Polypedilum, tfill Polypedilum sp. B-AGQ6047 or Polypedilum sp. MC-FS1
 "ACG8753" = "Polypedilum sp. B-ACG8753", # BOLD Chironomidae or Polypedilum, but a small overlap with AGK4964 and AGQ6047, tfill Polypedilum sp. B-ACG8753 or Polypedilum sp. MC-FS1 
@@ -1451,7 +1450,6 @@ The following logic is used to adjust max_p_identity values:
 
 3. MEL: what I do with the <94 matches ...depends on answers to my questions I sought clarification on in the email on Tuesday. CHRIS2: I assume this is 293 sequences that you send me. I'll deal with these at the end of the Appendix_2_cross_check_manual.qmd
 
-
 ```{r}
 # Create a field identifying records with changed max_p_identity
 tfill$max_p_update <- 0
@@ -1524,15 +1522,15 @@ for(i in 1:nrow(gen_levels)){
 
 # MEL: the above creation of check1 and check2 concerns records with no species name, but a genus name  (or potentially should have one)
 # MEL: you might want to check these 22 records for which you have nominated a genus name, but BOLD doesn't
-#      I have assumed you are right, and have left the genus names as they were
+#      I have assumed you are right, and have left the genus names as they were. CHRIS: these genus names are from my specimens I identified in my private library (not all appear on bold). If the match is between >=95 to =<97 please keep the genus names
 check1
-# MEL: and you should check these 11 records where your genus name differs from BOLD's genus name, and 75 where genus was empty
-#      In these cases I have assumed BOLD is right and changed the genus name (and higher taxon names - below-, as many were wildly different!) (except  where BOLD was uncertain, where I have left the values as you had them)
+# MEL: and you should check these 11 records where your genus name differs from BOLD's genus name, and 75 where genus was empty CHRIS2: Please use the bold names here if they are different to the old name for check 1 and check2.
+#      In these cases I have assumed BOLD is right and changed the genus name (and higher taxon names - below-, as many were wildly different!) (except  where BOLD was uncertain, where I have left the values as you had them) CHRIS2: I am happy with this change
 # # MEL: 
 # # On visually checking BOLD uncertains for records that have been identified as Physella, Procorticacarus, the original genus attribution seems fine, and they have been left.
-# "5a84cdcd6ee9eda0fed0fbdc6ab4ace5" # - Bold has ids of both a mosquito and a chironomid.I tentatively remove this record from the library altogether. OK?
-# "7376b4eacf0e1abd830fc61287b7dae1" # BOLD ids are all over the place, and certainly not Tanyderidae that this record was identified as. I tentatively remove this record from the library altogether. OK?
-# "a7b681bebe2741ff1dc9e4cb9eeb7cc9" # BOLD genus IDs are all over the place, but they agree it is Sphaeriidae.  I opted to remove genus name from this record.
+# "5a84cdcd6ee9eda0fed0fbdc6ab4ace5" # - Bold has ids of both a mosquito and a chironomid.I tentatively remove this record from the library altogether. OK? CHRIS2: Yes. it is ambigous
+# "7376b4eacf0e1abd830fc61287b7dae1" # BOLD ids are all over the place, and certainly not Tanyderidae that this record was identified as. I tentatively remove this record from the library altogether. OK? CHRIS2: Yes. Also ambigous.
+# "a7b681bebe2741ff1dc9e4cb9eeb7cc9" # BOLD genus IDs are all over the place, but they agree it is Sphaeriidae.  I opted to remove genus name from this record. CHRIS: sounds fine to me
 check2
 
 for(i in 1:nrow(check2)){
@@ -1658,7 +1656,7 @@ for(i in 1:nrow(fam_levels)){
   }
 }
 
-# MEL: the above creation of check3 and check4 concerns records with no species or genus names, but a family name (or potentially should have one)
+# MEL: the above creation of check3 and check4 concerns records with no species or genus names, but a family name (or potentially should have one) CHRIS2: please use the bold family names
 # MEL:  check3 suggests there are no cases where you have nominated a family name, but BOLD doesn't  (so no need for you to check)
 check3
 # MEL: check4 is fine too (so no need for you to check). It adds a few non-macro/non-aqu family names. I will fix all of them here
@@ -1747,9 +1745,10 @@ tfill$species[tfill$asv_code == "481a60f22ae6085452ec29c76c4b93b9"] <- "Trombidi
 
 ```
 
-Non-aquatic/non-macroinvertebrate records were checked and corrected by Mel Carew in a separate, non-scripted process. These records are corrected and added to tfill here using a file compiled from Mel's correction spreadsheets.  MEL: this is not going to be 100% right (I know some of the taxonomic fields are not fully populated - I am not familiar enough with the taxonomy of these species to do any more), but it will be better than if it was uncorrected. I've wasted too much time on your non-aquatic records to spend any more time on this. CHRIS2: I will deal with these. Pretty sure I know how to tackle it.
+Non-aquatic/non-macroinvertebrate records were checked and corrected by Mel Carew in a separate, non-scripted process. These records are corrected and added to tfill here using a file compiled from Mel's correction spreadsheets.  MEL: this is not going to be 100% right (I know some of the taxonomic fields are not fully populated - I am not familiar enough with the taxonomy of these species to do any more), but it will be better than if it was uncorrected. I've wasted too much time on your non-aquatic records to spend any more time on this. CHRIS2: I will attend to this down the track
 
 ```{r}
+
 # Some ad-hoc corrections to max_p_update not captured with the above being restricted to aquatic records
 tfill_nonaq$genus[!is.na(tfill_nonaq$genus) & tfill_nonaq$genus == "Cernosvitoviella aggtelekiensis"] <- "Cernosvitoviella"
 tfill_nonaq$species[!is.na(tfill_nonaq$genus) & tfill_nonaq$genus == "Miselaoma"] <- "Miselaoma sinistra"
@@ -1768,8 +1767,11 @@ nmna <- all_MC_checks[!all_MC_checks$asv_code %in% tfill$asv_code,]
 nmna <- nmna[grep("name", nmna$action),]  # 512 records
 
 # MEL: there are 13 records (here, in not_in_asv_lib: MEL: this was 22 in the last version), most of which look aquatic that are in all_MC_checks, but not in any of the input data used to build asv_library as far as I can see.  I will ignore for now, unless you really want to include them in the library (in which case, can you please dig up their original records with the fields that match tfill?)
-#CHRIS: Looking at the nmna records above I can see 1a81e300f12b366e35d95243952e2b37 and 43409a5e755ee995f4afa01e3188fe10 should not be renamed according to my 'checked_species' name (i was mistaken) the remainder are either terrestrial (which I don't expect you to check), additional taxonomic information for available for aquatic/terrestrial species or Proteobacteria (that may be identified as invertebrate DNA in the vsearch library - some people deposit what they think the have an invert DNA sequence when they have actually have the bacteria living in the insect) CHRIS2: please read in the file below for explanations
-not_in_asv_lib_exp <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/not_in_asv_lib_reasons.csv")
+#CHRIS: Looking at the nmna records above I can see 1a81e300f12b366e35d95243952e2b37 and 43409a5e755ee995f4afa01e3188fe10 should not be renamed according to my 'checked_species' name (i was mistaken) the remainder are either terrestrial (which I don't expect you to check), additional taxonomic information for available for aquatic/terrestrial species or Proteobacteria (that may be identified as invertebrate DNA in the vsearch library - some people deposit what they think the have an invert DNA sequence when they have actually have the bacteria living in the insect) CHRIS2: please read in the file below for explanations. I suspect the source file you has been filtered by you and used the version on your database for subsequent checks, You will find the records without filtering here:
+#MW46_unfiltered <- readxl::read_xlsx("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/All_MW46_metabarcoding_data.xlsx", sheet = "raw_data")
+#not_in_asv_lib_exp <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/not_in_asv_lib_reasons.csv")
+
+ 
 
 not_in_asv_lib <- nmna[!nmna$asv_code %in% tfill_nonaq$asv_code & 
                          !nmna$asv_code %in% all_records_non_aq$asv_code & 
@@ -1777,9 +1779,7 @@ not_in_asv_lib <- nmna[!nmna$asv_code %in% tfill_nonaq$asv_code &
                          !nmna$asv_code %in% all_records$asv_code,]
 # sum(nmna$asv_code %in% all_records_non_aq$asv_code)
 #CHRIS: On my checking all these records come from the MW46 dataset prior to any filtering.
-
-# MEL: I still haven't included these in tfill. The two records you identify above are from mw46 and have no match with BOLD (according to bold_results), and therefore should not keep their original names of Micronecta sp. B-ACG1960 and Nais sp. B-AAF9652.  A few other records in nmna are aquatic, but I cannot find them in any of the source files I have been working with (e.g. "f6a0d1f9bec02a7dc7e59e894a3e874d", "0d73b0f475b83e1069d9f2e38f4b5758"). Unless you can point me to their original records, I will continue to not include these records. CHRIS2: I suspect the source file you has been filtered by you and used the version on your database for subsequent checks, You will find the records without filtering here:
-MW46_unfiltered <- readxl::read_xlsx("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/All_MW46_metabarcoding_data.xlsx", sheet = "raw_data")
+#### MEL: I still haven't included these in tfill. The two records you identify above are from mw46 and have no match with BOLD (according to bold_results), and therefore should not keep their original names of Micronecta sp. B-ACG1960 and Nais sp. B-AAF9652.  A few other records in nmna are aquatic, but I cannot find them in any of the source files I have been working with (e.g. "f6a0d1f9bec02a7dc7e59e894a3e874d", "0d73b0f475b83e1069d9f2e38f4b5758"). Unless you can point me to their original records, I will continue to not include these records CHRIS2: The breakdown of the records above in 'not_in_asv_lib_exp' should tell yo what to do.
 
 nmna <- nmna[!nmna$asv_code %in% not_in_asv_lib$asv_code,] #513 records
 
@@ -1930,11 +1930,9 @@ tfill_nonaq <- tfill_nonaq[tfill_nonaq$kingdom != "Unassigned",]  # reduced to 3
 Recompile final ASV_library tables, adding back in the non-macroinvertebrate, non-aquatic species removed before the above BOLD matches, adding a column "cw_checked" to identify those records that have been checked by the above processes (cw_checked = 1), and species excluded by the only_aqu_inverts() function (cw_checked = 0)
 
 ```{r}
-# # MEL: We can combine the aquatic and non_aquatic tables when we are done, but I want to leave the aquatic separate while we are still working on cross-checking CHRIS2: no problem.
-
 #| eval: false
 #| 
-
+# # MEL: We can combine the aquatic and non_aquatic tables when we are done, but I want to leave the aquatic separate while we are still working on cross-checking CHRIS: OK
 # Create a column flagging those aquatic records (checked by cw), and non-aquatic records (only partly checked by cw)
 tfill$aqu <- 1
 tfill_nonaq <- 0
