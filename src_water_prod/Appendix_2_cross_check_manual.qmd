@@ -13,11 +13,11 @@ MEL: I've removed a lot of past workings here, as the checks are looking pretty 
 all_MC_checks <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/all_mc_checks.csv")
 # your validated private library compiled in compilation_of_osf_files ## 3
 priv_lib <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/priv_lib_validated.csv")
-tfill <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/ChrisW/temp/asv_library_corrected.xlsx"),
-                       sheet = "tfill")
+tfill <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/ChrisW/temp/asv_library_corrected.xlsx",,
+                       sheet = "tfill"))
 tfill <- tfill[tfill$aqu == 1,]
-tfill_spp_bins <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/ChrisW/temp/asv_library_corrected.xlsx"),
-                       sheet = "tfill_spp_bins")
+tfill_spp_bins <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/ChrisW/temp/asv_library_corrected.xlsx",
+                       sheet = "bin_uris"))
 load("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/match_list_bin_uri_v5.rda")
 bold_results <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/match_bold_v5.csv")
 priv_lib_spp <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/private_library_mc_validated.xlsx", sheet = "species"))
@@ -31,48 +31,46 @@ check_no_bold <- all_MC_checks[all_MC_checks$asv_code %in% asv_no_bold,] #1534
 check_no_bold$species <- tfill$species[match(check_no_bold$asv_code, tfill$asv_code)]
 check_no_bold[is.na(check_no_bold)] <- ""  # for easier matching
 check_no_bold <- dplyr::mutate(check_no_bold, 
+                               max_p_identity =  tfill$max_p_identity[match(check_no_bold$asv_code, tfill$asv_code)],
                                max_sim_bold = tfill$max_sim_bold[match(check_no_bold$asv_code, tfill$asv_code)],
                                .after = bold_match)
 check_no_bold <- dplyr::mutate(check_no_bold, species_old = tfill$species_old[match(check_no_bold$asv_code,tfill$asv_code)], .before = bold_match)
-check_no_bold <- check_no_bold[check_no_bold$species != check_no_bold$checked_species_name,] # 38 records
+# Reduce to only those records where species and checked_species_name are not equivalent
+check_no_bold <- check_no_bold[check_no_bold$species != check_no_bold$checked_species_name,] # 361 records
 # Identify the check_no_bold records that share a name with records that actually have a >=97% bold match
 tfill_bold <-tfill[tfill$asv_code %in% unique(bold_results$asv_code[bold_results$similarity >= 97]),]  #17,046
-check_no_bold_spp_in_bold <- check_no_bold[check_no_bold$species %in% unique(tfill_bold$species),]   #21
-  # MEL: 21 records that are now called Notalina sp. B-ABV8023 (from the priv_lib_spp table)
-  #      None of these 21 have bold matches in my tables, but your geneious search has linked them to ABV8023
-  #      Are you sure about this? If so, I'm happy to go with it
+check_no_bold_spp_in_bold <- check_no_bold[check_no_bold$species %in% unique(tfill_bold$species),]   # 0 
+check_no_bold <- check_no_bold[!check_no_bold$asv_code %in% check_no_bold_spp_in_bold$asv_code,] # still 361 
+# remember that max_sim_bold in tfill is now max_sim_bold, or geneious_similarity if max_sim_bold 
+# was missing (no bold match) or if geneious_similarity was greater than max_sim_bold.
 
-check_no_bold <- check_no_bold[!check_no_bold$asv_code %in% check_no_bold_spp_in_bold$asv_code,] #17
-check_no_bold$genious_similarity <- priv_lib_spp$geneious_similarity[match(check_no_bold$asv_code, priv_lib_spp$asv_code)]
-for(i in which(is.na(check_no_bold$genious_similarity))){
-  if(check_no_bold$asv_code[i] %in% priv_lib_lt97$asv_code)
-  check_no_bold$genious_similarity[i] <- priv_lib_lt97$geneious_similarity[priv_lib_lt97$asv_code == check_no_bold$asv_code[i]]
-}
-#MEL: Here is some thoughts/questions on these remaining problems
-  # MEL: I'm pretty sure my code has the 5 Empididae sp. MC-Co1 names right. Please check. This line might help
-priv_lib_spp[priv_lib_spp$asv_code %in% check_no_bold$asv_code[check_no_bold$checked_species_name == "Empididae sp. MC-BC2"],]
-  # MEL: The 5 Stempellina sp. MC-A records should be only identified to family according to priv_lib_lt97
-priv_lib_lt97[priv_lib_lt97$asv_code %in% check_no_bold$asv_code[check_no_bold$bold_match == 93],]
-  # but my logic in Appendix_2_clean_cw.qmd doesn't make the change because the max_p_identity of these records in tfill are >97
-tfill[tfill$asv_code %in% check_no_bold$asv_code[check_no_bold$bold_match == 93],]
-  # (You told me to only change max_p_identity to geneious_similarity if the latter was higher).  
-#  See my questions about another example of the questions this logic raises at L1147 of Appendix_2_clean_cw.qmd
-priv_lib_lt97[priv_lib_lt97$asv_code %in% check_no_bold$asv_code[check_no_bold$species == "Austroargiolestes spp."],]
-tfill[tfill$asv_code %in% check_no_bold$asv_code[check_no_bold$species == "Austroargiolestes spp."],]
-  # Same deal with the two Austroargiolestes spp records. 
-# Perhaps the easiest solution here is to change all tfill details to priv_lib details, but I fear doing so might introduce other errors
-# It would be good if you could describe a clear logic as to how to adjust identities and max_p_identity from the geneious results.
+# First cases where corrected max_p_identity is <97 and checked_species name was not null 
+# (it should be, and the script ensures it is, so these tfill records are right)...
+# unless I have missed some of your files with checks against geneious - they were quite confusing
+lt97_no_sp_name <- check_no_bold[check_no_bold$checked_species_name != "" & check_no_bold$max_p_identity < 97,] 
+# 335 such entries. MEL: you should check these - you have given many a high bold match, but none of 
+#    them are in the bold results you have provided me with.  If we are to be sure about them, I really need those
+#    bold results and incorporate them into the script.
+# Some say Genbank only, and I'm feeling like I might have missed your check of those.  
+#  If you have a file of Genbank matches that I have missed, please point me to it.
 
-tfill[tfill$asv_code %in% check_no_bold$asv_code[check_no_bold$checked_species_name == "Notonemouridae"],]
-# Pretty sure these two are right (enough), but bb9f84db19013052915d3b1ac559f11f doesn't seem to have a geneious match.
-# Their max_p_identity of 90 seems to have done the job.
+# That leaves not too many problems
+check_no_bold <- check_no_bold[!check_no_bold$asv_code %in% lt97_no_sp_name$asv_code,] # 26
+check_no_bold
+# The first 5 are OK - checked and agreed that the script is right for those records of Empididae sp. MC-Co1
+# And the remainder are  the same 21 records Notalina sp. B-ABV8023  from last time.  If as you say, we've got
+# these wrong because they're not in my bold_results table, can we get them into the bold_results table? 
+# (together with any of the 335 lt97_no_sp_name records that are missing bold matches?)
+# I reckon you're right and these will group with Notalina bifara, and I was going to suggest you just change 
+# these and run with it (noting that it's "Notalina bifaria" rather than a "Notalina bifaria group" because it is 
+#  just grouping bin_uris not multiple named species (as per the logic set out in the Appendix 2 document.)
+# BUT the big list of other likely missing bold matches makes me nervous.  Can you please just run another 
+# bold search on all of 
+to_recheck_bold <- rbind(check_no_bold, lt97_no_sp_name)
+# and send me the results so that I can add them to bold_results?
+# And send me any genbank records (with a similarity field) that I might have missed?
 
-# After starting to comment on the next 2 + 1 records, I noticed that they have max_p_update = 1 
-# because they came from your original max_p_update table, so I'm thinking your undocumented
-# max_p_update values in that table are the problem. Correct?
-tfill[tfill$asv_code %in% check_no_bold$asv_code[check_no_bold$species == "Ceratopogonidae sp. B-ACC9111"],]
-# Your blank checked_species_name suggests that max_p_identity should be less than 97 (It's 99).  No geneious_similarity or a bold match for this one that I can fiind.
-tfill[tfill$asv_code %in% check_no_bold$asv_code[check_no_bold$species == "Limnesia undulata"],]
+# Everything else from here on is ok.
 
 check_with_bold <- all_MC_checks[!all_MC_checks$asv_code %in% asv_no_bold,]
 # Exclude non_aqu/non_macros not checked by CW
@@ -96,7 +94,7 @@ xa <- x[x$checked_species_name == "" & x$species != "",]
 # 25 cases where a low max_sim_bold has been replaced by a high geneious_similarity, for example
 check_with_bold[check_with_bold$checked_species_name == "" & check_with_bold$species == "Piona sp. B-AEI7143",]
 tfill[tfill$asv_code == "0beb9ec9626ac4c3d5b215d0ece3bba2",]
-# MEL: Are you happy with that? (see L1099 of Appendix_2_clean_cw)
+# MEL: Are you happy with that? (see L1099 of Appendix_2_clean_cw) CHRIS3: Yes
 
 # Records where the script removes a species name where check_species_name says there should be one
 xb <- x[x$checked_species_name != "" & x$species == "",]
@@ -104,11 +102,11 @@ xb <- x[x$checked_species_name != "" & x$species == "",]
 check_with_bold[check_with_bold$checked_species_name == "Stratiomyidae sp. B-AED3167" & check_with_bold$species == "",]
 tfill[tfill$asv_code == "5e54eb4fe2cfe6a15ed1b5c718f348f6",]
 max(match_list_bin_uri$`5e54eb4fe2cfe6a15ed1b5c718f348f6`$similarity)
-# MEL Are you happy with that?
+# MEL Are you happy with that? CHRIS3: Yes. I think this will make things easier moving forward
 
 x <- x[!(x$checked_species_name == "" | x$species == ""),] # down to 127
 
-# Groups MEL has lumped that the script identified as distinct
+# Groups MEL has lumped that the script identified as distinct CHRIS3: If you found no overlap, I am happy to go with your assessment. As I mentioned above Notalina sp. B-ABV8023 had some matching specimens identified as Notalina bifara. This was my reason for combining them
 # Note you were happy with x1, x2, x3 and x4 last time
 x1 <- x[duplicated(x$checked_species_name) | duplicated(x$checked_species_name, fromLast = TRUE),]
 # Groups that the script lumped and MEL had as separate
@@ -127,6 +125,7 @@ x <- x[!x$species %in% x4$species,]
 nrow(x)
 x
 # reduced to 15, # MEL: you might want to do a final re-check of x
+# CHRIS3: Happy with the final names for the final 15!
 
 ```
 

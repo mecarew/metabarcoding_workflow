@@ -266,7 +266,13 @@ all_records_aq_not_in_tfill <- all_records_aq[!all_records_aq$asv_code %in% tfil
 all_records_aq_not_in_tfill_bin <- all_records_aq_not_in_tfill[all_records_aq_not_in_tfill$asv_code %in% 
                                                                  c(asvs_bin_uri,asvs_bin_uri_lt97),] #8,031
 all_records_aq_only_in_priv_lib <- all_records_aq_not_in_tfill[all_records_aq_not_in_tfill$asv_code %in% 
-                                                                 c(priv_lib_spp$asv_code,priv_lib_lt97$asv_code),] #132
+                                                                 c(priv_lib_spp$asv_code,
+                                    priv_lib_lt97$asv_code[priv_lib_lt97$geneious_similarity > 86.2]),] #132
+# Note only priv_lib_lt97 records with geneious_similarity > 86.2 are reliable at the class level
+# an should not be used as a criterion for adding records to the asv_library from all_records.
+# These records have been kept in priv_lib_lt97 to allow vetting of tfill records below. 
+#  See compilation_of_osf_files.R  section ## 4.
+
 ### Records with matches <97 are added to the ASV library and dealt with below 
 # Add records with BOLD matches or private library matches to tfill
 tfill <- unique(rbind(tfill, all_records_aq_not_in_tfill_bin,
@@ -276,8 +282,8 @@ tfill <- tfill[!(tfill$asv_code == "25e0eb7ec4e2897802c911efcfc806f5" & tfill$ma
 #   Check species that had been excluded at this stage.  Only one
 excl_spp <- unique(tf2$species[!tf2$asv_code %in% tfill$asv_code])
 #         "Cernosvitoviella minor" a likely terrestrrial Enchytraeid.
-# save tfill at this point in final iteration to allow calculation of tfill_spp_bins in compilatino_of_osf_files.R
-save(tfill, file = "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/tfill_interim.rda")
+# # save tfill at this point in final iteration to allow calculation of tfill_spp_bins in compilatino_of_osf_files.R
+# save(tfill, file = "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/tfill_interim.rda")
 
 ```
 
@@ -341,7 +347,8 @@ tfill$species[!is.na(tfill$species) & tfill$species == "Centroptilum sp. B-ACM31
 tfill$species[!is.na(tfill$species) & tfill$species == "Hydraenidae sp. B-ADK5039"] <- "Gymnochthebius australis"
 tfill$species[!is.na(tfill$species) & tfill$species == "Helicophida queenslandensis"] <- "Helicopha queenslandensis"
 tfill$species[!is.na(tfill$species) & tfill$species == "Riethia zeylandica"] <- "Riethia sp. B-ADU5431" 
-tfill$species[!is.na(tfill$species) & tfill$species == "Notalina bifara group B-ABV8023"] <- "Notalina bifara group"
+tfill$species[!is.na(tfill$species) & tfill$species == "Notalina bifaria"] <- "Notalina bifara"
+tfill$species[!is.na(tfill$species) & tfill$species == "Notalina bifara group B-ABV8023"] <- "Notalina bifara"
 tfill$species[!is.na(tfill$species) & tfill$species == "Notalina sp. B-AAX5636"] <- "Notalina bifara group"
 tfill$species[!is.na(tfill$species) & tfill$species == "Mirawara sp. AV1"] <- "Mirawara sp. B-AAV0800"
 
@@ -498,7 +505,7 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "AAW3080" = "Austropsyche sp. B-AAW3080", # BOLD identifies this as "Austropsyche CJG sp. AU1". one tfill record has it as Austropsyche sp.
 "AAW3122" = "Austropyrgus centralia/turbatus", #centralia and turbatus grouped below. One tfill record had this incorrectly as Austropyrgus angasi
 "ABX5220" = "Austrosimulium furiosum", # BOLD id;  tfill had one incorrectly identifed as Austrosimulium sp. B-AEH7071
-"AGK3234" = "Anthocara anthophilia", # BOLD id only to family, tfill variously identified this as Pseudomicrocara anthophilia or Anthocara anthophilia. GenBank have corrected the id to the latter. 
+"AGK3234" = "Anthocara anthophilia", # BOLD id only to family, tfill variously identified this as Pseudomicrocara anthophilia or Anthocara anthophilia. GenBank have corrected the id to the latter. CHRIS3: You have made the correct call here.
 "ADC3729" = "Telephlebia brevicauda/godeffroyi", # BOLD has no consensus on which Telephlebia species it is. tfill had it as both
 "AAB3146" = "Anopheles annulipes", # BOLD id
 "ADW7166" = "Blepharhymenus apicornis", # BOLD id
@@ -593,7 +600,7 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "AEG5961" = "Aulodrilus pigueti", # BOLD id
 "ADC2719" = "Austroaeschna sigma", # BOLD id
 "ADC2975" = "Austrolestes psyche", # BOLD id
-"AFU5450" = " Caloca sp. B-AFU5450", # BOLD id
+"AFU5450" = "Caloca sp. B-AFU5450", # BOLD id
 "AEF5699" = "Cernosvitoviella microtheca", # BOLD id
 "AGQ9451" = "Chironomidae sp. B-AGQ9451", # BOLD id
 "ADC3923" = "Diphlebia lestoides", # BOLD id
@@ -611,7 +618,8 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "AFN5257" = "Amphipoda sp. B-AFN5257",
 "AGL8425" = "Fridericia maculata",
 "AAU4676" = "Fridericia auritoides",
-"ACV8324" = "Contacyphon lindensis"
+"ACV8324" = "Contacyphon lindensis",
+"ABV8023" = "Notalina bifara"
 )
 
 # # # # # #  #  ## Code used for checking the above  ABY8640
@@ -874,14 +882,10 @@ for(i in 1:nrow(tfill_spp_bins)){
     }
 }
 tfill_spp_bins <- rbind(tfill_spp_bins, add_bins)
-add_bins <- tfill_spp_bins[0,]
-
-tfill_spp_bins <- rbind(tfill_spp_bins, add_bins)
 tfill_spp_bins <- tfill_spp_bins[order(tfill_spp_bins$species),]
 
 tfill_spp_bins_bu <- tfill_spp_bins
 tfill_bu <- tfill
-
 ```
 
 With genus and family fields correct, correct species names, using the following rules:
@@ -1069,7 +1073,7 @@ tfill$species[tfill$asv_code %in% tfill_spp_bins$asv_code] <-
 
 ```
 
-An early version of the library had a separate "max_p_update" table that included records for which max_p_identity was adjusted based on BOLD matches. While the adjustments made to max_p_identity can be identified by comparing the original vsearch max_p_identity with the maximum BOLD similarity, the original vsearch values have been lost from many of the records in the original "max_p_update" table. As a result, we now include a field "max_p_update" that allows quick identification of records with updated max_p_identity (1 = updated, 0 = not)
+The early version of the library had a separate "max_p_update" table that included records for which max_p_identity was adjusted based on BOLD matches. While the adjustments made to max_p_identity can be identified by comparing the original vsearch max_p_identity with the maximum BOLD similarity, the original vsearch values have been lost from many of the records in the original "max_p_update" table. As a result, we now include a field "max_p_update" that allows quick identification of records with updated max_p_identity (1 = updated, 0 = not)
 
 The following logic is used to adjust max_p_identity values:
 
@@ -1114,10 +1118,14 @@ for(i in 1:nrow(priv_lib_spp)){
       }
 tfill$species[tfill$asv_code == priv_lib_spp$asv_code[i]] <- priv_lib_spp$species[i]
 }
-# if priv_lib_spp similarity is greater than tfill$max_p_identity, replace tfill$max_p_identity
-if(priv_lib_spp$geneious_similarity[i] > tfill$max_p_identity[tfill$asv_code == priv_lib_spp$asv_code[i]])
-tfill$max_sim_bold[tfill$asv_code == priv_lib_spp$asv_code[i]] <- priv_lib_spp$geneious_similarity[i]
-tfill$max_p_update[tfill$asv_code == priv_lib_spp$asv_code[i]] <- 1
+# if priv_lib_spp geneious_similarity is greater than tfill$max_sim_bold, 
+  # or if max_sim_bold is NA,
+  #  replace max_sim_bold with geneious_similarity 
+  # (max_sim_bold becoming a name for best alternative similarity to vsearch)
+if(is.na(tfill$max_sim_bold[tfill$asv_code == priv_lib_spp$asv_code[i]]))
+   tfill$max_sim_bold[tfill$asv_code == priv_lib_spp$asv_code[i]] <- priv_lib_spp$geneious_similarity[i]
+if(priv_lib_spp$geneious_similarity[i] > tfill$max_sim_bold[tfill$asv_code == priv_lib_spp$asv_code[i]])
+   tfill$max_sim_bold[tfill$asv_code == priv_lib_spp$asv_code[i]] <- priv_lib_spp$geneious_similarity[i]
 }
 # # Used to check the above
 # priv_lib_spp[i,]
@@ -1129,7 +1137,9 @@ tfill$species[grep("Unident", tfill$species)] <- NA
 # MEL: See question about priv_lib_lt97 in compilation_of_osf_files.R
 for(i in 1:nrow(priv_lib_lt97)){
 ti <- which(tfill$asv_code == priv_lib_lt97$asv_code[i])
-tfill$max_p_identity[ti] > priv_lib_lt97$geneious_similarity[i]
+# if max_sim_bold is missing, and if the priv_lib geneious_similarity
+# is better than max_p_identity, use the priv_lib identifications
+if(is.na(tfill$max_sim_bold[tfill$asv_code == priv_lib_lt97$asv_code[i]])){
 tfill_taxonomy <- paste(tfill$class[ti], tfill$order[ti], tfill$family[ti],
       tfill$genus[ti], tfill$species[ti])
 pl_taxonomy <- paste(priv_lib_lt97$class[i], priv_lib_lt97$order[i], 
@@ -1142,20 +1152,19 @@ if(tfill_taxonomy != pl_taxonomy &
   tfill$genus[ti] <- priv_lib_lt97$genus[i]
   tfill$genus[ti] <- NA
 }
-# If geneious_similarity is higher than the current max_p_identity, replace it
-if(priv_lib_lt97$geneious_similarity[i] > tfill$max_p_identity[ti]) 
-  tfill$max_p_identity[ti] <- priv_lib_lt97$geneious_similarity[i]
 }
-# MEL: I'm not super comfortable about the above, given the untrackability of your max_p_identity values, 
-#      for instance
-priv_lib_lt97[7,] 
-tfill[tfill$asv_code == priv_lib_lt97$asv_code[7],]
-#   In this case, because max_p_identity (92) is greater than geneious_similarity (90.2), the above assumes
-#   that tfill is right (identifying this to Austroperlidae), while geneious_similarity would only take it to Plecoptera
-#   But could 92 be just one of your manual changes to max_p_identity?  
-#   I am aware this is sweating the small stuff here. I suggest we don't worry about it. OK?
+# if priv_lib_spp geneious_similarity is greater than tfill$max_sim_bold, 
+  # or if max_sim_bold is NA,
+  #  replace max_sim_bold with geneious_similarity 
+  # (max_sim_bold becoming a name for best alternative similarity to vsearch)
+if(is.na(tfill$max_sim_bold[tfill$asv_code == priv_lib_lt97$asv_code[i]]))
+   tfill$max_sim_bold[tfill$asv_code == priv_lib_lt97$asv_code[i]] <- priv_lib_lt97$geneious_similarity[i]
+if(priv_lib_lt97$geneious_similarity[i] > tfill$max_sim_bold[tfill$asv_code == priv_lib_lt97$asv_code[i]])
+   tfill$max_sim_bold[tfill$asv_code == priv_lib_lt97$asv_code[i]] <- priv_lib_lt97$geneious_similarity[i]
+# 
+}
 
-# 2. replace max_p_identity with max_sim_bold if the latter is higher.
+# 2. replace max_p_identity with max_sim_bold/geneious_similarity if the latter is higher.
 sum(tfill$max_sim_bold > tfill$sim_vsearch, na.rm = TRUE) #11040
 for(i in 1:nrow(tfill)){
   if(!is.na(tfill$max_sim_bold[i]) & tfill$max_sim_bold[i] > tfill$sim_vsearch[i]) {
@@ -1164,14 +1173,22 @@ for(i in 1:nrow(tfill)){
   }
   }
 
-# 3. replace max_p_identity with max_sim_bold if the latter is <97 and the former is >=97
-sum(tfill$max_sim_bold < 97 & tfill$sim_vsearch >= 97, na.rm = TRUE)  # 598
+# 3. Some max_p_identity values were changed in earlier undocumented steps:
+#    for those with similarity >=97, when no BOLD or geneious similarity is >=97,
+#    replace max_p_identity with the higher value of max_sim_bold or geneious_similarity
+sum(tfill$max_sim_bold < 97 & tfill$sim_vsearch >= 97, na.rm = TRUE)  # 249
 for(i in 1:nrow(tfill)){
   if(!is.na(tfill$max_sim_bold[i]) & tfill$max_sim_bold[i] < 97 & tfill$sim_vsearch[i] >= 97){
     tfill$max_p_identity[i] <- tfill$max_sim_bold[i]
     tfill$max_p_update[i] <- 1
     }
 }
+
+# Comparison between priv_lib geneious matches and tfill taxonomy showed records with 
+# geneious_similarity <=86.2 had unreliable IDs (see compilation_of_osf_files.R)
+# Mark such records as dubious and (MEL:) consider deleting them from the asv_library
+tfill$dubious_id <- 0
+tfill$dubious_id[tfill$max_p_identity <= 86.2] <- 1 # sum(tfill$dubious_id) # MEL: 133 records to consider removing from tfill
 
 # Fix up taxonomy fields
 for(i in which(tfill$asv_code %in% priv_lib_spp$asv_code)){
@@ -1381,7 +1398,7 @@ tfill_spp_bins <- tfill_spp_bins[tfill_spp_bins$asv_code %in% tfill$asv_code,] #
 for(i in 1:nrow(tfill_spp_bins)){
   if(unique(tfill$species[tfill$asv_code == tfill_spp_bins$asv_code[i]]) != tfill_spp_bins$species[i])
     stop("Check")
-}
+} # if it doesn't stop, all is good
 
 tfill_spp_bins_unq <- unique(tfill_spp_bins[,c("species","bin_uri")])
 
@@ -1545,6 +1562,9 @@ for(i in 1:nrow(tfill_nonaq_spp_bins)){
 }
 tfill_nonaq_spp_bins <- rbind(tfill_nonaq_spp_bins, add_bins)
 tfill_nonaq_spp_bins <- tfill_nonaq_spp_bins[order(tfill_nonaq_spp_bins$species),]
+# sum(is.na(tfill_nonaq_spp_bins$bin_uri))  # unlike tfill_spp_bins, there are 982 non-aq species with bin_uri = NA
+# these require checking (or removal). For now, I will remove them from tfill_nonaq_spp_bins
+tfill_nonaq_spp_bins <- tfill_nonaq_spp_bins[!is.na(tfill_nonaq_spp_bins$bin_uri),]
 
 # Having corrected names, repeat max_p_update procedure from above
 # Create a field identifying records with changed max_p_identity
@@ -1602,6 +1622,7 @@ tfill$aqu <- 1
 tfill_nonaq$aqu <- 0
 # Remove checking fields not required in final tfill table
 tfill <- tfill[!names(tfill) %in% c("no_bin_match","genus_old","family_old")]
+tfill_nonaq$dubious_id <- NA
 tfill <- rbind(tfill, tfill_nonaq[match(names(tfill),names(tfill_nonaq))])
 tfill_spp_bins <- rbind(tfill_spp_bins, tfill_nonaq_spp_bins)
 tfill_spp_bins_unq <- rbind(tfill_spp_bins_unq, unique(tfill_nonaq_spp_bins[c("species","bin_uri")]))

@@ -512,7 +512,11 @@ problems  # 11 (of 132 with disagreement at class level)
 # Happy for you to make a call on what to do with these:
 # Personally I would counsel removing all low-geneious_similarity records from the asv_library
 # For now I've left them in tfill, and have removed them from genei_results_lt97.
-genei_results_lt97 <- genei_results_lt97[genei_results_lt97$geneious_similarity > 86.2,] #257
+### MEL: In the last version I had asked if you were comfortable deleting these problems
+#        I've managed to come to the conclusion that removing them did cause the problem.
+#        Instead, I have created a field in tfill called dubious_id (max_p_identity <= 86.2)
+###      Given the high level of disagreement at the class level, I would counsel strongly  
+###      that these records should be removed from the asv_library. 
 WriteXLS::WriteXLS(list(species = genei_results, higher_taxa = genei_results_lt97),
                    "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/private_library_mc_validated.xlsx")
 
