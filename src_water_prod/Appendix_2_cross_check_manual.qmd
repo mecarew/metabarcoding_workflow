@@ -13,7 +13,7 @@ MEL: I've removed a lot of past workings here, as the checks are looking pretty 
 all_MC_checks <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/all_mc_checks.csv")
 # your validated private library compiled in compilation_of_osf_files ## 3
 priv_lib <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/priv_lib_validated.csv")
-tfill <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/ChrisW/temp/asv_library_corrected.xlsx",,
+tfill <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/ChrisW/temp/asv_library_corrected.xlsx",
                        sheet = "tfill"))
 tfill <- tfill[tfill$aqu == 1,]
 tfill_spp_bins <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/ChrisW/temp/asv_library_corrected.xlsx",
@@ -24,10 +24,10 @@ priv_lib_spp <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/MelCarew/
 priv_lib_lt97 <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/private_library_mc_validated.xlsx", sheet = "higher_taxa"))
 
 # tfill records without a BOLD match or without a match to your private library
-asv_no_bold <- tfill$asv_code[!tfill$asv_code %in% unique(names(match_list_bin_uri))]  # length(asv_no_bold)  1535 asv_codes
+asv_no_bold <- tfill$asv_code[!tfill$asv_code %in% unique(names(match_list_bin_uri))]  # length(asv_no_bold)  1307 asv_codes
 
 # Records checked by Mel that do not have a >97% match with BOLD (and have been given different names by MC and CW)
-check_no_bold <- all_MC_checks[all_MC_checks$asv_code %in% asv_no_bold,] #1534
+check_no_bold <- all_MC_checks[all_MC_checks$asv_code %in% asv_no_bold,] #1307 still
 check_no_bold$species <- tfill$species[match(check_no_bold$asv_code, tfill$asv_code)]
 check_no_bold[is.na(check_no_bold)] <- ""  # for easier matching
 check_no_bold <- dplyr::mutate(check_no_bold, 
@@ -36,41 +36,61 @@ check_no_bold <- dplyr::mutate(check_no_bold,
                                .after = bold_match)
 check_no_bold <- dplyr::mutate(check_no_bold, species_old = tfill$species_old[match(check_no_bold$asv_code,tfill$asv_code)], .before = bold_match)
 # Reduce to only those records where species and checked_species_name are not equivalent
-check_no_bold <- check_no_bold[check_no_bold$species != check_no_bold$checked_species_name,] # 361 records
+check_no_bold <- check_no_bold[check_no_bold$species != check_no_bold$checked_species_name,] # 133 records
 # Identify the check_no_bold records that share a name with records that actually have a >=97% bold match
-tfill_bold <-tfill[tfill$asv_code %in% unique(bold_results$asv_code[bold_results$similarity >= 97]),]  #17,046
+tfill_bold <-tfill[tfill$asv_code %in% unique(bold_results$asv_code[bold_results$similarity >= 97]),]  #17,273
 check_no_bold_spp_in_bold <- check_no_bold[check_no_bold$species %in% unique(tfill_bold$species),]   # 0 
-check_no_bold <- check_no_bold[!check_no_bold$asv_code %in% check_no_bold_spp_in_bold$asv_code,] # still 361 
-# remember that max_sim_bold in tfill is now max_sim_bold, or geneious_similarity if max_sim_bold 
-# was missing (no bold match) or if geneious_similarity was greater than max_sim_bold.
+# None, so...
+check_no_bold <- check_no_bold[!check_no_bold$asv_code %in% check_no_bold_spp_in_bold$asv_code,] # still at 133
 
-# First cases where corrected max_p_identity is <97 and checked_species name was not null 
-# (it should be, and the script ensures it is, so these tfill records are right)...
-# unless I have missed some of your files with checks against geneious - they were quite confusing
-lt97_no_sp_name <- check_no_bold[check_no_bold$checked_species_name != "" & check_no_bold$max_p_identity < 97,] 
-# 335 such entries. MEL: you should check these - you have given many a high bold match, but none of 
-#    them are in the bold results you have provided me with.  If we are to be sure about them, I really need those
-#    bold results and incorporate them into the script.
-# Some say Genbank only, and I'm feeling like I might have missed your check of those.  
-#  If you have a file of Genbank matches that I have missed, please point me to it.
+# Five of these are Empididae sp. MC-Co1, which we agreed tfill now has right
+empid_right <- check_no_bold[check_no_bold$species == "Empididae sp. MC-Co1",]
+empid_right
 
-# That leaves not too many problems
-check_no_bold <- check_no_bold[!check_no_bold$asv_code %in% lt97_no_sp_name$asv_code,] # 26
-check_no_bold
-# The first 5 are OK - checked and agreed that the script is right for those records of Empididae sp. MC-Co1
-# And the remainder are  the same 21 records Notalina sp. B-ABV8023  from last time.  If as you say, we've got
-# these wrong because they're not in my bold_results table, can we get them into the bold_results table? 
-# (together with any of the 335 lt97_no_sp_name records that are missing bold matches?)
-# I reckon you're right and these will group with Notalina bifara, and I was going to suggest you just change 
-# these and run with it (noting that it's "Notalina bifaria" rather than a "Notalina bifaria group" because it is 
-#  just grouping bin_uris not multiple named species (as per the logic set out in the Appendix 2 document.)
-# BUT the big list of other likely missing bold matches makes me nervous.  Can you please just run another 
-# bold search on all of 
-to_recheck_bold <- rbind(check_no_bold, lt97_no_sp_name)
-# and send me the results so that I can add them to bold_results?
-# And send me any genbank records (with a similarity field) that I might have missed?
+check_no_bold <- check_no_bold[!check_no_bold$asv_code %in% empid_right$asv_code,] # Down to 128
 
-# Everything else from here on is ok.
+# 2 are records where you had bold_match = 92, and checked_species_name = Notonemouridae
+notonem_right <- check_no_bold[check_no_bold$bold_match == "92",]
+notonem_right
+# The geneious search confirmed matches of 86.1 and 87.0 - these probably should have replaced 
+# tfill the max_p_identity of 90, 
+priv_lib_lt97[priv_lib_lt97$asv_code %in% notonem_right$asv_code,]
+tfill[tfill$asv_code %in% notonem_right$asv_code,]
+# but no such cases were in the script's logic. As max_p_identity of 86 or 90 makes
+# no substantive difference, I am moving on, and assuming these two records are correct 
+# but let me know if you want to change these (I can't 
+# guarantee there arent other similar inconsequential max_p_identity errors in t_fill!)
+
+check_no_bold <- check_no_bold[!check_no_bold$asv_code %in% notonem_right$asv_code,] # Down to 126
+# write.csv(check_no_bold, "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/unmatched_priv_lib.csv", row.names = FALSE)
+
+# The remaining 126 in check_no_bold
+# are all commented as being from 
+unique(check_no_bold$comments)
+# "GenBank only", "private library only", or "private library only not SC2"
+# All of their max_p_identities have been amended to equal the similarity from 
+# your most recent geneious search
+sum(check_no_bold$max_p_identity == check_no_bold$max_sim_bold) #126
+# All were in that search
+geneious_361 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/geneious_search_results_final_361_asvs.csv")
+sum(check_no_bold$asv_code %in% geneious_361$asv_code) # 126
+# None were matched by your recent bold search
+bold_361 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/bold_search_results_final_360_asvs.csv")
+sum(check_no_bold$asv_code %in% unique(bold_361$Query.ID)) # 0
+
+# So, is it possible that the 126 genbank and private library matches were not appropriate at the species level?
+
+# If you are happy to let them go, then I think we can say that the asv_library file is now complete and correct, 
+#  EXCEPT FOR:
+# A. rows where aqu = 0 (i.e. non-aquatic/non-macroinvertebrates). IDs are likely to be unreliable here
+#    Certainly there are many cases of multiple "aqu = 0" names given to the same bin-uri.
+#    These will take a lot of work to correct.
+# B. Consider my recommended removal of the records with max_p_identity <= 86.2: see
+#    L1204 in Appendix_2_clean_cw and L504-521 in compilation_of_osf_files.R for my reasoning
+#    Note that (for aqu = 1 records only), these are identified by "dubious_id" = 1
+#    There are only 51 such records
+
+# Everything else from here on has been agreed as ok previously.
 
 check_with_bold <- all_MC_checks[!all_MC_checks$asv_code %in% asv_no_bold,]
 # Exclude non_aqu/non_macros not checked by CW
@@ -126,6 +146,13 @@ nrow(x)
 x
 # reduced to 15, # MEL: you might want to do a final re-check of x
 # CHRIS3: Happy with the final names for the final 15!
+
+
+# MEL: 2 Notalina disagreements. These are presumably 2 records that fell through the buggy BOLD net again.
+#      I am now sure that Notalina sp. B-ABV8023 is different from Notalina bifara
+#      (See the checking code at L1119 in Appendix_2_clean_cw)
+#      So, I am sure these two are correct (if your reported match to bold is correct)
+
 
 ```
 

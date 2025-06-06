@@ -7,9 +7,9 @@ editor_options:
 
 ## Introduction
 
-This document reads the miSeq data prepared in the first 6 metabarcoding workflow documents. The code in this document consolidates the data, and formats them ready to be imported into the [Melbourne Water macroinvertebrate database](https://tools.thewerg.unimelb.edu.au/mwbugs/) (mwbugs database).  The code in the document begins by making a connection to the main PostgreSQL database on the University of Melbourne Server. For users outside the unimelb network, the database can be accessed using the instructions in Appendix B of Walsh (2023)[^1].
+This document reads the miSeq data prepared in the first 6 metabarcoding workflow documents. The code in this document consolidates the data, and formats them ready to be imported into the [Melbourne Water macroinvertebrate database](https://tools.thewerg.unimelb.edu.au/mwbugs/) (mwbugs database).  The code in the document begins by making a connection to the main PostgreSQL database on the University of Melbourne Server. For users outside the unimelb network, the database can be accessed using the instructions in Appendix B of Walsh (2025)[^1].
 
-[^1]: Walsh, C.J. (2023) The Melbourne Water macroinvertebrate database: user’s manual. Version 2. Melbourne Waterway Research-Practice Partnership Report 20.1a. School of Agriculture, Forest and Ecosystem Sciences, The University of Melbourne, Melbourne. URL: https://tools.thewerg.unimelb.edu.au/mwbugs_manual/.
+[^1]: Walsh, C.J. (2025) The Melbourne Water macroinvertebrate database: user’s manual. Version 2.1. Melbourne Waterway Research-Practice Partnership Report 20.1b. School of Agriculture, Forest and Ecosystem Sciences, The University of Melbourne, Melbourne. URL: https://tools.thewerg.unimelb.edu.au/mwbugs_manual/.
 
 The document also contains code for identifying new species not yet included in the mwbugs database taxonomy tables, and determining new bugcodes for those species.  When this document was first prepared xxx new species were identified and added to the database.  The code is retained here for future use, when further new species are encountered.
 
@@ -41,7 +41,8 @@ zeros <- which((grepl("0", all_prs$prs) &
 all_prs <- all_prs[-zeros,]
 # order with numbers first, and mark numbers
 all_prs$number <- 0
-all_prs$number[!is.na(as.numeric(all_prs$prs))] <- 1
+# suppressWarnings, because as.numeric warns about introduction of NAs, which this next line deals with
+all_prs$number[!is.na(suppressWarnings(as.numeric(all_prs$prs)))] <- 1
 all_prs <- all_prs[order(all_prs$number, decreasing = TRUE),]
 # order alphabetic codes so that A1 comes before 1A etc...(probably won't use 1A etc)
 all_prs <- rbind(all_prs[all_prs$number == 1,],
@@ -453,44 +454,120 @@ Correct taxonomy names prior to matching to the database
 
 ```{r}
 
-# Correct spelling errors
-bugdata_spp$species[bugdata_spp$species == "Austrochiltonia sp. MC1"] <- "Austrochiltonia sp. MC-1"
-bugdata_spp$species[bugdata_spp$species == "Tamasia acuta/Tamasia variegata"] <- "Tamasia acuta/variegata"
-bugdata_spp$species <- gsub("ParaLimnophila","Paralimnophila",bugdata_spp$species)
-bugdata_spp$genus[bugdata_spp$genus == "ParaLimnophila"] <- "Paralimnophila"
-bugdata_spp$species <- gsub("Aeschnidae","Aeshnidae",bugdata_spp$species)
-bugdata_spp$species[bugdata_spp$species == "Nososticta solitaris"] <- "Nososticta solitaria"
-bugdata_spp$family[bugdata_spp$family == "Trapezidae"] <- "Trapeziidae"
-# Some Staphylinidae with order = Diptera
-bugdata_spp$order[bugdata_spp$family == "Staphylinidae"] <- "Coleoptera"
-#[MEL: Please check the following three sets of decisions to exclude.  Do you agree?]
-# 5 family-level records identified as Unionidae. Genbank match gastropod ~92% - delete
-bugdata_fam <- bugdata_fam[bugdata_fam$family != "Unionidae",]
-# 6 family-level records identified as Unionidae.  Genbank match gastropod ~92% - delete
-bugdata_fam <- bugdata_fam[bugdata_fam$family != "Arcidae",]
-# Unidentified higher-order records of unknown (likely terrestrial) ecology.  Exclude  
-bugdata_spp <- bugdata_spp[!bugdata_spp$species %in% c("Oligochaeta sp. MC-3",
-          "Amphipoda sp. B-AFN5257","Isopoda sp. B-ADV3337",
-          "Chrysomelidae sp. B-AAQ0004","Lumbricidae sp. MC-1",
-          "Galerucinae sp. B-AET7210","Ephydridae sp. MC-3",
-          "Aturidae sp. B-AEH7912","Dolichopodidae sp. B-ADP0042",
-          "Muscidae sp. B-AAU5065","Syllidae sp. MC-O1",
-          "Melitidae sp. MC-1","Galerucinae sp. B-ABA9962",
-          "Coleoptera sp. B-AEI6253","Muscidae sp. B-AES9495/AFJ0397",
-          "Ephydridae sp. B-ACZ3069","Galerucinae sp. B-ABX9821",
-          "Osmylidae sp. MC-1","Stratiomyidae sp. MC-SC1",
-          "Pionidae sp. B-ACW4137"),]
+# Trial run with asv_library taxa (note this creates new bugdata_spp, gen etc from above)
+tfill <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/ChrisW/temp/asv_library_corrected.xlsx",
+                       sheet = "tfill"))
+tfill <- tfill[tfill$aqu == 1,] #19,706 records
+# aqu really only indicates those records that have gone through the full check. Some should still be removed as 
+# being not (necessarily) aquatic or macroinvertebrates
+tfill <- only_aqu_inverts(tfill, db, TRUE)$include # 19,704...not sure I believe that. Let's come back to it.
+# remove dubious_id records
+tfill <- tfill[tfill$dubious_id == 0,] #19,653
+tfill$family[tfill$family %in% c("Tanypodinae","Aphroteniinae","Orthocladiinae","Chironominae","Diamesinae")] <- "Chironomidae"
+tfill$family[tfill$family %in% c("Ancylinae (Planorbidae)")] <- "Planorbidae"
+tfill_spp_bins <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/ChrisW/temp/asv_library_corrected.xlsx",
+                       sheet = "bin_uris"))
+tfill_spp_bins <- tfill_spp_bins[tfill_spp_bins$asv_code %in% tfill$asv_code,] #23,050 species/bin combos
+bugdata <- unique(tfill[c("kingdom","phylum","class","order","family","genus","species")]) #1,153 unique identifications
+bugdata_spp <- bugdata[!is.na(bugdata$species),] #990
+bugdata_gen <- bugdata[is.na(bugdata$species) & !is.na(bugdata$genus),] #98
+bugdata_fam <- bugdata[is.na(bugdata$species) & is.na(bugdata$gen) & !is.na(bugdata$family),] #48
+bugdata_oth <- bugdata[is.na(bugdata$species) & is.na(bugdata$gen) & is.na(bugdata$family),] #17
+bugdata_oth <- bugdata_oth[!is.na(bugdata_oth$order) & 
+                             bugdata_oth$order %in% c("Eohemeroptera","Plecoptera",
+                                                       "Trichoptera","Anaspidacea"),] #3
+#of the last, only solely freshwater orders can be considered definitely aquatic for inclusion in the database
+# Some named species are also similarly uncertain:
+bugdata_spp_nam <- bugdata_spp[is.na(bugdata_spp$family),]
+bugdata_spp_nam1 <- bugdata_spp[is.na(bugdata_spp$genus) & !is.na(bugdata_spp$family),]
+
+# None of the species identified to class or order can be classed as freshwater with certainty 
+unique(bugdata_spp_nam$order) #"Enchytraeida","Haplotaxida","Trombidiformes","Diptera","Isopoda","Coleoptera","Plumatellida" 
+# and should be removed from bugdata_spp
+bugdata_spp <- bugdata_spp[!bugdata_spp$species %in% bugdata_spp_nam$species,] #975
+
+# 6 families in bugdata_spp_nam1 contain only some species with aquatic life-history stages 
+bugdata_spp <- bugdata_spp[!bugdata_spp$species %in% 
+                              bugdata_spp_nam1$species[bugdata_spp_nam1$family %in% 
+                                                 c("Carabidae", "Chrysomelidae","Nanophyidae", 
+                                                   "Empididae", "Muscidae","Stratiomyidae")],] #948
+# Note: I have included Psychodidae and other families, where a minority of species may not be aquatic
+#       and I included Olindidae and Sphaeromatidae - mostly marine families, but with representatives 
+#       in lowland river reaches. These records should be checked for feasibility.
+
+# # (Over)Time to tidy up/fill in the taxon_rank1 table to match the DNA input data.
+# # First, manual edits to t1rank table to make this work...
+# taxon_rank1 <- DBI::dbReadTable(db, "taxon_rank1")
+# taxon_fam <- DBI::dbReadTable(db, "taxon_fam")
+# taxon_gen <- DBI::dbReadTable(db, "taxon_gen")
+# taxon_rank1$phylum[taxon_rank1$phylum == "Nemertinea"] <- "Nemertea"
+# taxon_rank1$phylum[taxon_rank1$phylum == "Playhelminthes"] <- "Platyhelminthes"
+# taxon_rank1$phylum[taxon_rank1$phylum == "Ectoprocta, Bryozoa"] <- "Bryozoa" # although Ectoprocta is more correct
+# taxon_rank1$order[match(c("Temnocephalidea"), taxon_rank1$order)] <- "Temnocephalida"
+# taxon_rank1$order[match(c("Malacostraca"), taxon_rank1$order)] <- "Malacostraca (Unidentified)"
+# taxon_rank1 <- rbind(taxon_rank1,
+#                      data.frame(t1code = c("IB0","IB5","IH0","IO0","IF9","OY"), 
+#                                 phylum = c("Cnidaria","Cnidaria","Nemertea","Bryozoa","Platyhelminthes","Arthropoda"), 
+#                                 class = c("Hydrozoa", "Hydrozoa","Enopla","Phylactolaemata","Rhabditophora","Crustacea"),
+#                                 order = c("Anthoathecata","Limnomedusae","Monostilifera","Plumatellida","Macrostomida","Tanaidacea"), 
+#                                 lowesttaxon = c("Hydrozoa","Limnomedusae","Monostilifera","Plumatellida","Macrostomida","Tanaidacea")))
+# taxon_rank1 <- taxon_rank1[order(taxon_rank1$t1code),]
+# 
+# for(i in 1:nrow(taxon_rank1)){
+#   # Exceptions that make the loop break, and are correct anyway
+#   if(!taxon_rank1$t1code[i] %in% c("IB","IC","ID","IE",
+#                                    paste0("IF",c("",1:8)),"IG","IH","II","IJ",
+#                                    "IK","IL","IM","IN","IP","IQ","IR","IS",
+#                                    "J","KA","KC","KS","K","L","M","O","P","Q",
+#                                    "KP", # 3 orders "Sphaeriida" "Unionida"   "Venerida": not easily separated by gencode
+#                                    "KG", # 2 orders "Littorinimorpha" (the pyrgus genera and Posticobia) and "Hygrophila" (the rest): not easily separated by gencode
+#                                    "LA","LH","LO","MA","MC","MH","MM",
+#                                    "MO",  # I think taxon_rank1 is right here, and tfill wrong
+#                                    "MP", "MS") &  #Yeah, and these ones taxon_rank1's order is probably really a sub-order, all too hard.
+#                                    !substr(taxon_rank1$t1code[i],1,1) %in% c("O","P","Q")){ 
+#     # As for higher orders, the trank1 table's use of class and order fields is somewhat arbitrary and not worth trying to improve.
+#   fami <- taxon_fam$family[substr(taxon_fam$famcode,1,nchar(taxon_rank1$t1code[i])) == taxon_rank1$t1code[i]] 
+#   tfill_orderi <- unique(tfill$order[!is.na(tfill$family) & tfill$family %in% fami])
+#   if(length(tfill_orderi) != 1) stop("1")
+#   tfill_classi <- unique(tfill$class[!is.na(tfill$family) & tfill$family %in% fami])
+#   if(length(tfill_orderi) != 1) stop("2")
+#   tfill_phylumi <- unique(tfill$phylum[!is.na(tfill$family) & tfill$family %in% fami])
+#   if(length(tfill_orderi) != 1) stop("3")
+#   if(!is.na(taxon_rank1$order[i]) & taxon_rank1$order[i] != tfill_orderi) stop("4")
+#   if(!is.na(taxon_rank1$class[i]) & taxon_rank1$class[i] != tfill_classi) stop("5")
+#   if(taxon_rank1$phylum[i] != tfill_phylumi) stop("6")
+#   taxon_rank1$order[i] <- tfill_orderi
+#   taxon_rank1$class[i] <- tfill_classi
+#   }
+#   }
+# write.csv(taxon_rank1, "~/temp/taxon_rank1.csv")
+
+# Correct spelling errors (Unnecessary ones kept for tfill run-through, just in case!)
+# One lingering spelling error found
+# bugdata_spp$species[bugdata_spp$species == "Austrochiltonia sp. MC1"] <- "Austrochiltonia sp. MC-1"
+# bugdata_spp$species[bugdata_spp$species == "Tamasia acuta/Tamasia variegata"] <- "Tamasia acuta/variegata"
+# bugdata_spp$species <- gsub("ParaLimnophila","Paralimnophila",bugdata_spp$species)
+# bugdata_spp$genus[!is.na(bugdata_spp$genus) &  bugdata_spp$genus == "ParaLimnophila"] <- "Paralimnophila"
+# bugdata_spp$species <- gsub("Aeschnidae","Aeshnidae",bugdata_spp$species)
+# bugdata_spp$species[bugdata_spp$species == "Nososticta solitaris"] <- "Nososticta solitaria"
+# # bugdata_spp$family[!is.na(bugdata_spp$family) & bugdata_spp$family == "Trapezidae"] <- "Trapeziidae"
+# # # Some Staphylinidae with order = Diptera
+# bugdata_spp$order[!is.na(bugdata_spp$family) &  bugdata_spp$family == "Staphylinidae"] <- "Coleoptera"
+# # 5 family-level records identified as Unionidae. Genbank match gastropod ~92% - delete
+# bugdata_fam <- bugdata_fam[!is.na(bugdata_spp$family) & bugdata_fam$family != "Unionidae",]
+# # 6 family-level records identified as Unionidae.  Genbank match gastropod ~92% - delete
+# bugdata_fam <- bugdata_fam[!is.na(bugdata_spp$family) &  bugdata_fam$family != "Arcidae",]
+# # Unidentified higher-order records of unknown (likely terrestrial) ecology.  Exclude  
 
 # Check all families are in the mwbugs database
 all_fams <- unique(c(bugdata_spp$family, bugdata_gen$family, bugdata_fam$family))
-non_match_fams <- data.frame(family = all_fams[!(all_fams %in% taxon_fam$family | all_fams %in% taxon_fam$subfamily)], 
-                             order_mc = NA, order_gbif = NA)
-non_match_fams <- non_match_fams[non_match_fams$family != "",]  # zero non-matching!
-
+all_fams <- all_fams[!is.na(all_fams)]
+non_match_fams <- all_fams[!all_fams %in% c(taxon_fam$family, 
+                            taxon_fam$subfamily[!is.na(taxon_fam$subfamily)])] #0 non-matching
 # Check all genera are in the mwbugs database
-all_genera <- unique(c(bugdata_spp$genus, bugdata_gen$genus, bugdata_fam$genus))
-non_match_gen <-  all_genera[!all_genera %in% taxon_gen$genus]
-non_match_gen <- non_match_gen[non_match_gen != ""]  # zero non-matching!
+all_genera <- unique(c(bugdata_spp$genus, bugdata_gen$genus))
+all_genera <- all_genera[!is.na(all_genera)]
+non_match_gen <-  all_genera[!all_genera %in% taxon_gen$genus] # 0 non-matching
 ```
 
 
@@ -500,11 +577,62 @@ I need a final synonym table for that... not yet complete. But I will prepare th
 
 ```{r}
 
-all_spp <- unique(bugdata_spp$species)
-new_spp <- all_spp[!all_spp %in% c(taxon_spp$species, morphospp_etc$lowesttaxon)]
+#Remove all taxa that had been added on the initial problematic delivery of the 46-site data
+old_dna_spp <- unique(taxon_spp$species[!is.na(taxon_spp$tempNote) & 
+                taxon_spp$tempNote == "Added by CW for Spring 2018 barcoding data"])
+old_dna_spp[!old_dna_spp %in% bugdata_spp$species]
+# All of these species are likely valid (although no longer in the asv_library) 
+# with no reason to remove except for 
+to_remove <- c("Chamaedrilus aff. sphagnetorum","'Anatopynia' sp. 3",
+               "'Anatopynia' sp. 4")
+taxon_spp <- taxon_spp[!taxon_spp$species %in% to_remove,]
+
+old_dna_morphospp <- unique(morphospp_etc$lowesttaxon[ 
+          morphospp_etc$type == "DNA barcoded species without confirmed identification" |
+          (!is.na(morphospp_etc$tempNote) & 
+             morphospp_etc$tempNote == "Added by CW for Spring 2018 e-DNA data")])
+# very few of which remain valid after revision of asv_library - 
+# And some of the valid ones belong in taxon_spp. best to remove all and start again
+morphospp_etc <- morphospp_etc[!morphospp_etc$lowesttaxon %in% old_dna_morphospp,]
+
+all_spp <- unique(bugdata_spp$species)  #947
+new_spp <- all_spp[!all_spp %in% c(taxon_spp$species, morphospp_etc$lowesttaxon)] #585
+
+# Worth exploring groups as a final check of tfill, I think
+groups <- all_spp[grepl(" group", all_spp) | grepl("\\/", all_spp)]
+group_members <- data.frame(group = NA, n_bins = NA, bins = NA, species = NA, min_sim = NA)[0,]
+for(i in 1:length(groups)){
+  spp_binsi <- tfill_spp_bins[tfill_spp_bins$species == groups[i],]
+  binsi <- unique(spp_binsi$bin_uri)
+  asvsi <- unique(spp_binsi$asv_code)
+  boldi <- bold_results[0,]
+  for(j in 1:length(asvsi)){
+    boldi <- unique(rbind(boldi, 
+                   bold_results[bold_results$asv_code == asvsi[j] & bold_results$bin_uri %in% binsi,]))
+  }
+  boldi_97 <- boldi[boldi$similarity >= 97,]
+  bold_spp <- unique(boldi_97$species) 
+  # just those names with >= 2 words
+  bold_spp <- bold_spp[sapply(strsplit(bold_spp," "),length) >= 2]
+  bold_spp <- bold_spp[!right(bold_spp,4) == " sp."]
+  bold_spp <- paste0("('",paste(unique(paste(sapply(strsplit(bold_spp," "),"[[",1), 
+                     sapply(strsplit(bold_spp," "),"[[",2))), collapse = "', '"), "')")
+  group_members <- rbind(group_members,
+                  data.frame(group = groups[i],
+                             n_bins = length(binsi),
+                             bins = paste0("('",paste( binsi, collapse = "', '"), "')"),
+                             species = bold_spp,
+                             min_sim = min(boldi$similarity)))
+}
+
+group_members[i,] ; i <- i + 1
+
+
+
 
 # CW manually checked all form_spp names against mwbugs taxon_spp. 
-form_spp <- new_spp[!grepl("MC-",new_spp) & !grepl("B-",new_spp) & !grepl(" group", new_spp)]
+form_spp <- new_spp[!grepl("MC-",new_spp) & !grepl("B-",new_spp) & !grepl(" group", new_spp) &
+                    !grepl("/", new_spp)]
 form_spp <- form_spp[order(form_spp)]
 # All were new except:
 # Synonym to add to mwbugs

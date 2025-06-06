@@ -71,11 +71,13 @@ bold_results_maxp <- rbind(
 
 # Finally 9 records with matches <94 retrieved by a genus and species search
 bold_results_lt94 <- read.csv(paste0(dir_0, "asv_library/bold_search_to 90.csv"))
+# And another 'final' 175 records (see code at bottom of this file after finding missing non-matches in final stretch)
+bold_results_last_175 <- read.csv(paste0(dir_0, "asv_library/bold_search_last_175.csv"))
 
 # rename bold output fields
 bold_results <- rbind(bold_results_tfill, bold_results_mw46,
                       bold_results_1, bold_results_maxp,
-                      bold_results_lt94)
+                      bold_results_lt94,bold_results_last_175)
 
 names(bold_results)[names(bold_results) == "Query.ID"] <- "asv_code" 
 names(bold_results)[names(bold_results) == "PID..BIN."] <- "pid_bin" 
@@ -500,8 +502,8 @@ genei_results <- rbind(genei_results,
 genei_results_lt97 <- genei_results_lt97[is.na(genei_results_lt97$species),]  #391 records
 
 # MEL:I struck problems with class-level inconsistencies between tfill and genei_results_lt97 
-# when records had geneious similarity < 86.2. I have assumed here that these should be removed from 
-# the private library, but 
+# when records had geneious similarity <= 86.2. I had, at first, assumed here  
+# that these should be removed from the private library, but see below
 genei_low <- genei_results_lt97[genei_results_lt97$geneious_similarity <= 86.2,]  #132
 genei_low_tfill <- data.frame(tfill[match(genei_low$asv_code, tfill$asv_code),
                  c("asv_code","class","max_p_identity")], 
@@ -519,4 +521,37 @@ problems  # 11 (of 132 with disagreement at class level)
 ###      that these records should be removed from the asv_library. 
 WriteXLS::WriteXLS(list(species = genei_results, higher_taxa = genei_results_lt97),
                    "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/private_library_mc_validated.xlsx")
+
+# # final 361 records that needed re-searching. Only one Genbank result with >97% match in a very large file
+# # that was more difficult to upload than was worth it: copied here
+# # 53c07908ccdf6606a4386a4d65c79326	KM376609	97.561	Austrocyphon furcatus
+# geneious_361 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/geneious_search_results_final_361_asvs.csv")
+# geneious_361[geneious_361$asv_code == "53c07908ccdf6606a4386a4d65c79326",]
+# # It's there: geneious calls it Austrocyphon ovensensis;
+# #  Mel's checked_name and genbank "Austrocyphon furcatus" - come back to this...
+# names(geneious_361)[match(c("geneious_match"),names(geneious_361))] <- c("geneious_similarity")
+# geneious_361$geneious_similarity <- as.numeric(gsub("%","",geneious_361$geneious_similarity))
+# 
+# bold_361 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/bold_search_results_final_360_asvs.csv")
+# unique(bold_361$Query.ID)%in% unique(geneious_361$asv_code)
+# geneious_361$max_bold_sim <- NA
+# for(i in 1:nrow(geneious_361)){
+#   boldi <- bold_361[bold_361$Query.ID == geneious_361$asv_code[i],]
+#   if(nrow(boldi) > 0)
+#   geneious_361$max_bold_sim[i] <- max(boldi$ID.)
+# }
+# # Keep only those geneious records without a BOLD match that is better than the geneious match
+# sum(!is.na(geneious_361$max_bold_sim) & geneious_361$max_bold_sim > geneious_361$geneious_similarity) #175 where bold is a better match
+# sum(is.na(geneious_361$max_bold_sim) | geneious_361$max_bold_sim <= geneious_361$geneious_similarity) #186 where it's not
+# geneious_361 <- geneious_361[is.na(geneious_361$max_bold_sim) | geneious_361$max_bold_sim <= geneious_361$geneious_similarity,]
+# geneious_361[geneious_361$asv_code == "53c07908ccdf6606a4386a4d65c79326",]
+# # keep all bold_results (they are compared against geneious matches in Appendix 2)
+# length(unique(bold_361$Query.ID))  # 228 records
+# # check none of these are already in bold_results or priv_lilb
+# sum(geneious_361$asv_code %in% priv_lib_spp$asv_code)  # 7
+# sum(geneious_361$asv_code %in% priv_lib_lt97$asv_code) # 179
+# # All already in priv_lib, so no need to add
+# sum(geneious_361$asv_code %in% unique(bold_results$asv_code)) #0
+# sum(unique(bold_361$Query.ID) %in% unique(bold_results$asv_code)) #0, so yes, all bold results are new and need to be added to bold results
+# write.csv(bold_361, paste0(dir_0, "asv_library/bold_search_last_175.csv"), row.names = FALSE)
 
