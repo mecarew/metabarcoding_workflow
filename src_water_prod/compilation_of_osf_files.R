@@ -30,6 +30,15 @@ bold_results_tfill <- rbind(
   read.csv(paste0(dir_asv_lib, "tfill_12701_13100BOLD_results.csv")),
   read.csv(paste0(dir_asv_lib, "tfill_13100_endBOLD_results.csv")))
 
+# Chris found many extras here
+x <- rbind(
+  read.csv(paste0(dir_asv_lib, "BOLD_maxp_tfill_extras_1_1000_results.csv")),
+  read.csv(paste0(dir_asv_lib, "BOLD_maxp_tfill_extras_1001_2000_results.csv")),
+  read.csv(paste0(dir_asv_lib, "BOLD_maxp_tfill_extras_2001_3000_results.csv")),
+  read.csv(paste0(dir_asv_lib, "BOLD_maxp_tfill_extras_3000_end_results.csv")))
+bold_results_tfill <- rbind(bold_results_tfill, 
+                        x[!x$Query.ID %in% unique(bold_results_tfill$Query.ID),])
+  
 dir_46 <- "~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/"
 wd2 <- paste0(dir_46,"/synonym_updates/BOLDv5_search_results/")
 bold_results_mw46 <- rbind(
@@ -62,6 +71,10 @@ bold_results_1 <- rbind(
   read.csv(paste0(wd3, "/BOLDrechecks_700_1283.csv")),
   read.csv(paste0(wd3, "/BOLDrechecks_1_700.csv")),
   read.csv(paste0(wd3, "/BOLD_rechecks_1_12.csv")))
+#Chris found some missing records here
+x <- read.csv(paste0(wd3, "/BOLD_exhaustive_search_1.csv"))
+bold_results_1 <- rbind(bold_results_1, 
+                        x[!x$Query.ID %in% unique(bold_results_1$Query.ID),])
 
 wd4 <- paste0(dir_0, "asv_library/maxp_boldv5_search_results")
 # read in .csv files with bold barcodeID engine results.
@@ -69,15 +82,18 @@ bold_results_maxp <- rbind(
   read.csv(paste0(wd4, "/maxp_1_1000BOLD_results.csv")),
   read.csv(paste0(wd4, "/maxp_1000_endBOLD_results.csv")))
 
-# Finally 9 records with matches <94 retrieved by a genus and species search
-bold_results_lt94 <- read.csv(paste0(dir_0, "asv_library/bold_search_to 90.csv"))
-# And another 'final' 175 records (see code at bottom of this file after finding missing non-matches in final stretch)
-bold_results_last_175 <- read.csv(paste0(dir_0, "asv_library/bold_search_last_175.csv"))
+# # Finally 9 records with matches <94 retrieved by a genus and species search
+# bold_results_lt94 <- read.csv(paste0(dir_0, "asv_library/bold_search_to 90.csv"))
+# # And another 'final' 175 records (see code at bottom of this file after finding missing non-matches in final stretch)
+# bold_results_last_175 <- read.csv(paste0(dir_0, "asv_library/bold_search_last_175.csv"))
+# # And another 'final' 3!
+# bold_results_last_3 <- read.csv(paste0(dir_0, "asv_library/bold_3_asvs.csv"))
+# # Annoyingly discovered at the last hurdle that all of the missing bold matches 
+# # were in the files I found and called x above. So none of the extras were necessary.
 
 # rename bold output fields
-bold_results <- rbind(bold_results_tfill, bold_results_mw46,
-                      bold_results_1, bold_results_maxp,
-                      bold_results_lt94,bold_results_last_175)
+bold_results <- unique(rbind(bold_results_tfill, bold_results_mw46,
+                      bold_results_1, bold_results_maxp))
 
 names(bold_results)[names(bold_results) == "Query.ID"] <- "asv_code" 
 names(bold_results)[names(bold_results) == "PID..BIN."] <- "pid_bin" 
@@ -424,6 +440,11 @@ write.csv(all_MC_checks, "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_w
 
 ## 4. Mel Carew's private library
 
+tfill <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/ChrisW/temp/asv_library_corrected.xlsx"),
+                       sheet = "tfill")
+load("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/match_list_bin_uri_v5.rda")
+all_MC_checks <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/all_mc_checks.csv")
+
 #read in private library and searches from Geneious 
 priv_bar_lib <- read.csv("~/uomShare/wergStaff/MelCarew/DNAbarcode_reference_databases/priv_lib_Nov23.csv")
 # Unbelievably persistent spelling error (lost count of how many times I've corrected this)
@@ -434,17 +455,49 @@ names(genei_results)[match(c("Query","X..Pairwise.Identity","Query.coverage"),na
   c("asv_code","geneious_similarity","Query_coverage")
 genei_results$geneious_similarity <- as.numeric(gsub("%","",genei_results$geneious_similarity))
 genei_results$id <- stringr::str_extract(genei_results$Name, "[^_]+$")
+
+# Now there were a persistent 126 records that repeatedly didn't get a match >=97 from geneious or genBank
+# Mel Carew found 59 did get a good match on one last go...
+priv_126 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/geneious_search_results_last126.csv")
+priv_126$geneious_similarity <- as.numeric(gsub("%","",priv_126$geneious_match))
+# But subsequently discovered that the names in this file were wrong, and their names should be the checked_species_name 
+# 49 records with good matches
+priv_126 <- priv_126[priv_126$geneious_similarity >= 97,]
+for(i in 1:nrow(priv_126)){
+  if(sum(genei_results$asv_code == priv_126$asv_code[i]) != 1) stop("1")
+  if(genei_results$geneious_similarity[genei_results$asv_code == priv_126$asv_code[i]] > 
+     priv_126$geneious_similarity[i]) stop("2")
+  genei_results$geneious_similarity[genei_results$asv_code == priv_126$asv_code[i]] <- 
+    priv_126$geneious_similarity[i]
+  # species names in the genei_results table are whack.
+  if(!priv_126$asv_code[i] %in% all_MC_checks$asv_code) stop("1")
+  genei_results$species[genei_results$asv_code == priv_126$asv_code[i]] <- 
+    all_MC_checks$checked_species_name[all_MC_checks$asv_code == priv_126$asv_code[i]]
+}
+gb_126 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/genbank_search_results_last126.csv")
+gb_126 <- aggregate(gb_126$genbank_match, by = list(asv_code = gb_126$asv_code), FUN = max)
+# and 36 records in genbank with good matches
+for(i in 1:nrow(gb_126)){
+  if(sum(genei_results$asv_code == gb_126$asv_code[i]) != 1) stop("1")
+  if(genei_results$geneious_similarity[genei_results$asv_code == gb_126$asv_code[i]] <
+     gb_126$x[i]) 
+  genei_results$geneious_similarity[genei_results$asv_code == gb_126$asv_code[i]] <- 
+    gb_126$x[i]
+}
+
 # Separate records with <97 match for further consideration
-genei_results_lt97 <- genei_results[genei_results$geneious_similarity < 97,]
-genei_results <-  genei_results[genei_results$geneious_similarity >= 97,]
+genei_results_lt97 <- genei_results[genei_results$geneious_similarity < 97,] # 1119 down from 1193 before the 126 check
+genei_results <-  genei_results[genei_results$geneious_similarity >= 97,] # 1591 up from 1517 
 # reduce set to those in the private library
 genei_results <- genei_results[!is.na(match(genei_results$id, priv_bar_lib$id)),]
-genei_results$species <- priv_bar_lib$species[match(genei_results$id, priv_bar_lib$id)] # 1495 records
+genei_results$species_check <- priv_bar_lib$species[match(genei_results$id, priv_bar_lib$id)] # 1495 records
 genei_results$species_check <- NA
 for(i in 1:nrow(genei_results)){
   genei_results$species_check[i] <- gsub("_", " ", 
                                          gsub(paste0("_",genei_results$id[i]), "", genei_results$Name[i]))
 }
+# another (#!$ spelling correction to make the next check 0)
+genei_results$species_check <- gsub("Cricptopus","Cricotopus",genei_results$species_check)
 sum(genei_results$species != genei_results$species_check) # Species names derived both ways match. All good.
 genei_results <- genei_results[names(genei_results) != "species_check"]
 # A correction following final checks of species groupings by Mel Carew
@@ -472,7 +525,10 @@ for(i in 1:nrow(genei_results_lt97)){
   }
 }
 # sum(genei_results_lt97$asv_code[is.na(genei_results_lt97$x)] %in% asv_no_bold) # 0
-# records without resulting taxonomic information not in check_no_bold, so all good.
+# 1 record without resulting taxonomic information not in check_no_bold...manually fix it
+#   2 other records with the same taxonomy
+genei_results_lt97$x[genei_results_lt97$Name == "Scatella_sp._B-AEU5143_BLC97Scoi1"]  <- 
+  genei_results_lt97$x[genei_results_lt97$Name == "Scatella_sp._B-AEU5143_BLC97Scoi1"][1]
 genei_results_lt97 <- genei_results_lt97[genei_results_lt97$asv_code %in% check_no_bold$asv_code,]
 genei_results_lt97 <- mutate(genei_results_lt97, 
                              class = sapply(strsplit(x,";"),"[[",3),
@@ -498,19 +554,47 @@ genei_results_lt97$order[genei_results_lt97$geneious_similarity < 85] <- NA
 # Move lt97 records kept at species level back to the >97 table
 genei_results <- rbind(genei_results, 
                        genei_results_lt97[!is.na(genei_results_lt97$species),
-                                          match(names(genei_results),names(genei_results_lt97))]) #1495 records
-genei_results_lt97 <- genei_results_lt97[is.na(genei_results_lt97$species),]  #391 records
+                                          match(names(genei_results),names(genei_results_lt97))]) #1569 records
+genei_results_lt97 <- genei_results_lt97[is.na(genei_results_lt97$species),]  #111 records
+
+# Give genei_results species names from all_MC_checks
+for(i in 1:nrow(genei_results)){
+  if(genei_results$asv_code[i] %in% all_MC_checks$asv_code){
+     if(all_MC_checks$checked_species_name[all_MC_checks$asv_code == genei_results$asv_code[i]] != "") {
+  genei_results$species[i] <- all_MC_checks$checked_species_name[all_MC_checks$asv_code == genei_results$asv_code[i]]
+     }
+    genei_results$species[i] <- trimws(gsub("_"," ", gsub(genei_results$id[i],"", genei_results$Name[i])))
+  }else{
+    genei_results$species[i] <- trimws(gsub("_"," ", gsub(genei_results$id[i],"", genei_results$Name[i])))
+    
+  }
+}
+
+# Check for inconsistencies with checked_species_name
+genei_results$csn <- all_MC_checks$checked_species_name[match(genei_results$asv_code, all_MC_checks$asv_code)]
+unique(genei_results[genei_results$csn != genei_results$species & genei_results$csn != "",c("csn","species")])
+# Mel assures me that all the checked species names are correct.
+for(i in which(!is.na(genei_results$csn) & # there really is a checked species name
+          genei_results$csn != genei_results$species &   #checked species name differs from private library name
+          genei_results$csn != "" &  # there really is a checked species name (again)
+          grepl(" ", genei_results$csn #checked species name isn't just a genus/family name
+                ))){
+  genei_results$species[i] <- genei_results$csn[i]
+}
+
+# Correct spelling errors 
+genei_results$species <- gsub("sp.B","sp. B", genei_results$species)
 
 # MEL:I struck problems with class-level inconsistencies between tfill and genei_results_lt97 
 # when records had geneious similarity <= 86.2. I had, at first, assumed here  
 # that these should be removed from the private library, but see below
-genei_low <- genei_results_lt97[genei_results_lt97$geneious_similarity <= 86.2,]  #132
+genei_low <- genei_results_lt97[genei_results_lt97$geneious_similarity <= 86.2,]  #27
 genei_low_tfill <- data.frame(tfill[match(genei_low$asv_code, tfill$asv_code),
                  c("asv_code","class","max_p_identity")], 
            class_genei = genei_low$class,
            geneious_similarity = genei_low$geneious_similarity)
 problems <- genei_low_tfill[genei_low_tfill$class != genei_low_tfill$class_genei,]
-problems  # 11 (of 132 with disagreement at class level)
+problems  # 9 (of 27 with disagreement at class level)
 # Happy for you to make a call on what to do with these:
 # Personally I would counsel removing all low-geneious_similarity records from the asv_library
 # For now I've left them in tfill, and have removed them from genei_results_lt97.
@@ -522,36 +606,14 @@ problems  # 11 (of 132 with disagreement at class level)
 WriteXLS::WriteXLS(list(species = genei_results, higher_taxa = genei_results_lt97),
                    "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/private_library_mc_validated.xlsx")
 
-# # final 361 records that needed re-searching. Only one Genbank result with >97% match in a very large file
-# # that was more difficult to upload than was worth it: copied here
-# # 53c07908ccdf6606a4386a4d65c79326	KM376609	97.561	Austrocyphon furcatus
-# geneious_361 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/geneious_search_results_final_361_asvs.csv")
-# geneious_361[geneious_361$asv_code == "53c07908ccdf6606a4386a4d65c79326",]
-# # It's there: geneious calls it Austrocyphon ovensensis;
-# #  Mel's checked_name and genbank "Austrocyphon furcatus" - come back to this...
-# names(geneious_361)[match(c("geneious_match"),names(geneious_361))] <- c("geneious_similarity")
-# geneious_361$geneious_similarity <- as.numeric(gsub("%","",geneious_361$geneious_similarity))
-# 
-# bold_361 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/bold_search_results_final_360_asvs.csv")
-# unique(bold_361$Query.ID)%in% unique(geneious_361$asv_code)
-# geneious_361$max_bold_sim <- NA
-# for(i in 1:nrow(geneious_361)){
-#   boldi <- bold_361[bold_361$Query.ID == geneious_361$asv_code[i],]
-#   if(nrow(boldi) > 0)
-#   geneious_361$max_bold_sim[i] <- max(boldi$ID.)
-# }
-# # Keep only those geneious records without a BOLD match that is better than the geneious match
-# sum(!is.na(geneious_361$max_bold_sim) & geneious_361$max_bold_sim > geneious_361$geneious_similarity) #175 where bold is a better match
-# sum(is.na(geneious_361$max_bold_sim) | geneious_361$max_bold_sim <= geneious_361$geneious_similarity) #186 where it's not
-# geneious_361 <- geneious_361[is.na(geneious_361$max_bold_sim) | geneious_361$max_bold_sim <= geneious_361$geneious_similarity,]
-# geneious_361[geneious_361$asv_code == "53c07908ccdf6606a4386a4d65c79326",]
-# # keep all bold_results (they are compared against geneious matches in Appendix 2)
-# length(unique(bold_361$Query.ID))  # 228 records
-# # check none of these are already in bold_results or priv_lilb
-# sum(geneious_361$asv_code %in% priv_lib_spp$asv_code)  # 7
-# sum(geneious_361$asv_code %in% priv_lib_lt97$asv_code) # 179
-# # All already in priv_lib, so no need to add
-# sum(geneious_361$asv_code %in% unique(bold_results$asv_code)) #0
-# sum(unique(bold_361$Query.ID) %in% unique(bold_results$asv_code)) #0, so yes, all bold results are new and need to be added to bold results
-# write.csv(bold_361, paste0(dir_0, "asv_library/bold_search_last_175.csv"), row.names = FALSE)
+# Records from a visual check of priv_lib_spp entries with odd naming inconsistencies
+inc <- c("2aa8dad922b7db2e1326760f3fa9075b","e0718a08e9e543f502f7e2ccc2f41593","05a219c2d4357c5580dd0294b9fd0f41",
+"a1dc1b5ad6c4bfeec1155fa6fbec404e","1a382b58c4a5d3c1ec558265cf5219e8","846cd569430799e8555c942e43295cd8",
+"c99cbe15c38a2ed5ccc3b01edec08d14","e9e9dca47fcf68baca937e6b68ede656","eb28d2a272446fad1272d79d03a2e19c",
+"7bf89f25a170d491b66d2e5fc6ebe937")
+inc <- c(inc, check_no_bold$asv[check_no_bold$species != ""])
 
+x <- priv_lib_spp[priv_lib_spp$asv_code %in% inc,]
+names(x)[names(x) == "species"] <- "priv_lib_species"
+x$checked_species_name <- all_MC_checks$checked_species_name[match(x$asv_code, all_MC_checks$asv_code)]
+x$tfill_species_name <- tfill$species[match(x$asv_code, tfill$asv_code)]

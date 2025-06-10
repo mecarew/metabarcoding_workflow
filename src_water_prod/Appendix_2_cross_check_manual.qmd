@@ -18,6 +18,7 @@ tfill <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/ChrisW/temp/asv_
 tfill <- tfill[tfill$aqu == 1,]
 tfill_spp_bins <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/ChrisW/temp/asv_library_corrected.xlsx",
                        sheet = "bin_uris"))
+tfill_spp_bins <- tfill_spp_bins[tfill_spp_bins$asv_code %in% tfill$asv_code,]
 load("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/match_list_bin_uri_v5.rda")
 bold_results <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/match_bold_v5.csv")
 priv_lib_spp <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/private_library_mc_validated.xlsx", sheet = "species"))
@@ -27,7 +28,7 @@ priv_lib_lt97 <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/MelCarew
 asv_no_bold <- tfill$asv_code[!tfill$asv_code %in% unique(names(match_list_bin_uri))]  # length(asv_no_bold)  1307 asv_codes
 
 # Records checked by Mel that do not have a >97% match with BOLD (and have been given different names by MC and CW)
-check_no_bold <- all_MC_checks[all_MC_checks$asv_code %in% asv_no_bold,] #1307 still
+check_no_bold <- all_MC_checks[all_MC_checks$asv_code %in% asv_no_bold,] #1170
 check_no_bold$species <- tfill$species[match(check_no_bold$asv_code, tfill$asv_code)]
 check_no_bold[is.na(check_no_bold)] <- ""  # for easier matching
 check_no_bold <- dplyr::mutate(check_no_bold, 
@@ -36,123 +37,30 @@ check_no_bold <- dplyr::mutate(check_no_bold,
                                .after = bold_match)
 check_no_bold <- dplyr::mutate(check_no_bold, species_old = tfill$species_old[match(check_no_bold$asv_code,tfill$asv_code)], .before = bold_match)
 # Reduce to only those records where species and checked_species_name are not equivalent
-check_no_bold <- check_no_bold[check_no_bold$species != check_no_bold$checked_species_name,] # 133 records
+check_no_bold <- check_no_bold[check_no_bold$species != check_no_bold$checked_species_name,] # 54 records
 # Identify the check_no_bold records that share a name with records that actually have a >=97% bold match
 tfill_bold <-tfill[tfill$asv_code %in% unique(bold_results$asv_code[bold_results$similarity >= 97]),]  #17,273
 check_no_bold_spp_in_bold <- check_no_bold[check_no_bold$species %in% unique(tfill_bold$species),]   # 0 
-# None, so...
-check_no_bold <- check_no_bold[!check_no_bold$asv_code %in% check_no_bold_spp_in_bold$asv_code,] # still at 133
+check_no_bold <- check_no_bold[!check_no_bold$asv_code %in% check_no_bold_spp_in_bold$asv_code,] # still 54
 
-# Five of these are Empididae sp. MC-Co1, which we agreed tfill now has right
-empid_right <- check_no_bold[check_no_bold$species == "Empididae sp. MC-Co1",]
-empid_right
-
-check_no_bold <- check_no_bold[!check_no_bold$asv_code %in% empid_right$asv_code,] # Down to 128
 
 # 2 are records where you had bold_match = 92, and checked_species_name = Notonemouridae
 notonem_right <- check_no_bold[check_no_bold$bold_match == "92",]
 notonem_right
 # The geneious search confirmed matches of 86.1 and 87.0 - these probably should have replaced 
 # tfill the max_p_identity of 90, 
-priv_lib_lt97[priv_lib_lt97$asv_code %in% notonem_right$asv_code,]
-tfill[tfill$asv_code %in% notonem_right$asv_code,]
 # but no such cases were in the script's logic. As max_p_identity of 86 or 90 makes
 # no substantive difference, I am moving on, and assuming these two records are correct 
 # but let me know if you want to change these (I can't 
 # guarantee there arent other similar inconsequential max_p_identity errors in t_fill!)
 
-check_no_bold <- check_no_bold[!check_no_bold$asv_code %in% notonem_right$asv_code,] # Down to 126
+check_no_bold <- check_no_bold[!check_no_bold$asv_code %in% notonem_right$asv_code,] # Down to 52
+
+# These are all genbank or private library records, all of which had final check of matches with genbank and geneious.
+# Accept those with 
+check_no_bold 
 # write.csv(check_no_bold, "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/unmatched_priv_lib.csv", row.names = FALSE)
 
-# The remaining 126 in check_no_bold
-# are all commented as being from 
-unique(check_no_bold$comments)
-# "GenBank only", "private library only", or "private library only not SC2"
-# All of their max_p_identities have been amended to equal the similarity from 
-# your most recent geneious search
-sum(check_no_bold$max_p_identity == check_no_bold$max_sim_bold) #126
-# All were in that search
-geneious_361 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/geneious_search_results_final_361_asvs.csv")
-sum(check_no_bold$asv_code %in% geneious_361$asv_code) # 126
-# None were matched by your recent bold search
-bold_361 <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/bold_search_results_final_360_asvs.csv")
-sum(check_no_bold$asv_code %in% unique(bold_361$Query.ID)) # 0
-
-# So, is it possible that the 126 genbank and private library matches were not appropriate at the species level?
-
-# If you are happy to let them go, then I think we can say that the asv_library file is now complete and correct, 
-#  EXCEPT FOR:
-# A. rows where aqu = 0 (i.e. non-aquatic/non-macroinvertebrates). IDs are likely to be unreliable here
-#    Certainly there are many cases of multiple "aqu = 0" names given to the same bin-uri.
-#    These will take a lot of work to correct.
-# B. Consider my recommended removal of the records with max_p_identity <= 86.2: see
-#    L1204 in Appendix_2_clean_cw and L504-521 in compilation_of_osf_files.R for my reasoning
-#    Note that (for aqu = 1 records only), these are identified by "dubious_id" = 1
-#    There are only 51 such records
-
-# Everything else from here on has been agreed as ok previously.
-
-check_with_bold <- all_MC_checks[!all_MC_checks$asv_code %in% asv_no_bold,]
-# Exclude non_aqu/non_macros not checked by CW
-check_with_bold <- check_with_bold[check_with_bold$asv_code %in% tfill$asv_code,]
-check_with_bold$species <- tfill$species[match(check_with_bold$asv_code, tfill$asv_code)]
-check_with_bold[is.na(check_with_bold)] <- ""  # for easier matching
-check_with_bold <- dplyr::mutate(check_with_bold, 
-                               max_sim_bold = tfill$max_sim_bold[match(check_with_bold$asv_code, tfill$asv_code)],
-                               max_p_identity = tfill$max_p_identity[match(check_with_bold$asv_code, tfill$asv_code)],
-                               .after = bold_match)  #16,117
-
-# Check for disagreements between checked_species_name and the name determined by the Appendix 2 script (species)
-check_with_bold <- check_with_bold[check_with_bold$species != check_with_bold$checked_species_name,]
-# 3778 records where checked_species name doesn't match species,
-x <- unique(check_with_bold[c("checked_species_name","species")])
-nrow(x) # reduces to 286 name disagreements
-# Let's break this up and reduce the list iteratively: please identify any names you think the script has got wrong at each step
-
-# Records where checked_species_name was blank but the script keeps a species name
-xa <- x[x$checked_species_name == "" & x$species != "",]
-# 25 cases where a low max_sim_bold has been replaced by a high geneious_similarity, for example
-check_with_bold[check_with_bold$checked_species_name == "" & check_with_bold$species == "Piona sp. B-AEI7143",]
-tfill[tfill$asv_code == "0beb9ec9626ac4c3d5b215d0ece3bba2",]
-# MEL: Are you happy with that? (see L1099 of Appendix_2_clean_cw) CHRIS3: Yes
-
-# Records where the script removes a species name where check_species_name says there should be one
-xb <- x[x$checked_species_name != "" & x$species == "",]
-# 134 cases where maximum bold match was less than max_p_identity and replaced it at L1166  of Appendix_2_clean_cw
-check_with_bold[check_with_bold$checked_species_name == "Stratiomyidae sp. B-AED3167" & check_with_bold$species == "",]
-tfill[tfill$asv_code == "5e54eb4fe2cfe6a15ed1b5c718f348f6",]
-max(match_list_bin_uri$`5e54eb4fe2cfe6a15ed1b5c718f348f6`$similarity)
-# MEL Are you happy with that? CHRIS3: Yes. I think this will make things easier moving forward
-
-x <- x[!(x$checked_species_name == "" | x$species == ""),] # down to 127
-
-# Groups MEL has lumped that the script identified as distinct CHRIS3: If you found no overlap, I am happy to go with your assessment. As I mentioned above Notalina sp. B-ABV8023 had some matching specimens identified as Notalina bifara. This was my reason for combining them
-# Note you were happy with x1, x2, x3 and x4 last time
-x1 <- x[duplicated(x$checked_species_name) | duplicated(x$checked_species_name, fromLast = TRUE),]
-# Groups that the script lumped and MEL had as separate
-x2 <- x[duplicated(x$species) | duplicated(x$species, fromLast = TRUE),]
-# Remove these to get
-x <- x[!x$species %in% unique(c(x2$species, x1$species)),]
-# We would expect that there will be disagreement in B- names (the script always chooses the first bin alphabetically and adds the name group)
-x3 <- x[grepl("B-", x$species) & grepl("group", x$species) & grepl("B-", x$checked_species_name),]
-x <- x[!x$species %in% x3$species,]
-nrow(x) # reduced to 32
-# disagreements are a result of Mel's "update species name" not being made
-mel_changes <- unique(check_with_bold$checked_species_name[grep("species name",check_with_bold$action)])
-x4 <- x[x$checked_species_name %in% mel_changes,]
-# Remove these to get 
-x <- x[!x$species %in% x4$species,]
-nrow(x)
-x
-# reduced to 15, # MEL: you might want to do a final re-check of x
-# CHRIS3: Happy with the final names for the final 15!
-
-
-# MEL: 2 Notalina disagreements. These are presumably 2 records that fell through the buggy BOLD net again.
-#      I am now sure that Notalina sp. B-ABV8023 is different from Notalina bifara
-#      (See the checking code at L1119 in Appendix_2_clean_cw)
-#      So, I am sure these two are correct (if your reported match to bold is correct)
-
+# tfill records these last 52 at the genus or family level as appropriate to their max_p_identity.
 
 ```
-
