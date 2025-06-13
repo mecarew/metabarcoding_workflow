@@ -64,21 +64,21 @@ taxon_spp <- unique(taxon_spp)
 bold_results <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/match_bold_v5.csv")
 
 # Trial run with asv_library taxa (note this creates new bugdata_spp, gen etc from above)
-tfill <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/ChrisW/temp/asv_library_corrected.xlsx",
+tfill <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/asv_library_corrected.xlsx",
                        sheet = "tfill"))
-tfill <- tfill[tfill$aqu == 1,] #19,706 records
+tfill <- tfill[tfill$aqu == 1,] #19,708 records
 
 # aqu really only indicates those records that have gone through the full check. Some should still be removed as 
 # being not (necessarily) aquatic or macroinvertebrates
-tfill <- only_aqu_inverts(tfill, db, TRUE)$include # 19,704...not sure I believe that. Let's come back to it.
+tfill <- only_aqu_inverts(tfill, db, TRUE)$include # 19,706...not sure I believe that. Let's come back to it.
 # remove dubious_id records
-tfill <- tfill[tfill$dubious_id == 0,] #19,675
+tfill <- tfill[tfill$dubious_id == 0,] #19,677
 tfill_spp_bins <- as.data.frame(readxl::read_excel("~/uomShare/wergStaff/ChrisW/temp/asv_library_corrected.xlsx",
                        sheet = "bin_uris"))
-tfill_spp_bins <- tfill_spp_bins[tfill_spp_bins$asv_code %in% tfill$asv_code,] #23,213 species/bin combos
-bugdata <- unique(tfill[c("kingdom","phylum","class","order","family","genus","species")]) #1,162 unique identifications
+tfill_spp_bins <- tfill_spp_bins[tfill_spp_bins$asv_code %in% tfill$asv_code,] #23,215 species/bin combos
+bugdata <- unique(tfill[c("kingdom","phylum","class","order","family","genus","species")]) #1,160 unique identifications
 bugdata_spp <- bugdata[!is.na(bugdata$species),] #1003
-bugdata_gen <- bugdata[is.na(bugdata$species) & !is.na(bugdata$genus),] #96
+bugdata_gen <- bugdata[is.na(bugdata$species) & !is.na(bugdata$genus),] #94
 bugdata_fam <- bugdata[is.na(bugdata$species) & is.na(bugdata$gen) & !is.na(bugdata$family),] #48
 bugdata_oth <- bugdata[is.na(bugdata$species) & is.na(bugdata$gen) & is.na(bugdata$family),] #15
 bugdata_oth <- bugdata_oth[!is.na(bugdata_oth$order) & 
@@ -140,7 +140,7 @@ old_dna_morphospp <- unique(morphospp_etc$lowesttaxon[
 morphospp_etc <- morphospp_etc[!morphospp_etc$lowesttaxon %in% old_dna_morphospp,] #570 down from 954
 
 all_spp <- unique(bugdata_spp$species)  #951
-new_spp <- all_spp[!all_spp %in% c(taxon_spp$species, morphospp_etc$lowesttaxon)] #579
+new_spp <- all_spp[!all_spp %in% c(taxon_spp$species, morphospp_etc$lowesttaxon)] #578
 
 # Worth exploring groups as a final check of tfill, I think
 groups <- all_spp[grepl(" group", all_spp) | grepl("\\/", all_spp)]
@@ -288,13 +288,14 @@ taxon_spp <- taxon_spp[order(taxon_spp$spcode),]
 taxon_all <- rbind(taxon_all, data.frame(shortcode = new_spp$bugcode,
                                          taxon = new_spp$species, 
                                          table = "taxon_spp"))
-
+##### Only checked as far as here.....
 morphospp_etc <- rbind(morphospp_etc, 
                        data.frame(taxoncode = new_spp$bugcode,
                                 lowesttaxon = new_spp$species,
                                 type = "DNA barcoded species",
                                 tempNote = "added by CW for ARC metabarcoding project",
                                 t1code = substr(new_spp$bugcode,1,2))[new_spp$mwbugs_table == "morphospp_etc",])
+
 taxon_all$table[taxon_all$shortcode %in% 
                   new_spp$bugcode[new_spp$mwbugs_table == "morphospp_etc"]] <-
   "morphospp_etc"

@@ -186,7 +186,9 @@ bact_bold_asvs <- unique(bold_results$asv_code[bold_results$phylum %in% c("Prote
 # Note: one of these records is recorded as insecta on bold, but that is an error: it is a bacterium.
 #   bold_results[bold_results$asv_code %in% bact_records[!bact_records %in% bact_bold_asvs],]
 bact_records <- c(bact_bold_asvs,  c("f1af7c78e098ac3d8f195adadae2a33c",
-                                     "9bff0ede8650baaa8cd7f68ed6dbc22a")) # 329 records
+                                     "9bff0ede8650baaa8cd7f68ed6dbc22a",
+                                     "1ce6b94c99bc212e868810434d5a4981",
+                                     "2e093f1b6f74ca96e03af70850c2add0")) # 494 records
 names(all_records)[names(all_records) == "asv_seq"] <- "asv_sequence"
 # Combine bacteria records from both tfill_all and all_records
 bact_records <- rbind(tfill_all[tfill_all$asv_code %in% bact_records,],
@@ -216,6 +218,10 @@ bact_records <- bact_records[!row.names(bact_records) %in% row.names(records_to_
 bact_records <- bact_records[!duplicated(bact_records$asv_code),] #500
 tfill_all <- tfill_all[!tfill_all$asv_code %in% bact_records$asv_code,]  #15,226
 all_records <- all_records[!all_records$asv_code %in% bact_records$asv_code,] #22,048
+
+# correctin ids to avoid loss to non_aq
+all_records$family[all_records$asv_code == "fcff214b2c3fc71eeaf0f5ec12a781b5"] <- "Staphylinidae"
+all_records$family[all_records$asv_code == "7c1246ff83f53bbc07f9122a83eb31d4"] <- "Elmidae"
 
 # A classification error to correct
 tfill_all[tfill_all$asv_code == "5148a3678b70de5db884a99af7734de4",c("order","family","genus")] <- c("Sarcoptiformes",NA,NA)
@@ -356,6 +362,7 @@ tfill$species[!is.na(tfill$species) & tfill$species == "Notalina bifara group B-
 tfill$species[!is.na(tfill$species) & tfill$species == "Notalina sp. B-AAX5636"] <- "Notalina bifaria"
 tfill$species[!is.na(tfill$species) & tfill$species == "Mirawara sp. AV1"] <- "Mirawara sp. B-AAV0800"
 tfill$species[!is.na(tfill$species) & tfill$species == "Dicranomyia whitei whitei"] <- "Dicranomyia whitei"
+tfill$species[!is.na(tfill$species) & tfill$species == "Haplotaxida sp. MC-4"] <- "Aulodrilus sp. MC-4"
 ```
 
 The following chunk creates a new table of asv_codes, species names, and their bin_uris. Many asv_codes have multiple bin_uris, so this table is longer than tfill. Many species names are incorrect at this stage, but are corrected below using the bold_results
@@ -634,8 +641,8 @@ c("AAE9243" = "Cheumatopsyche alampeta",
 "AAU4676" = "Fridericia auritoides",
 "ACV8324" = "Contacyphon lindensis",
 "ABV8023" = "Notalina sp. B-ABV8023",
-"ACE5915" = "Corbicula fluminalis" # so that the collective Corbicula bins get call Corbicula fluminalis group.
-)
+"ACE5915" = "Corbicula fluminalis", # so that the collective Corbicula bins get call Corbicula fluminalis group.
+"ABW3343" = "Macrogyrus angustatus")
 
 # # # # # #  #  ## Code used for checking the above  ABY8640
 # bini <- "ACM7596"
@@ -1254,6 +1261,9 @@ for(i in 1:nrow(tfill)){
 tfill$dubious_id <- 0
 tfill$dubious_id[tfill$max_p_identity <= 86.2] <- 1 # sum(tfill$dubious_id) # MEL: 25 records to consider removing from tfill
 
+# After inclusion of some priv_lib entries to genus/family
+tfill$family[tfill$species_old == "Austrocyphon ovensensis"] <- "Scirtidae"
+
 # Fix up taxonomy fields
 for(i in which(tfill$asv_code %in% priv_lib_spp$asv_code)){
   if(grepl("Haplotaxida",tfill$species[i]) | grepl("Enchytraeida",tfill$species[i]) |
@@ -1440,6 +1450,8 @@ range(tfill$max_p_identity[tfill$asv_code %in% check4$asv_code])
 tfill$dubious_id[tfill$asv_code %in% check4$asv_code[!is.na(check4$family)]] <- 2
 # Actually the last one looks ok
 tfill$dubious_id[tfill$asv_code == "d79729091c4bbfd0245a0e878424248b"] <- 0
+
+tfill$kingdom[tfill$phylum == "Arthropoda"] <- "Eukaryota"
 
  # Check/Revise all class/order/phylum names for all records in tfill.
  # Rather than use the mwbugs taxon tables with some differences at these high levels, 
@@ -1759,7 +1771,7 @@ tfill_spp_bins <- rbind(tfill_spp_bins, tfill_nonaq_spp_bins)
 tfill_spp_bins_unq <- rbind(tfill_spp_bins_unq, unique(tfill_nonaq_spp_bins[c("species","bin_uri")]))
 
 # And save the output xlsx to the data directory
-wd <- "~/uomShare/wergStaff/ChrisW/temp/"  # data/
+wd <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/"  # data/
 WriteXLS::WriteXLS(list(tfill = tfill,
                         bin_uris = tfill_spp_bins,
                         bin_uri_unq = tfill_spp_bins_unq),
