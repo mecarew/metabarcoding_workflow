@@ -27,11 +27,6 @@ output:
 This notebook performs classification for your metabarcoding analysis. This notebook depends on the outputs of the previous notebooks, `01_preprocessing.Rmd` where we preprocessed the sequencing data, and `02_quantification` where we quantified ASVs.
 
 
-```{r}
-# TODO: customise slurm n_threads if using slurm or not
-```
-
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(warning=TRUE, message=TRUE, error=TRUE, echo=TRUE, results="hold")
 knitr::opts_knit$set(root.dir = "..")
@@ -56,7 +51,7 @@ suppressPackageStartupMessages({
 xaringanExtra::use_panelset()
 
 # Load workspace from the previous notebook
-load(here::here("plants/cache_trnl/02.RData"))
+load(here::here("plants/cache/02.RData"))
 ```
 
 ```{r}
@@ -84,25 +79,33 @@ slurm_threads <- 4
 slurm_resources <- list(partition="main", ntasks=1, ncpus=slurm_threads, memory=8192)
 slurm_n_jobs <- 10
 ```
------
 
-# Create databases for classification
-#trnl
+
 ```{r}
-#results_dir <- here::here("plants/results")
-
+# Create databases for classification
+# Define directory path
 ref_db_dir <- "/mnt/galaxy/home/mecarew/git/DNA_barcode_reference_database_construction/Plants/final_library"
 
-db_trnl_ids=list(trnl=file.path(ref_db_dir, "trnl_db_2024-05.txt"))
+# Define TSV metadata files
+db_plant_ids <- list(
+  its2 = file.path(ref_db_dir, "its2local_db_2025-05.tsv"),
+  rbcl = file.path(ref_db_dir, "rbcllocal_db_2025-05.tsv"),
+  trnl = file.path(ref_db_dir, "trnllocal_db_2025-05.tsv")
+)
 
-# FASTA file with trnl sequences
-db_fasta_files=list(
-  trnl=file.path(ref_db_dir, "trnl_db_2024-05.fasta"))
+# Define FASTA sequence files
+db_fasta_files <- list(
+  its2 = file.path(ref_db_dir, "its2local_db_2025-05.fasta"),
+  rbcl = file.path(ref_db_dir, "rbcllocal_db_2025-05.fasta"),
+  trnl = file.path(ref_db_dir, "trnllocal_db_2025-05.fasta")
+)
+
+
 ```
 
 ```{r}
 taxonomy_ref <- data.frame(SampleName=names(db_fasta_files),
-                           db_trnl_id_file=unlist(db_trnl_ids[names(db_fasta_files)]),
+                           db_plant_id_file=unlist(db_plant_ids[names(db_fasta_files)]),
                            db_fasta_file=unlist(db_fasta_files[names(db_fasta_files)]))
 ```
 
@@ -114,7 +117,7 @@ mkdir(classification_db_dir)
 
 # Setup targets
 targets <- data.frame(FileName=taxonomy_ref$db_fasta_file,
-                      taxonomy_id_file=taxonomy_ref$db_trnl_id_file,
+                      taxonomy_id_file=taxonomy_ref$db_plant_id_file,
                       SampleName=taxonomy_ref$SampleName,
                       amplicon_group=taxonomy_ref$SampleName,
                       output_prefix=paste0(taxonomy_ref$SampleName))
@@ -128,8 +131,7 @@ targets <- targets %>%
 
 database_targets <- here("tmp/database_targets.txt")
 
-# WIP: For the moment, only run the short/right amplicions
-write_targets(targets %>% filter(SampleName %in% c("trnl")), file=database_targets)
+write_targets(targets %>% filter(SampleName %in% c("its2", "rbcl", "trnl")), file=database_targets)
 ```
 
 
@@ -231,11 +233,9 @@ if (! big_dataset) {
   
   prelim_classification_targets <- here("tmp/classification_prelim_targets.txt")
   
-  # WIP: For the moment, only run the short and right amplicions
-  write_targets(targets %>% filter(amplicon_group %in% c("trnl")), file=prelim_classification_targets)
+  write_targets(targets %>% filter(amplicon_group %in% c("its2", "rbcl", "trnl")), file=prelim_classification_targets)
 }
 ```
-
 
 ```{r}
 if (big_dataset) {
@@ -264,7 +264,7 @@ if (big_dataset) {
   prelim_classification_targets <- here("tmp/classification_prelim_vsearch_targets.txt")
   
   # WIP: For the moment, only run the short amplicions
-  write_targets(targets %>% filter(amplicon_group %in% c("trnl")), file=prelim_classification_targets)
+  write_targets(targets %>% filter(amplicon_group %in% c("its2", "rbcl", "trnl")), file=prelim_classification_targets)
 }
 ```
   
@@ -363,6 +363,11 @@ dir_tree(classification_dir)
 Process the search results to get % identity match thresholds. Currently we use the top % identity match minus 3 for the threshold of matches to consider, but this can be changed using the `offset` parameter in the `get_thresholds` function.
 
 ```{r}
+# Too large inputs for qiime classification jobs can crash if there's not enough memory. If lots of features, split into multiple files.
+max_features_per_qiime_job <- 1000
+```
+
+```{r}
 classification_thresholds_dir <- file.path(results_dir, "classification/thresholds")
 mkdir(classification_thresholds_dir)
 ```
@@ -400,13 +405,12 @@ write_id_files_for_thresholds <- function(threshold_df, file_path, file_prefix) 
 }
 ```
 
-
 ```{r}
 thresholds_list <- list()
 for (amplicon_group in amplicon_groups) {
   # WIP: only short and right amplicon groups for now
-  if (! amplicon_group %in% c("trnl")) {
-    next
+  if (! amplicon_group %in% c("its2", "rbcl", "trnl")) {
+     next
   }
   print(amplicon_group)
   if (! big_dataset) {
@@ -424,13 +428,19 @@ for (amplicon_group in amplicon_groups) {
 
 ```{r}
 threshold_file_list <- data.frame(
-  amplicon_group=c("trnl"),
-  file_list=c(here("plants/results/classification/thresholds/trnl_files.txt"))
+  amplicon_group = c("its2", "rbcl", "trnl"),
+  file_list = c(
+    here("plants/results/classification/thresholds/its2_files.txt"),
+    here("plants/results/classification/thresholds/rbcl_files.txt"),
+    here("plants/results/classification/thresholds/trnl_files.txt")
+  )
 )
+
 paged_table(threshold_file_list)
 
 # save threshold list
-saveRDS(thresholds_list, file = "~/git/metabarcoding_workflow/plants/results_trnl/thresholds_list_trnl.rds") 
+saveRDS(thresholds_list, file = (here("plants/results/classification/thresholds/thresholds_list.rds")))
+
 ```
 
 
@@ -467,8 +477,7 @@ targets <- targets %>%
 
 classification_targets <- here("tmp/classification_targets.txt")
 
-# WIP: For the moment, only run the short and right amplicions
-write_targets(targets %>% filter(amplicon_group %in% c("trnl")), file=classification_targets)
+write_targets(targets %>% filter(amplicon_group %in% c("its2", "rbcl", "trnl")), file=classification_targets)
 ```
 
 
@@ -536,7 +545,14 @@ dir_tree(classification_dir)
 Save output so it can be loaded in subsequent notebooks.
 
 ```{r}
-save.image(here("cache/03.RData"))
+save.image(here("plants/cache/03.RData"))
+```
+
+
+```{r}
+# save 'thresholds_list' and 'samples_df' for the next notebook
+saveRDS(thresholds_list, here::here("plants/cache/thresholds_list.rds"))
+saveRDS(samples_df, here::here("plants/cache/samples_df.rds"))
 ```
 
 
