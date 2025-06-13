@@ -53,7 +53,7 @@ suppressPackageStartupMessages({
 xaringanExtra::use_panelset()
 
 # Load workspace from the previous notebook
-load(here::here("plants/cache/01.RData"))
+load(here::here("bat_diet/cache/01.RData"))
 ```
 
 ```{r}
@@ -225,9 +225,9 @@ First, define the lengths that amplicon groups will be truncated to.
 ```{r}
 # TODO: Custom truncation lengths from file? Don't know how this should be handled
 truncation_lengths <- data.frame(
-  SampleName = c("its2", "rbcl", "trnl"),
-  forward_trunc_length = c(200, 180, 180),
-  reverse_trunc_length = c(200, 180, 200)
+  SampleName = c("zeale"),
+  forward_trunc_length = c(140),
+  reverse_trunc_length = c(100)
 )
 paged_table(truncation_lengths)
 ```
@@ -245,7 +245,7 @@ targets <- data.frame(FileName=extract_targets(combine_2, "output"),
 
 # Join with truncation length parameters and check no missing values
 targets <- full_join(targets, truncation_lengths, by="SampleName")
-stopifnot(all(! is.na(targets)))
+#stopifnot(all(! is.na(targets)))
 
 
 targets <- targets %>% 
@@ -254,8 +254,8 @@ targets <- targets %>%
          table_output=file.path(dada2_dir, paste0(amplicon_group, "_table.qza"))
   )
 
-# targets <- targets %>% filter(SampleName == "short")
-targets <- targets %>% filter(SampleName %in% c("its2", "rbcl", "trnl"))
+# targets <- targets %>% filter(SampleName == "zeale")
+targets <- targets %>% filter(SampleName %in% c("zeale"))
 
 dada2_targets <- here("tmp/dada2_targets.txt")
 write_targets(targets, file=dada2_targets)
@@ -342,7 +342,7 @@ dada2_vis <- loadWorkflow(targets=dada2_vis_targets, wf_file="qiime_dada2_vis.cw
 dada2_vis <- set_logs_dir(dada2_vis, logs_dir)
 dada2_vis <- renderWF(dada2_vis, inputvars=c(stats_qza="_INPUT_PATH_",
                                              stats_qzv="_OUTPUT_QZV_"))
-#run_jobs(dada2_vis)
+run_jobs(dada2_vis)
 ```
 
 
@@ -377,149 +377,8 @@ dir_tree(dada2_dir)
 # View DADA2 stats
 
 ```{r}
-paged_table(read_qza(here("plants/results/dada2/its2_denoising_stats.qza"))$data)
+paged_table(read_qza(here("bat_diet/results/dada2/zeale_denoising_stats.qza"))$data)
 ```
-
-```{r}
-paged_table(read_qza(here("plants/results/dada2/rbcl_denoising_stats.qza"))$data)
-```
-
-```{r}
-paged_table(read_qza(here("plants/results/dada2/trnl_denoising_stats.qza"))$data)
-```
-
-# DADA2 filtering
-
-Remove low frequency ASVs from DADA2 tables. First filter table with `filter-features-conditionally`, then filter matching sequences with `filter-seqs`.
-
-```{r}
-# Setup targets
-targets <- data.frame(FileName=extract_targets(dada2, "table_output"),
-                      SampleName=extract_targets(dada2, "SampleName"),
-                      amplicon_group=extract_targets(dada2, "amplicon_group"),
-                      table_input=extract_targets(dada2, "table_output"),
-                      seq_input=extract_targets(dada2, "seq_output"))
-
-targets <- targets %>% 
-  mutate(filtered_table_output=file.path(dada2_dir, paste0(amplicon_group, "_table_filtered.qza")),
-         filtered_seq_output=file.path(dada2_dir, paste0(amplicon_group, "_representative_sequences_filtered.qza"))
-  )
-
-dada2_filtered_targets <- here("tmp/dada2_filtered_targets.txt")
-write_targets(targets, file=dada2_filtered_targets)
-```
-
-```{r}
-# Set p_abundance and p_prevalence for qiime feature-table filter-features-conditionally.
-# (keep these parameters as strings so they don't get converted to scientific notation further down)
-
-# The minimum relative abundance for a feature to be retained
-p_abundance <- "0.00001"
-# p_abundance <- "0.001" # Lower threshold for testing purposes
-
-# The minimum portion of samples that a feature must have a relative abundance of at least 
-# `abundance` to be retained
-p_prevalence <- "0.01"
-```
-
-
-
-::::: {.panelset}
-
-::: {.panel}
-
-#### Run output {.panel-name}
-
-```{r, attr.output='style="max-height: 400px; overflow: auto !important;"'}
-dada2_filtering <- loadWorkflow(targets=dada2_filtered_targets, wf_file="qiime_dada2_filtering.cwl", 
-                                input_file="qiime_dada2_filtering.yml", dir_path=cwl_path)
-dada2_filtering <- set_logs_dir(dada2_filtering, logs_dir)
-dada2_filtering@yamlinput$dada2_filtering_wrapper$path <- 
-  file.path(cwl_path, "qiime_dada2_filtering_wrapper.sh")
-dada2_filtering@yamlinput$p_abundance <- p_abundance
-dada2_filtering@yamlinput$p_prevalence <- p_prevalence
-dada2_filtering@yamlinput$output_dir$path <- dada2_dir
-
-dada2_filtering <- renderWF(dada2_filtering, inputvars=c(FileName="_TABLE_INPUT_",
-                                                         seq_input="_SEQ_INPUT_",
-                                                         filtered_table_output="_TABLE_OUTPUT_",
-                                                         filtered_seq_output="_SEQ_OUTPUT_"))
-run_jobs(dada2_filtering)
-```
-
-
-:::
-
-::: {.panel}
-
-#### Command list {.panel-name}
-
-```{r, attr.output='style="max-height: 400px; overflow: auto !important;"'}
-# Print commands that were run
-cmdlist(dada2_filtering)
-```
-
-:::
-
-::: {.panel}
-
-#### Output directory files {.panel-name}
-
-```{r, attr.output='style="max-height: 400px; overflow: auto !important;"'}
-# List files in output directory
-dir_tree(dada2_dir)
-```
-
-:::
-
-::::
-
-
------
-
-# Check filtering
-
-Check dimensions of the table data pre and post-filtering.
-
-````{r}
-before_filtering_its2 <- read_qza(file.path(dada2_dir, "its2_table.qza"))
-after_filtering_its2 <- read_qza(file.path(dada2_dir, "its2_table_filtered.qza"))
-```
-
-```{r}
-print("Pre-filtering:")
-dim(before_filtering_its2$data)
-
-print("Post-filtering:")
-dim(after_filtering_its2$data)
-```
-
-```{r}
-before_filtering_trnl <- read_qza(file.path(dada2_dir, "trnl_table.qza"))
-after_filtering_trnl <- read_qza(file.path(dada2_dir, "trnl_table_filtered.qza"))
-```
-
-```{r}
-print("Pre-filtering:")
-dim(before_filtering_trnl$data)
-
-print("Post-filtering:")
-dim(after_filtering_trnl$data)
-```
-
-````{r}
-before_filtering_rbcl <- read_qza(file.path(dada2_dir, "rbcl_table.qza"))
-after_filtering_rbcl <- read_qza(file.path(dada2_dir, "rbcl_table_filtered.qza"))
-```
-
-```{r}
-print("Pre-filtering:")
-dim(before_filtering_rbcl$data)
-
-print("Post-filtering:")
-dim(after_filtering_rbcl$data)
-```
-
 
 -----
 
@@ -572,6 +431,30 @@ run_jobs(lulu_vsearch)
 ```
 
 
+
+Run LULU to merge features together.
+
+
+```{r}
+# TODO: encapsulate this into a function after checking if lulu arguments need to be changed
+```
+
+```{r}
+zeale_table <- read_qza(here("plants/results/dada2/zeale_table.qza"))
+zeale_table_df <- data.frame(zeale_table$data)
+zeale_match_list <- read.table(here("plants/results/lulu/zeale_match_list.txt"))
+
+# TODO: Currently using default parameters
+z <- capture.output(zeale_lulu <- lulu(zeale_table_df, zeale_match_list))
+
+dim(zeale_lulu$original_table)
+dim(zeale_lulu$curated_table)
+```
+
+```{r}
+saveRDS(zeale_lulu, file=here("plants/results/lulu/zeale_lulu.rds"))
+```
+
 :::
 
 ::: {.panel}
@@ -609,58 +492,28 @@ Run LULU to merge features together.
 ```
 
 ```{r}
-its2_table <- read_qza(here("plants/results/dada2/its2_table.qza"))
-its2_table_df <- data.frame(its2_table$data)
-its2_match_list <- read.table(here("plants/results/lulu/its2_match_list.txt"))
+zeale_table <- read_qza(here("bat_diet/results/dada2/zeale_table.qza"))
+zeale_table_df <- data.frame(zeale_table$data)
+zeale_match_list <- read.table(here("bat_diet/results/lulu/zeale_match_list.txt"))
 
 # TODO: Currently using default parameters
-z <- capture.output(its2_lulu <- lulu(its2_table_df, its2_match_list))
+z <- capture.output(zeale_lulu <- lulu(zeale_table_df, zeale_match_list))
 
-dim(its2_lulu$original_table)
-dim(its2_lulu$curated_table)
+dim(zeale_lulu$original_table)
+dim(zeale_lulu$curated_table)
 ```
 
 ```{r}
-saveRDS(its2_lulu, file=here("plants/results/lulu/its2_lulu.rds"))
+saveRDS(zeale_lulu, file=here("bat_diet/results/lulu/zeale_lulu.rds"))
 ```
 
-```{r}
-rbcl_table <- read_qza(here("plants/results/dada2/rbcl_table.qza"))
-rbcl_table_df <- data.frame(rbcl_table$data)
-rbcl_match_list <- read.table(here("plants/results/lulu/rbcl_match_list.txt"))
-
-# TODO: Currently using default parameters
-z <- capture.output(rbcl_lulu <- lulu(rbcl_table_df, rbcl_match_list))
-
-dim(rbcl_lulu$original_table)
-dim(rbcl_lulu$curated_table)
-```
-
-```{r}
-saveRDS(rbcl_lulu, file=here("plants/results/lulu/rbcl_lulu.rds"))
-```
-
-```{r}
-trnl_table <- read_qza(here("plants/results/dada2/trnl_table.qza"))
-trnl_table_df <- data.frame(trnl_table$data)
-trnl_match_list <- read.table(here("plants/results/lulu/trnl_match_list.txt"))
-
-# TODO: Currently using default parameters
-z <- capture.output(trnl_lulu <- lulu(trnl_table_df, trnl_match_list))
-
-dim(trnl_lulu$original_table)
-dim(trnl_lulu$curated_table)
-```
-
-```{r}
-saveRDS(trnl_lulu, file=here("plants/results/lulu/trnl_lulu.rds"))
-```
 
 
 ```{r, attr.output='style="max-height: 400px; overflow: auto !important;"'}
 # List files in output directory
 dir_tree(lulu_dir)
 ```
+
 -----
 
 # Save output
@@ -668,7 +521,7 @@ dir_tree(lulu_dir)
 Save output so it can be loaded in subsequent notebooks.
 
 ```{r}
-save.image(here("plants/cache/02.RData"))
+save.image(here("bat_diet/cache/02.RData"))
 ```
 
 
