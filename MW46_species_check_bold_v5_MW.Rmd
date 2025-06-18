@@ -1,0 +1,421 @@
+---
+title: "unmatched_checks_BOLDv5"
+author: "MCarew"
+date: "2025-04-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(dplyr)
+
+uomshare <- "~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/metabarcoding_workflow_trial/"
+
+file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/asv_library_corrected.xlsx"
+
+# Get the names of the sheets
+sheet_names <- readxl::excel_sheets(file_path)
+
+# Read the sheets into as dataframes
+asv_lib <- readxl::read_excel(file_path, sheet = sheet_names[1])
+
+# Fix naming issues i.e. same species with different taxonomy
+asv_tax_dups_fix <- read.csv("~/uomShare/wergStaff/MelCarew/DNAbarcode_reference_databases/asv_tax_fixed_names.csv")
+asv_lib <- asv_lib %>%
+  left_join(
+    asv_tax_dups_fix %>%
+      select(species, kingdom, phylum, class, order, family, genus),
+    by = "species"
+  ) %>%
+  mutate(
+    kingdom = coalesce(kingdom.y, kingdom.x),
+    phylum = coalesce(phylum.y, phylum.x),
+    class = coalesce(class.y, class.x),
+    order = coalesce(order.y, order.x),
+    family = coalesce(family.y, family.x),
+    genus = coalesce(genus.y, genus.x)
+  ) %>%
+  select(-ends_with(".x"), -ends_with(".y"))
+
+write.csv(asv_lib, "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/asv_library_corrected_MC.xlsx")
+
+max_p_updates <- readxl::read_excel(file_path, sheet = sheet_names[2])  # if required
+
+bin_uri_unq <- readxl::read_excel(file_path, sheet = sheet_names[3])  # if required
+
+bin_uri_unq <- bin_uri_unq %>%
+  group_by(bin_uri) %>%
+  filter(n() == 1) %>%
+  arrange(bin_uri)
+# 
+# MC_cks <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files/all_mc_checks.csv")
+# 
+# MC_cks <- MC_cks %>%
+#   dplyr::rename(bin_uri = bold_bin_uri)
+#  
+# dup_bins_fix <- dup_bins %>%
+#   left_join(
+#     MC_cks %>% select(bin_uri, checked_species_name),
+#     by = "bin_uri"
+#   ) %>% distinct()
+# 
+# write.csv(dup_bins_fix, "~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/dup_bins_fix.csv")
+
+dup_bins_uniq <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/dup_bins_fix.csv")
+
+bin_uri_unq <- rbind(bin_uri_unq, dup_bins_uniq)
+
+uomshare <- "~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/metabarcoding_workflow_trial/"
+
+mw_mw46 <- read.csv(paste0(uomshare, "results/MW46_asv_lib_filled_16_6_2025.csv"))
+
+priv_lib <- read.csv("~/uomShare/wergStaff/MelCarew/DNAbarcode_reference_databases/priv_lib_updated_17_6_2025.csv")
+```
+
+
+```{r}
+# Step 1: Identify common ASVs
+common_ids <- intersect(asv_lib$asv_code, mw_mw46$asv_code)
+
+# Step 2: Split original data
+df1 <- mw_mw46 %>% filter(asv_code %in% common_ids)
+df3 <- mw_mw46 %>% filter(!asv_code %in% common_ids)
+
+# Step 3: Join with asv_lib to get updated values
+df2 <- asv_lib %>% filter(asv_code %in% common_ids)
+
+# Step 4: Merge on asv_code (adding suffixes to distinguish columns)
+df1_updated <- df1 %>%
+  left_join(df2, by = "asv_code", suffix = c("_final", "_trunc"))
+
+# Step 5: Replace taxonomy fields and max_p_identity from truncated version
+df1_updated <- df1_updated %>%
+  mutate(
+    species = species_trunc,
+    genus   = genus_trunc,
+    family  = family_trunc,
+    order   = order_trunc,
+    class   = class_trunc,
+    phylum  = phylum_trunc,
+    kingdom = kingdom_trunc,
+    max_p_identity = max_p_identity_trunc
+# max_p_identity = ifelse(
+#   is.na(max_p_identity),
+#   ifelse(max_p_identity_final != max_p_identity_trunc, max_p_identity_trunc, max_p_identity_final),
+#   max_p_identity
+  ) %>%
+  select(-ends_with("_trunc"), -ends_with("_final"))  # Clean up extra columns
+
+# Step 6: Recombine with the rest of the final_df that had no update
+ mw_mw46_fill_upd <- bind_rows(df1_updated, df3) #2360 filled
+
+# Step 7: Reorder columns if needed
+ mw_mw46_fill <-  mw_mw46_fill_upd %>%
+  select(-asv_sequence, -species_old, -n_bold_matches, -max_p_update, -sim_vsearch, -max_sim_bold, -dubious_id, -amplicon, -aqu) %>%
+  select(asv_code, kingdom, phylum, class, order, family, genus, species, max_p_identity, everything())
+```
+
+# filtering by 'species' subset out data with species ids
+```{r}
+mw_mw46_filled <- mw_mw46_fill %>%
+  filter(!is.na(max_p_identity) & max_p_identity != "") %>%
+  mutate(max_p_identity = as.numeric(max_p_identity))
+
+# Subset where 'species' has empty cells or NA (for ASV filtering)
+mw_mw46_not_filled <-  mw_mw46_fill %>% filter(is.na(max_p_identity) | max_p_identity == "")
+
+# write_csv(mw_mw46_not_filled, "~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/metabarcoding_workflow_trial/mw_mw46_not_filled.csv")
+```
+
+```{r}
+library(stringr)
+
+# read in .csv files with bold barcodeID engine results.
+bold_results1 <- read.csv(paste0(uomshare, "BOLD_asv_searches/MW46Barcode ID - BOLD - db_all1_1000.csv"))
+bold_results2 <- read.csv(paste0(uomshare, "BOLD_asv_searches/MW46Barcode ID - BOLD - db_all1001_2000.csv"))
+bold_results3 <- read.csv(paste0(uomshare, "BOLD_asv_searches/MW46Barcode ID - BOLD - db_all2001_end.csv"))
+
+# combine all results into a single file
+bold_results_all <- rbind(bold_results1, bold_results2, bold_results3)
+
+# rename all results to match other dataframes
+bold_results_all <- bold_results_all %>%
+  dplyr::rename(asv_code = Query.ID,
+         species_bold = Species,
+         genus = Genus,
+         family = Family,
+         order = Order, 
+         class = Class,
+         phylum = Phylum
+         )
+
+# Method using extract 'bin_url' and place in a new column
+bold_results_all <- bold_results_all %>%
+  mutate(bin_uri = str_extract(PID..BIN., "(?<=:)(.*?)(?=])"))
+
+bold_results_all <- bold_results_all %>%
+  left_join(
+    bin_uri_unq %>% select(bin_uri, species),
+    by = "bin_uri"
+  )
+```
+
+```{r}
+# summarize the bold data keeping the highest value for ID. Remove PID..BIN. column so duplicate bin_uri_unq can be removed.
+bold_results_all <- bold_results_all %>%
+  select(-"PID..BIN.")
+
+# summarise so there is one  bin_uri_unq per row
+bold_results_sum <- bold_results_all %>%
+   group_by(asv_code) %>%
+   slice_max(order_by = ID., n = 1, with_ties = FALSE) %>%
+   ungroup() %>%
+   distinct(asv_code, .keep_all = TRUE) %>%
+   dplyr::rename(species_bin = species)  
+
+bold_results_sum <- bold_results_sum %>%
+  mutate(species_bold = ifelse(!is.na(species_bin), species_bin, species_bold)) %>%
+  dplyr::rename(species = species_bold,
+                max_p_identity = ID.) %>%
+  mutate(kingdom = NA_character_) %>% # Add the new column, initialize with NA (character type)
+  relocate(kingdom, .before = phylum) # Move 'kingdom' before 'phylum'
+
+
+# add correct taxonomic fields
+# make a taxonomy df
+asv_tax <- asv_lib %>%
+  select(kingdom, phylum, class, order, family, genus, species) %>%
+  distinct()
+
+# # Step 1: Identify duplicated species
+# asv_tax_dups <- duplicated(asv_tax$species)
+# 
+# # Step 2: Get the unique names of the duplicated species
+# asv_tax_dups <- unique(asv_tax$species[asv_tax_dups])
+# asv_tax_dups_full <- asv_tax[asv_tax$species %in% asv_tax_dups, ]
+# write.csv(asv_tax_dups_full, "~/uomShare/wergStaff/MelCarew/DNAbarcode_reference_databases/asv_tax_dups_full.csv")
+
+# Use taxonomy from asv_lib not bold
+common_ids <- intersect(asv_tax$species, bold_results_sum$species)
+
+# Step 2: Split original data
+dfA <- bold_results_sum %>% filter(species %in% common_ids)
+dfC <- bold_results_sum %>% filter(!species %in% common_ids)
+
+# Step 3: Join with asv_lib to get updated values
+dfB <- asv_tax %>% filter(species %in% common_ids)
+
+# Step 4: Merge on asv_code (adding suffixes to distinguish columns)
+dfA_updated <- dfA %>%
+  left_join(dfB, by = "species", suffix = c("_final", "_trunc"))
+
+# Step 5: Replace taxonomy fields and match from truncated version
+dfA_updated <- dfA_updated %>%
+  mutate(
+    genus   = genus_trunc,
+    family  = family_trunc,
+    order   = order_trunc,
+    class   = class_trunc,
+    phylum  = phylum_trunc,
+    kingdom  = kingdom_trunc) %>%
+  select(-ends_with("_trunc"), -ends_with("_final"))  # Clean up extra columns
+
+# Step 6: Recombine with the rest of the mw_mw46 that had no update
+bold_results_sum <- bind_rows(dfA_updated, dfC)
+
+bold_results_sum <- bold_results_sum %>%
+  select(asv_code, , max_p_identity, everything())  %>% distinct()
+```
+
+Add bold names to dataframe
+```{r}
+# Step 1: Identify common ASVs
+common_ids <- intersect(bold_results_sum$asv_code,mw_mw46_not_filled$asv_code)
+
+# Step 2: Split original data
+df1 <- mw_mw46_not_filled %>% filter(asv_code %in% common_ids)
+df3 <- mw_mw46_not_filled %>% filter(!asv_code %in% common_ids)
+
+# Step 3: Join with asv_lib to get updated values
+df2 <- bold_results_sum %>% filter(asv_code %in% common_ids)
+
+# Step 4: Merge on asv_code (adding suffixes to distinguish columns)
+df1_updated <- df1 %>%
+  left_join(df2, by = "asv_code", suffix = c("_final", "_trunc"))
+
+# Step 5: Replace taxonomy fields and match from truncated version
+df1_updated <- df1_updated %>%
+  mutate(species = species_trunc,
+    genus   = genus_trunc,
+    family  = family_trunc,
+    order   = order_trunc,
+    class   = class_trunc,
+    phylum  = phylum_trunc,
+    kingdom = kingdom_trunc,
+    max_p_identity =  max_p_identity_trunc)  %>%
+  select(-ends_with("_trunc"), -ends_with("_final"))  # Clean up extra columns
+
+# Step 6: Recombine with the rest of the mw_mw46 that had no update
+
+mw_mw46_filled2 <- df1_updated %>%
+  select(asv_code, kingdom, phylum, class, order, family, genus, species, max_p_identity, everything()) %>%
+  select(-Subfamily, -species_bin, -bin_uri, -Indels)
+```
+
+```{r}
+write_csv(df3,"~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/metabarcoding_workflow_trial/mw_mw46_still_not_filled.csv" )
+```
+
+```{r}
+# subset out data with no species match for checking agains privat libray and genbank
+# mw_mw46_filled_no_bold <- mw_mw46_filled %>%
+#   filter(max_p_identity <= 97 | is.na(max_p_identity))
+# 
+# # data with out a species match on bold
+#  write.csv(mw_mw46_filled_no_bold, "~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/mw_mw46_filled_no_bold.csv")
+```
+
+```{r}
+# read in data from searches
+mw_mw46_priv_search <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/metabarcoding_workflow_trial/MW46_MW_geneious_search.csv")
+
+mw_mw46_priv_search_gt97 <- mw_mw46_priv_search %>%
+  filter(geneious_match >= 97, coverage > 70)  %>%
+  dplyr::rename(max_p_identity = geneious_match)
+mw_mw46_priv_search_gt97 <- mw_mw46_priv_search_gt97 %>%
+  left_join(priv_lib %>% select(id, kingdom, phylum, class, order, family, genus), by = "id")
+```
+
+
+```{r}
+# Step 1: Identify common ASVs
+common_ids2 <- intersect(mw_mw46_priv_search_gt97$asv_code, df3$asv_code)
+
+# Step 2: Split original data
+df4 <- df3 %>% filter(asv_code %in% common_ids2)
+df6 <- df3 %>% filter(!asv_code %in% common_ids2)
+
+# Step 3: Join with asv_lib to get updated values
+df5 <- mw_mw46_priv_search_gt97 %>% filter(asv_code %in% common_ids2)
+
+# Step 4: Merge on asv_code (adding suffixes to distinguish columns)
+df4_updated <- df4 %>%
+  left_join(df5, by = "asv_code", suffix = c("_final", "_trunc"))
+
+# Step 5: Replace taxonomy fields and match from truncated version
+df4_updated <- df4_updated %>%
+  mutate(
+    species = species_trunc,
+    genus   = genus_trunc,
+    family  = family_trunc,
+    order   = order_trunc,
+    class   = class_trunc,
+    phylum  = phylum_trunc,
+    kingdom  = kingdom_trunc,
+    max_p_identity =  max_p_identity_trunc)  %>%
+  select(-ends_with("_trunc"), -ends_with("_final"))  # Clean up extra columns
+
+# Step 6: Recombine with the rest of the mw_mw46_filled that had no update
+mw_mw46_filled3 <- bind_rows(df4_updated, df6)
+
+mw_mw46_filled3 <- mw_mw46_filled3 %>%
+  select(asv_code, kingdom, phylum, class, order, family, genus, species, max_p_identity, everything()) %>%
+  select(-Name, -coverage, -id, -X)
+
+
+```
+
+```{r}
+# mw_mw46_filled_no_bold_priv <- mw_mw46_filled %>%
+#   filter(max_p_identity <= 97 | is.na(max_p_identity))
+# 
+# write.csv(mw_mw46_filled_no_boLd_priv, "~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/mw_mw46_filled_no_bold_priv.csv")
+```
+
+results only on Genbank
+```{r}
+gb_search_results <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/metabarcoding_workflow_trial/gb_searches/MW46_genbank search.csv")
+
+# Step 1: Identify common ASVs
+common_ids3 <- intersect(gb_search_results$asv_code, df6$asv_code)
+
+# Step 2: Split original data
+df7 <- df6 %>% filter(asv_code %in% common_ids3)
+df9 <- df6 %>% filter(!asv_code %in% common_ids3)
+
+# Step 3: Join with asv_lib to get updated values
+df8 <- gb_search_results %>% filter(asv_code %in% common_ids3)
+
+# Step 4: Merge on asv_code (adding suffixes to distinguish columns)
+df7_updated <- df7 %>%
+  left_join(df8, by = "asv_code", suffix = c("_final", "_trunc"))
+
+# Step 5: Replace taxonomy fields and match from truncated version
+df7_updated <- df7_updated %>%
+  mutate(
+    species = species_trunc,
+    genus   = genus_trunc,
+    family  = family_trunc,
+    order   = order_trunc,
+    class   = class_trunc,
+    phylum  = phylum_trunc,
+    kingdom  = kingdom_trunc,
+    max_p_identity =  max_p_identity_trunc)  %>%
+  select(-ends_with("_trunc"), -ends_with("_final"))  # Clean up extra columns
+
+# Step 6: Recombine with the rest of the mw_mw46_filled that had no update
+mw_mw46_filled4 <- bind_rows(df7_updated, df9)
+
+mw_mw46_filled4 <- mw_mw46_filled %>%
+  select(asv_code, kingdom, phylum, class, order, family, genus, species, max_p_identity, everything())
+
+mw_mw46_filled[is.na(mw_mw46_filled)] <- ""
+```
+
+```{r}
+mw_mw46_filled <- bind_rows(mw_mw46_filled2, mw_mw46_filled3,mw_mw46_filled4)
+
+mw_mw46_filled <- mw_mw46_filled %>%
+  mutate(kingdom = case_when(
+    is.na(kingdom) & phylum == "Proteobacteria" ~ "Prokaryota",
+    is.na(kingdom) & !is.na(phylum) ~ "Eukaryota",
+    TRUE ~ kingdom))
+```
+
+
+```{r}
+# Update 'species' column to only include names if max threshold is above 97
+mw_mw46_filled <-  mw_mw46_filled %>%
+  dplyr::mutate(species = if_else(max_p_identity < 97, "", species))
+
+# Update 'genus' column to only include names if max threshold is above 95
+mw_mw46_filled <-  mw_mw46_filled %>%
+  dplyr::mutate(genus = if_else(max_p_identity < 95, "", genus))
+
+# Update 'family' column to only include names if max threshold is above 90
+mw_mw46_filled <-  mw_mw46_filled %>%
+  dplyr::mutate(family = if_else(max_p_identity < 90, "", family))
+
+# Update 'order' column to only include names if max threshold is above 80
+mw_mw46_filled <-  mw_mw46_filled %>%
+  dplyr::mutate(order = if_else(max_p_identity < 85, "",order))
+```
+
+
+```{r}
+timestamp <- format(Sys.time(), "%d_%m_%Y")
+
+# Create the file name with the timestamp 
+file_name <- paste0(uomshare, "results/final_data_summaries/MW_data_filled_summary_", timestamp, ".csv")
+
+# Save the dataframe with the new file name
+write.csv(mw_mw46_filled, file = file_name, row.names = FALSE)
+
+```
+
+
+

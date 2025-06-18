@@ -19,26 +19,28 @@ library(dplyr)
 
 Starting from here will need the thersholds list and the sample_df from cache03. If it was not saved individually you will need to load the entire cache
 ```{r}
+
+uomshare <- "~/uomShare/wergStaff/MelCarew/git-data/Spring_2018_DNA_metabarcoding_data/metabarcoding_workflow_trial/"
 #load all of cahche03
-#load(here::here("results/cache/03.RData"))
+#load(paste0(uomshare, "results/cache/03.RData"))
 
 # load thresholds_list form cahche03 
-thresholds_list <- readRDS(here::here("results/cache/thresholds_list.rds"))
-samples_df <- readRDS(here::here("results/cache/samples_df.rds"))
+# thresholds_list <- readRDS(paste0(uomshare, "results/cache/thresholds_list.rds"))
+# samples_df <- readRDS(paste0(uomshare, "results/cache/samples_df.rds"))
 ```
 
 # load results files from previuos steps
 These tables are required for assembling final data table
 ```{r}
-left_lulu <- readRDS(here::here("results/lulu/left_lulu.rds"))
-right_lulu <- readRDS(here::here("results/lulu/right_lulu.rds"))
-long_lulu <- readRDS(here::here("results/lulu/long_lulu.rds"))
-left_classifications <- qiime2R::read_qza(here::here("results/classification/left_classification.qza"))
-right_classifications <- qiime2R::read_qza(here::here("results/classification/right_classification.qza"))
-long_classifications <- qiime2R::read_qza(here::here("results/classification/long_classification.qza"))
-left_seq <- qiime2R::read_qza(here::here("results/dada2/left_representative_sequences.qza"))
-right_seq <- qiime2R::read_qza(here::here("results/dada2/right_representative_sequences.qza"))
-long_seq <- qiime2R::read_qza(here::here("results/dada2/long_representative_sequences.qza"))
+left_lulu <- readRDS(paste0(uomshare, "results/lulu/left_lulu.rds"))
+right_lulu <- readRDS(paste0(uomshare, "results/lulu/right_lulu.rds"))
+long_lulu <- readRDS(paste0(uomshare, "results/lulu/long_lulu.rds"))
+# left_classifications <- qiime2R::read_qza(paste0(uomshare, "results/classification/left_classification.qza"))
+# right_classifications <- qiime2R::read_qza(paste0(uomshare, "results/classification/right_classification.qza"))
+# long_classifications <- qiime2R::read_qza(paste0(uomshare, "results/classification/long_classification.qza"))
+left_seq <- qiime2R::read_qza(paste0(uomshare, "results/dada2/left_representative_sequences.qza"))
+right_seq <- qiime2R::read_qza(paste0(uomshare, "results/dada2/right_representative_sequences.qza"))
+long_seq <- qiime2R::read_qza(paste0(uomshare, "results/dada2/long_representative_sequences.qza"))
 ```
 
 # check classification data for left amplicon
@@ -130,17 +132,17 @@ long_df %>% filter(Taxon == "Unassigned") %>% pull(max_p_identity) %>% table
 
 ```{r}
 # load classification results for left amplicon
-left_search_results <- readr::read_tsv(here::here("results/classification/preliminary/left_vsearch.tsv"))
+left_search_results <- readr::read_tsv(paste0(uomshare, "results/classification/preliminary/left_vsearch.tsv"))
 ```
 
 ```{r}
 # # load classification results for right amplicon
-right_search_results <- readr::read_tsv(here::here("results/classification/preliminary/right_vsearch.tsv"))
+right_search_results <- readr::read_tsv(paste0(uomshare, "results/classification/preliminary/right_vsearch.tsv"))
 ```
 
 ```{r}
 # # load classification results for right amplicon
-long_search_results <- readr::read_tsv(here::here("results/classification/preliminary/long_vsearch.tsv"))
+long_search_results <- readr::read_tsv(paste0(uomshare, "results/classification/preliminary/long_vsearch.tsv"))
 ```
 ## Combine workflow outputs
 
@@ -265,7 +267,7 @@ all_asvseq <-  rbind(left_asvseq, right_asvseq, long_asvseq)
 ```{r}
 # merge ALL data into a single dataframe
 final_df <- left_join(all_readclass_df, all_asvseq, by = "asv_code")
-
+final_df <- left_join(all_read_df, all_asvseq, by = "asv_code")
 # remove columns without data
 final_df <- na.omit(final_df)
 
@@ -314,15 +316,17 @@ final_df <- final_df %>%
 
 ```{r}
 # save dataframe create a directory for results
-dir.create(here::here("results/final_data_summaries"))
+dir.create(paste0(uomshare, "results/final_data_summaries"))
 
 timestamp <- format(Sys.time(), "%d_%m_%Y")
 
 # Create the file name with the timestamp 
-file_name <- paste0(here::here("results/final_data_summaries/MW_vsearch_data_summary_"), timestamp, ".csv")
+file_name <- paste0(paste0(uomshare, "results/final_data_summaries/MW_vsearch_data_summary_"), timestamp, ".csv")
 
 # Save the dataframe with the new file name
 write.csv(final_df, file = file_name, row.names = FALSE)
+
+
 ```
 
 

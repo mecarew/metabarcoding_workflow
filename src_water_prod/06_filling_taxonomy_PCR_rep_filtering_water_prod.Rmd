@@ -25,7 +25,7 @@ An 'asv library' based on analysis of Miseq datasets was constructed ('Appendix_
 
 ```{r setup, warning=FALSE}
 # read in vetted asv library
-file_path <- "~/uomShare/wergStaff/ChrisW/temp/asv_library_corrected.xlsx"
+file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/asv_library_corrected.xlsx"
 
 # Get the names of the sheets
 sheet_names <- readxl::excel_sheets(file_path)
@@ -35,20 +35,35 @@ asv_lib <- readxl::read_excel(file_path, sheet = sheet_names[1])
 
 max_p_updates <- readxl::read_excel(file_path, sheet = sheet_names[2])  # if required
 
+bin_uri_unq <- readxl::read_excel(file_path, sheet = sheet_names[3])  # if required
+
 # read in miseq vsearch data summary for updating and filtering
 
 # Reset directory
-miseq_folder <- "miseq22"
+miseq_folder <- "miseq13"
 
 # Set the directory path for files to be stored on uomshare
 uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/", miseq_folder, "/metabarcoding_workflow")
 
 # Read the final data summary CSV
-#final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_26_11_2024.csv"))
+final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_26_11_2024.csv"))
 
 # Read the final data summary CSV
 #final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_26_02_2025.csv")) #miseq18
-final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_04_06_2025.csv")) #miseq22
+#final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_15_06_2025.csv")) #miseq22
+
+final_df <- tibble(
+  kingdom = NA,
+  phylum = NA,
+  class = NA,
+  order = NA,
+  family = NA,
+  genus = NA,
+  species = NA,
+  max_p_identity = NA
+) %>%
+  bind_cols(final_df)
+
 ```
 
 # Updates missing from final asv library (double checked before making changes)
@@ -56,6 +71,27 @@ final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_
 asv_lib <- asv_lib %>%
   mutate(species_old = ifelse(species_old == "Haplotaxida sp. MC-4", "Aulodrilus sp. MC-4", species_old)) %>% #species name update
   mutate(species = ifelse(species == "Gyrinidae sp. B-ABW3343", "Macrogyrus angustatus", species)) %>% #species name update
+  mutate(species = ifelse(species == "Gyrinidae sp. B-ABW3343", "Macrogyrus angustatus", species)) %>% #species name update
+  mutate(family = ifelse(species_old == "Aulodrilus sp. MC-4"  "Naididae", family)) %>% # missing family name 
+  mutate(family = ifelse(asv_code == "1ce6b94c99bc212e868810434d5a4981",  "", family)) %>% # not mollusk but bacteria
+  mutate(family = ifelse(asv_code == "2e093f1b6f74ca96e03af70850c2add0",  "", family)) %>% # not mollusk but bacteria
+  mutate(order = ifelse(asv_code == "1ce6b94c99bc212e868810434d5a4981",  "", order)) %>% # not mollusk but bacteria
+  mutate(order = ifelse(asv_code == "2e093f1b6f74ca96e03af70850c2add0",  "", order)) %>% # not mollusk but bacteria
+  mutate(class = ifelse(asv_code == "1ce6b94c99bc212e868810434d5a4981",  "", class)) %>% # not mollusk but bacteria
+  mutate(class = ifelse(asv_code == "2e093f1b6f74ca96e03af70850c2add0",  "", class)) %>% # not mollusk but bacteria
+  mutate(phylum = ifelse(asv_code == "1ce6b94c99bc212e868810434d5a4981",  "", phylum)) %>% # not mollusk but bacteria
+  mutate(phylum = ifelse(asv_code == "2e093f1b6f74ca96e03af70850c2add0",  "", phylum)) %>% # not mollusk but bacteria
+  mutate(phylum = ifelse(asv_code == "1ce6b94c99bc212e868810434d5a4981",  "Prokaryota", kingdom)) %>% # not mollusk but bacteria
+  mutate(phylum = ifelse(asv_code == "2e093f1b6f74ca96e03af70850c2add0",  "Prokaryota", kingdom)) %>% # not mollusk but bacteria
+  mutate(phylum = ifelse(asv_code == "e9730dfee71254b6d8ac4f83f2d2ebcd",  "Eukaryota", phylum)) %>% # kingdom was listed as unassigned
+  mutate(phylum = ifelse(asv_code == "246607f466fbeff40406ba84f0730fb8",  "Eukaryota", phylum)) %>% # kingdom was listed as unassigned
+  mutate(phylum = ifelse(asv_code == "13fe0f79895583f8e76312a9281716fd",  "Eukaryota", phylum)) %>% # kingdom was listed as unassigned
+  mutate(phylum = ifelse(asv_code == "e76b78f9b59fc5aa16fbb153f90d828e",  "Eukaryota", phylum)) %>% # kingdom was listed as unassigned
+  mutate(phylum = ifelse(asv_code == "a8fac0b23c1275a7b3b917140058a682",  "Eukaryota", phylum)) %>% # kingdom was listed as unassigned
+  mutate(phylum = ifelse(asv_code == "4acf65703a6e91464c17b53da199bd1",  "Eukaryota", phylum)) %>%  # kingdom was listed as unassigned
+
+  
+  
   mutate(species = ifelse(species == "Aeschnidae sp. MC-BC1", "Aeshnidae sp. MC-BC1", species)) %>% #species name correction
   mutate(genus = ifelse(asv_code == "5740b6ce4ac5e77d8534e909c2f0aa8e", "Macrogyrus", genus)) %>% # missing genus name
   mutate(genus = ifelse(asv_code == "7ebd886b8159df25e7440e680509c8eb", "Macrogyrus", genus)) %>% # missing genus name
@@ -187,15 +223,21 @@ df1_updated <- df1_updated %>%
     class   = class_trunc,
     phylum  = phylum_trunc,
     kingdom = kingdom_trunc,
-    max_p_identity = ifelse(max_p_identity_final != max_p_identity_trunc, max_p_identity_trunc, max_p_identity_final)
+    max_p_identity = max_p_identity_trunc
+# max_p_identity = ifelse(
+#   is.na(max_p_identity),
+#   ifelse(max_p_identity_final != max_p_identity_trunc, max_p_identity_trunc, max_p_identity_final),
+#   max_p_identity
   ) %>%
   select(-ends_with("_trunc"), -ends_with("_final"))  # Clean up extra columns
 
 # Step 6: Recombine with the rest of the final_df that had no update
 final_updated_df <- bind_rows(df1_updated, df3)
 
+# Step 7: Reorder columns if needed
 final_df_filled <- final_updated_df %>%
   select(asv_code, kingdom, phylum, class, order, family, genus, species, max_p_identity, everything())
+
 ```
 
 ```{r}
@@ -258,6 +300,8 @@ file_name <- paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_
 
 # Save the dataframe with the new file name
 write.csv(final_df_filled, file = file_name, row.names = FALSE)
+
+write.csv(final_df_filled, file = paste0(uomshare, "results/MW46_asv_lib_filled_16_6_2025.csv"), row.names = FALSE)
 ```
 ______________________________
 
