@@ -63,9 +63,7 @@ final_df <- tibble(
   max_p_identity = NA
 ) %>%
   bind_cols(final_df)
-
 ```
-
 
 ```{r}
 # Step 1: Identify common ASVs
