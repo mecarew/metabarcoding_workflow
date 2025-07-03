@@ -12,7 +12,7 @@ library(here)
 
 ```{r}
 # read in current asv library
-file_path <- here::here("asv_source_files_MC/asv_library_corrected.xlsx")
+file_path <- here::here("asv_source_files_MC/asv_library_corrected.xlsx") #23608
 
 # Get the names of the sheets
 sheet_names <- readxl::excel_sheets(file_path)
@@ -155,20 +155,18 @@ asv_lib <- asv_lib %>%
     max_p_identity = if_else(!is.na(max_p_identity_new), max_p_identity_new, max_p_identity)
   ) %>%
   select(-species_new, -genus_new, -family_new, -max_p_identity_new)
-
 ```
 
 
 ```{r}
 # Ad hoc updates to missing data or need updating
 asv_lib <- asv_lib %>% 
-  mutate(species = ifelse(species == "Lumbricidae sp. B-AAA7664", "", genus)) %>%
-  mutate(species = ifelse(species == "Gyrinidae sp. B-ABW3343", "Macrogyrus angustatus", species)) %>% #species name update
-  mutate(genus = ifelse(species == "Macrogyrus angustatus", "Macrogyrus", genus)) %>% # missing genus name
+  mutate(genus = ifelse(species == "Lumbricidae sp. B-AAA7664", "", genus)) %>%
   mutate(family = ifelse(asv_code == "0abf7d2fd03d81f8955c9a8cc3b6a348", "Elateridae", family)) %>%  # missing family name
   mutate(family = ifelse(asv_code == "1d570b0cd8ae4e3fbd262f02c9acf7ab", "Elateridae", family)) %>% # missing family name
   mutate(family = ifelse(asv_code == "0abf7d2fd03d81f8955c9a8cc3b6a348", "Elateridae", family)) %>%  # missing family name
   mutate(species = ifelse(asv_code == "0c003198eb252550dab244b953c09ef8", "Cernosvitoviella aggtelekiensis", species)) %>% # missing species name
+  mutate(genus = ifelse(species == "Cernosvitoviella aggtelekiensis", "Cernosvitoviella", genus)) %>%
   mutate(species = ifelse(asv_code == "71bc09825e45fe80df27bf89c82997ec", "Scelionidae sp. B-AFM5702", species)) %>% # missing species name
   mutate(species = ifelse(asv_code == "89012d31051ce4b50499f9cab1302f7e", "Scelionidae sp. B-AFM5702", species)) %>% # missing species name
   mutate(family = ifelse(asv_code == "1ce6b94c99bc212e868810434d5a4981",  "", family)) %>% # not mollusk but bacteria
@@ -186,8 +184,12 @@ asv_lib <- asv_lib %>%
 
 ```{r}
 # checking asv lib for differences with private library
-asv_lib_scirtidae_search <-  read.csv(here::here("asv_source_files_MC/complete_asv_lib_scirtidae_search.csv"))
+# Read in the Scirtidae search file
+asv_lib_scirtidae_search <- read.csv(here::here("asv_source_files_MC/complete_asv_lib_scirtidae_search.csv"))
 
+# Taxonomic updates: Watts, C. H. S., H. Hamon, and T. M. Bradford. "Descriptions and notes on the larvae of Austrocyphon Zwick, Contacyphon mobula Zwick, Fratercyphon gen. nov., Leptocyphon furcalonga Zwick, and Nothocyphon Zwick (Coleoptera, Scirtidae), and a phylogeny based on these larvae using mitochondrial sequence data." Transactions of the Royal Society of South Australia (2025): 1-28.
+
+# Clean and filter Scirtidae hits
 asv_lib_scirtidae_search_gt97 <- asv_lib_scirtidae_search %>%
   dplyr::rename(
     max_p_identity = X..Pairwise.Identity,
@@ -196,49 +198,27 @@ asv_lib_scirtidae_search_gt97 <- asv_lib_scirtidae_search %>%
   ) %>%
   mutate(
     max_p_identity = as.numeric(gsub("%", "", max_p_identity)),
-      as.numeric(gsub("%", "", coverage)),
-      NA_real_
-    ) %>%
-  filter(max_p_identity >= 97, coverage > 70)
-
-# Step 1: Filter scirtidae dataset to get good matches
-scirtidae_good_matches <- asv_lib_scirtidae_search_gt97 %>%
-  filter(max_p_identity >= 97, !is.na(species)) %>%
-  select(asv_code, species, max_p_identity) %>%
-  dplyr::rename(
-    species_scirtidae = species,
-    max_p_identity_scirtidae = max_p_identity
-  )
-
-# Step 2: Get ASVs from asv_lib with low identity and matching ASV codes
-asv_low_conf <- asv_lib %>%
-  filter(max_p_identity < 97, asv_code %in% scirtidae_good_matches$asv_code) %>%
-  left_join(scirtidae_good_matches, by = "asv_code")
-
-asv_low_conf <- asv_low_conf %>%
-  mutate(
-    species = species_scirtidae,
-    max_p_identity = max_p_identity_scirtidae,
-    genus = "Austrocyphon",
-    family = "Scirtidae"
+    coverage = as.numeric(gsub("%", "", coverage))
   ) %>%
-  select(-species_scirtidae, -max_p_identity_scirtidae)
-
-# Step 1: Select relevant columns from asv_low_conf
-asv_low_conf_updates <- asv_low_conf %>%
-  select(asv_code, family, genus, species, max_p_identity) %>%
-  rename_with(~ paste0(.x, "_new"), -asv_code)
-
-# add scitidae identifications to the asv library
-asv_lib <- asv_lib %>%
-  left_join(asv_low_conf_updates, by = "asv_code") %>%
+  filter(max_p_identity >= 97, coverage > 70) %>%
   mutate(
-    family = coalesce(family_new, family),
-    genus = coalesce(genus_new, genus),
+    species = ifelse(species == "Fratercyphon sp.", "Fratercyphon sp. B-ACV9682", species),
+    species = ifelse(species == "Nothocyphon frater.", "Fratercyphon frater sp. B-ACV9682", species)
+  ) %>%
+  filter(!species %in% c("Scirtidae sp.", "Scirtidae gen."))
+
+# Add Scirtidae identifications to the ASV library
+asv_lib <- asv_lib %>%
+  left_join(
+    asv_lib_scirtidae_search_gt97 %>%
+      select(asv_code, species_new = species, max_p_identity_new = max_p_identity),
+    by = "asv_code"
+  ) %>%
+  mutate(
     species = coalesce(species_new, species),
     max_p_identity = coalesce(max_p_identity_new, max_p_identity)
   ) %>%
-  select(-ends_with("_new"))  # Remove the temp columns
+  select(-species_new, -max_p_identity_new)
 
 asv_lib <- asv_lib %>%
   select(asv_code, kingdom, phylum, class, order, family, genus, species, max_p_identity, asv_sequence, amplicon) %>% dplyr:::rename(asv_seq = asv_sequence)
@@ -277,11 +257,12 @@ new_mw46_asvs <- new_mw46_asvs %>%
     family = ifelse(species == "Nannochorista sp. MC-O1", "Nannochoristidae", family),
     genus = ifelse(species == "Nannochorista sp. MC-O1", "Nannochorista", genus),
 
+    kingdom = ifelse(species == "Notonemouridae sp. MC-O1", "Eukaryota", kingdom),
     phylum = ifelse(species == "Notonemouridae sp. MC-O1", "Arthropoda", phylum),
     class = ifelse(species == "Notonemouridae sp. MC-O1", "Insecta", class),
     order = ifelse(species == "Notonemouridae sp. MC-O1", "Plecoptera", order),
     family = ifelse(species == "Notonemouridae sp. MC-O1", "Notonemouridae", family),
-
+    
     kingdom = ifelse(species == "Pisidium amnicum", "Prokaryota", kingdom),
     phylum = ifelse(species == "Pisidium amnicum", "Proteobacteria", phylum),
     order = ifelse(species == "Pisidium amnicum", "Alphaproteobacteria", order),
@@ -289,19 +270,171 @@ new_mw46_asvs <- new_mw46_asvs %>%
     genus = ifelse(species == "Pisidium amnicum", "", genus),
     species = ifelse(species == "Pisidium amnicum", "", species),
     
+    
+    class = ifelse(species == "Delphacidae", "Insecta", class),
     order = ifelse(family == "Delphacidae", "Hemiptera", order),
+    
+    class = ifelse(genus == "Pytocoris", "Insecta", class),
+    order = ifelse(genus == "Pytocoris", "Hemiptera", order),
+    family = ifelse(genus == "Pytocoris", "Miridae", family),
+    
+    class = ifelse(genus == "Sellnickia", "Insecta", class),
+    order = ifelse(genus == "Sellnickia", "Sarcoptiformes", order),
+    family = ifelse(genus == "Sellnickia", "Selnickidae", family),
+    
+    order = ifelse(genus == "Nerthra", "Hemiptera", order),
+    family = ifelse(genus == "Nerthra", "Gelastocoridae", family),
+    
+    order = ifelse(genus == "Molophilus", "Diptera", order),
+    family = ifelse(genus == "Molophilus", "Limoniidae", family),
+    
+    order = ifelse(genus == "Sprosites", "Coleoptera", order),
+    family = ifelse(genus == "Sprosites", "Scarabaeidae", family),
+    
+    order = ifelse(species == "Psocodea sp. B-AGB2975", "Psocodea", order),
+    genus = ifelse(species == "Psocodea sp. B-AGB2975", "", genus),
+    
+    species = ifelse(species == "Blattisociidae", "Mesostigmata sp. B-AEI1796", species),
+    
+    family = ifelse(species == "Blattisociidae sp. MC-1", "Blattisociidae", family),
+    
     genus = ifelse(genus == "Uropodoidea", "", genus),
-    genus = ifelse(species == "Conochironomus sp. MC-A2", "Conochironomus", genus)
-  )
-
+    genus = ifelse(species == "Conochironomus sp. MC-A2", "Conochironomus", genus),
+ 
+    order = ifelse(family == "Ectobiidae", "Blattodea", order),
+    order = ifelse(family == "Ectopsocidae", "Psocodea", order),
+    order = ifelse(family == "Empididae", "Diptera", order),
+    order = ifelse(family == "Formicidae", "Hymenoptera", order),
+    order = ifelse(family == "Glacidorbidae", "Basommatophora", order),
+    order = ifelse(family == "Punctidae", "Stylommatophora", order),
+    class = ifelse(family == "Punctidae", "Gastropoda", class))
 ```
 
 ```{r}
 # bind new asv_lib together
-asv_all <- rbind(asv_lib, new_mw46_asvs)
+asv_lib_all <- rbind(asv_lib, new_mw46_asvs)
+
+# final corrections
+asv_lib_all <- asv_lib_all %>%
+  mutate(
+    species = ifelse(species == "Uropodoidea sp. B-AEI1796", "Blattisociidae sp. B-AEI1796", species),
+    species = ifelse(species == "Blattisociidae sp. B-AEI1796", "Blattisociidae", species),
+    species = ifelse(species == "Chironominae sp. MC-A1", "Conochironomus sp. MC-A2", species),
+  
+    # Fix family/genus/order/kingdom/phylum for specific species
+    kingdom = ifelse(species == "Nannochorista sp. MC-O1", "Eukaryota", kingdom),
+    phylum = ifelse(species == "Nannochorista sp. MC-O1", "Arthropoda", phylum),
+    class = ifelse(species == "Nannochorista sp. MC-O1", "Insecta", class),
+    order = ifelse(species == "Nannochorista sp. MC-O1", "Mecoptera", order),
+    family = ifelse(species == "Nannochorista sp. MC-O1", "Nannochoristidae", family),
+    genus = ifelse(species == "Nannochorista sp. MC-O1", "Nannochorista", genus),
+
+    kingdom = ifelse(species == "Notonemouridae sp. MC-O1", "Eukaryota", kingdom),
+    phylum = ifelse(species == "Notonemouridae sp. MC-O1", "Arthropoda", phylum),
+    class = ifelse(species == "Notonemouridae sp. MC-O1", "Insecta", class),
+    order = ifelse(species == "Notonemouridae sp. MC-O1", "Plecoptera", order),
+    family = ifelse(species == "Notonemouridae sp. MC-O1", "Notonemouridae", family),
+    
+    kingdom = ifelse(species == "Pisidium amnicum", "Prokaryota", kingdom),
+    phylum = ifelse(species == "Pisidium amnicum", "Proteobacteria", phylum),
+    order = ifelse(species == "Pisidium amnicum", "Alphaproteobacteria", order),
+    family = ifelse(species == "Pisidium amnicum", "", family),
+    genus = ifelse(species == "Pisidium amnicum", "", genus),
+    species = ifelse(species == "Pisidium amnicum", "", species),
+    
+    
+    class = ifelse(species == "Delphacidae", "Insecta", class),
+    order = ifelse(family == "Delphacidae", "Hemiptera", order),
+    
+    class = ifelse(genus == "Pytocoris", "Insecta", class),
+    order = ifelse(genus == "Pytocoris", "Hemiptera", order),
+    family = ifelse(genus == "Pytocoris", "Miridae", family),
+    
+    class = ifelse(genus == "Sellnickia", "Insecta", class),
+    order = ifelse(genus == "Sellnickia", "Sarcoptiformes", order),
+    family = ifelse(genus == "Sellnickia", "Selnickidae", family),
+    
+    order = ifelse(genus == "Nerthra", "Hemiptera", order),
+    family = ifelse(genus == "Nerthra", "Gelastocoridae", family),
+    
+    order = ifelse(genus == "Molophilus", "Diptera", order),
+    family = ifelse(genus == "Molophilus", "Limoniidae", family),
+    
+    order = ifelse(genus == "Sprosites", "Coleoptera", order),
+    family = ifelse(genus == "Sprosites", "Scarabaeidae", family),
+    
+    order = ifelse(species == "Psocodea sp. B-AGB2975", "Psocodea", order),
+    genus = ifelse(species == "Psocodea sp. B-AGB2975", "", genus),
+    
+    species = ifelse(species == "Blattisociidae", "Mesostigmata sp. B-AEI1796", species),
+    
+    family = ifelse(species == "Blattisociidae sp. MC-1", "Blattisociidae", family),
+    
+    genus = ifelse(genus == "Uropodoidea", "", genus),
+    genus = ifelse(species == "Conochironomus sp. MC-A2", "Conochironomus", genus),
+ 
+    order = ifelse(family == "Ectobiidae", "Blattodea", order),
+    order = ifelse(family == "Ectopsocidae", "Psocodea", order),
+    order = ifelse(family == "Empididae", "Diptera", order),
+    order = ifelse(family == "Formicidae", "Hymenoptera", order),
+    order = ifelse(family == "Glacidorbidae", "Basommatophora", order),
+    order = ifelse(family == "Punctidae", "Stylommatophora", order),
+    class = ifelse(family == "Punctidae", "Gastropoda", class),
+
+    genus = ifelse(species == "Fratercyphon sp. B-ACV9682", "Fratercyphon", genus),
+    genus = ifelse(species == "Fratercyphon frater", "Fratercyphon", genus),
+    genus = ifelse(species == "Austrocyphon furcatus", "Austrocyphon", genus),
+    genus = ifelse(species == "Austrocyphon ovensensis", "Austrocyphon", genus),
+    genus = ifelse(species == "Limotettix incertus", "Limotettix", genus),
+    order = ifelse(family == "Cicadellidae", "Hempitera", order),
+    order = ifelse(family == "Chrysomelidae", "Coleoptera", order),
+    order = ifelse(family == "Clubionidae", "Coleoptera", order),
+    order = ifelse(family == "Chrysomelidae", "Coleoptera", order),
+    order = ifelse(family == "Chironomidae", "Diptera", order),
+    order = ifelse(genus == "Parasitus", "Mesostigmata", order),
+    family = ifelse(genus == "Parasitus", "Parasitidae", family),
+    family = ifelse(genus == "Austrocyphon", "Scirtidae", family),
+    
+    family = ifelse(genus == "Byrrocryptus", "Ptilodactylidae", family),
+    order = ifelse(family == "Enchytraeidae", "Enchytraeida", order), 
+    order = ifelse(family == "Lumbricidae", "Crassiclitellata", order), 
+    family = ifelse(family == "Trapezidae", "Trapeziidae", family),
+    order = ifelse(family == "Trapeziidae", "Venerida", order), 
+    family = ifelse(family == "Chironominae", "Chironomidae", family), 
+    class = ifelse(order == "Tricladida", "Turbellaria", class),
+    family = ifelse(genus == "Hemicordulia", "Corduliidae", family),
+    order = ifelse(genus == "Hypogastrura", "Poduromorpha", order), 
+    family = ifelse(genus == "Hypogastrura", "Hypogastruridae", family), 
+    family = ifelse(species == "Mesostigmata sp. B-AEI1796", "", family), 
+    family = ifelse(genus == "Platynothrus", "Camisiidae", family),
+    family = ifelse(genus == "Tasmanophlebia", "Oniscigastridae", family),
+    phylum = ifelse(class == "Phaeophyceae", "Gyrista", phylum),
+    order = ifelse(family == "Naididae", "Haplotaxida", order),
+    order = ifelse(family == "Daphniidae", "Anomopoda", order))
 ```
+
 
 # save final updated library
 ```{r}
-write.csv(asv_all, here::here("asv_source_files_MC/asv_library_corrected_Jul_25.csv"), row.names = FALSE)
+write.csv(asv_lib_all, here::here("asv_source_files_MC/asv_library_corrected_Jul_25.csv"), row.names = FALSE)
+```
+
+```{r}
+# making a taxonomic list
+asv_taxa_unique <- asv_lib_all %>%
+  distinct(kingdom, phylum, class, order, family, genus, species) %>%
+  filter(!is.na(species), species != "")
+
+
+conflicting_taxa_df <- asv_lib_all %>%
+  filter(!is.na(species), species != "") %>%             # remove empty or NA species
+  distinct(species, kingdom, phylum, class, order, family, genus) %>%
+  group_by(species) %>%
+  filter(n() > 1) %>%
+  ungroup() %>%
+  arrange(species, kingdom, phylum, class, order, family, genus)
+```
+
+```{r}
+write.csv(asv_taxa_unique, here::here("asv_source_files_MC/asv_species_taxonomy_Jul_25"), row.names = FALSE)
 ```

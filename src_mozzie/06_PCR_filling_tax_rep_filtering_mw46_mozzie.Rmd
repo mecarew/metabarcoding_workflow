@@ -9,9 +9,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Filling and Filtering notebook for the 10 site study MiSeq13 (this has a different experimental design to other runs) 
+# Filling and Filtering notebook for the Mw46 dataset (this has a different experimental design to other runs) 
 
-This notebook performs a final flitering to detect and remove species detections that have most likely arisen from 'mistagging' (SECTION 2). It has been modified to produce a final dataset for the 46 site study.
+This notebook is designed to filling missing taxonomic assignments from the vsearch step (in 03_classification) in the metabarcoding workflow and make corrections to taxonomic assignments that are incorrectly assigned by vsearch due to errors in the DNA barcode reference libraries (SECTION 1).It also performs a final flitering to detect and remove species detections that have most likely arisen from 'mistagging' (SECTION 2)
 
 ```{r}
 # Load the required libraries
@@ -22,10 +22,9 @@ library(readxl)
 ```
 ______________________________
 
-## SECTION 2: PCR filtering
-This section is designed to format data and filter it for 'mistagging'. Mistagging or 'tag switching' can occur causing ASVs to be assigned to the wrong sample. This occurs at a low frequency and is usually random. PCR replicates included in the study design help detect and remove these errors. We use three PCR replicates and filter out any species/ASV detections that occur in only one PCR replicate (which are most likely from mistagging). We also add a second flitering step for the five most common ASV (those with the highest number of reads/sequences). These are more likely to be involved in mistagging and can appear in multiple PCR replicate we add a reads threshold for removing these detections.
+This notebook is designed to filling missing taxonomic assignments from the vsearch step (in 03_classification) in the metabarcoding workflow and make corrections to taxonomic assignments that are incorrectly assigned by vsearch due to errors in the DNA barcode reference libraries (SECTION 1).It also performs a final flitering to detect and remove species detections that have most likely arisen from 'mistagging' (SECTION 2)
 
-# read in filled dataframes
+# read in vsearch dataframes
 ```{r}
 mw_final_df1_filledA <- read.csv(here::here("results/final_data_summaries/MW_data_vsearch_filled_summary_01_07_2025.csv"))
 
@@ -40,12 +39,16 @@ mw_final_df1_filled <- rbind(mw_final_df1_filledA, mw_final_df1_filledB) %>% sel
 mw_final_df2_filled <- rbind(mw_final_df2_filledC, mw_final_df2_filledD)
 ```
 
+
+## SECTION 1: Filling in missing/incorrect taxonomic classifications
+# fill dataframe 1
+
 ```{r}
 # read in final asv library
 asv_lib <- read.csv(here::here("asv_source_files_MC/asv_library_corrected_Jul_25.csv"))
 ```
 
-# fill dataframe 1
+# use vetted taxonomy to fill vsearch dataframe Miseq5(bulk of data)
 ```{r}
 # Step 1: Identify common ASVs
 common_ids <- intersect(asv_lib$asv_code, mw_final_df1_filled$asv_code)
@@ -100,7 +103,7 @@ mw_final_df1_filled_filled <-  mw_final_df1_filled_filled %>%
   dplyr::mutate(order = if_else(max_p_identity < 85, "",order))
 ```
 
-#fill dataframe 2
+# # use vetted taxonomy to fill vsearch dataframe Miseq6 (re-runs)
 ```{r}
 # Step 1: Identify common ASVs
 common_ids <- intersect(asv_lib$asv_code, mw_final_df2_filled$asv_code)
@@ -137,7 +140,6 @@ mw_final_df2_filled_filled <- final_updated_df %>%
   select(asv_code, kingdom, phylum, class, order, family, genus, species, max_p_identity, everything())
 ```
 
-# repeat for 
 ```{r}
 # Update 'species' column to only include names if max threshold is above 97
 mw_final_df2_filled_filled <-  mw_final_df2_filled_filled %>%
@@ -156,6 +158,9 @@ mw_final_df2_filled_filled <-  mw_final_df2_filled_filled %>%
   dplyr::mutate(order = if_else(max_p_identity < 85, "",order))
 ```
 
+
+## SECTION 2: PCR filtering
+This section is designed to format data and filter it for 'mistagging'. Mistagging or 'tag switching' can occur causing ASVs to be assigned to the wrong sample. This occurs at a low frequency and is usually random. PCR replicates included in the study design help detect and remove these errors. We use three PCR replicates and filter out any species/ASV detections that occur in only one PCR replicate (which are most likely from mistagging). We also add a second flitering step for the five most common ASV (those with the highest number of reads/sequences). These are more likely to be involved in mistagging and can appear in multiple PCR replicate we add a reads threshold for removing these detections.
 # Change data to long formmat (list) for PCR replicate filtering 
 Note: This code will need to be configured for each dataset, so that the rows containing the read counts are specified
 ```{r}
@@ -282,6 +287,23 @@ cat("Number of records removed:", original_count - filtered_count, "\n")
 #rejoin all filled and filtered dataframes
 final_df_all <- rbind(metab_long_with_species_fil, asv_fil_metab_long_fil) 
 ```
+
+```{r}
+#Create directory for modeling data
+dir.create(here::here("results/final_modeling_data"))
+
+# Generate a timestamp
+timestamp <- format(Sys.time(), "%d_%m_%Y")
+
+# Create the file path with the timestamp and Miseq run number
+file_name <- here::here("results/final_modeling_data", 
+                        paste0("mw46_final_data_long_format_", timestamp, ".csv"))
+
+# Save the dataframe with the new file name
+write.csv(final_df_all, file = file_name, row.names = FALSE)
+
+```
+
 
 # save data for modeling in long format (includes PCR replicates)
 ```{r}
