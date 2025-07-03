@@ -51,7 +51,7 @@ miseq16_vsearch_sum <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarc
 
 ```{r}
 # remove columns to be replaced re-run data from MiSeq13                               
-miseq13_vsearch_sum_mod <- miseq13_vsearch_sum[, !(names(miseq13_vsearch_sum) %in% c("X10FEH41843rep1", "X10FEH41843rep2", "X40BNY29042rep1", "X40BNY29042rep2", "X30DNG79574rep1", "x30DNG79574rep2"))]
+miseq13_vsearch_sum_mod <- miseq13_vsearch_sum[, !(names(miseq13_vsearch_sum) %in% c("X10FEH41843rep1", "X10FEH41843rep2", "X40BNY29042rep1", "X40BNY29042rep2", "X30DNG79574rep1", "X30DNG79574rep2"))]
 
 # subset rerun data from Miseq15 and Miseq16 to merge with miseq13_vsearch_sum_mod
 miseq15_vsearch_reruns <- miseq15_vsearch_sum %>% select(asv_code, kingdom, phylum, class, order, family, genus, species, Consensus, max_p_identity, threshold, X40BNY29042rep3, X40BNY29042rep4, X10FEH41841rep3, X10FEH41841rep4, asv_seq, amplicon)
@@ -101,25 +101,15 @@ miseq16_vsearch_long <- miseq16_vsearch_reruns %>%
 #bind datasets back together
 final_10sites_long <- rbind(miseq13_vsearch_sum_mod_long, miseq15_vsearch_long, miseq16_vsearch_long)
 
-final_10sites_long <- final_10sites_long %>%
-  mutate(sample = str_trim(sample))
+# final_10sites_long <- final_10sites_long %>%
+#   mutate(sample = str_trim(sample))
 
-#pivot back to wide dataframe for next steps
-final_10sites_long <- final_10sites_long %>%
-  group_by(asv_code, kingdom, phylum, class, order, family, genus, species, Consensus,
-           max_p_identity, threshold, asv_seq, amplicon, sample) %>%
-  summarise(value = sum(value, na.rm = TRUE), .groups = 'drop')
-
-final_10sites <- final_10sites_long %>%
+final_df  <- final_10sites_long  %>%
   pivot_wider(
     names_from = sample,
     values_from = value,
-    values_fill = list(value = 0)
+    values_fill = 0  # optionally fill missing sample-asv combos with 0
   )
-
-# asv_seq, amplicon to the end of the dataframe
-final_df <- final_10sites %>% 
-  select(everything())
 ```
 
 
@@ -205,7 +195,7 @@ This section is designed to format data and filter it for 'mistagging'. Mistaggi
 
 # Change data to long formmat (list) for PCR replicate filtering 
 Note: This code will need to be configured for each dataset, so that the rows containing the read counts are specified (e.g. pivot_longer(cols = X10BNY29042rep1:Cont3rep1), the 'X10BNY29042rep1:Cont3rep1' will need to be changed to the first and last column name with the reads data for each dataset
-X10BNY29042rep2:X40TOO42700rep1
+X10WMI2320rep2:X30DNG318813rep2
 ```{r}
 # Step 1: Add 'X' prefix to column names if they start with a number
 final_df_filled <- final_df_filled %>%
@@ -213,7 +203,7 @@ final_df_filled <- final_df_filled %>%
 
 # Step 2: Pivot longer to transform selected columns into rows
 metab_long <- final_df_filled %>%
-  pivot_longer(cols = X10BNY29042rep2:X40TOO42700rep1, names_to = "sample", values_to = "value") %>%
+  pivot_longer(cols = X10WMI2320rep2:X30DNG318813rep2, names_to = "sample", values_to = "value") %>%
   filter(value != 0) %>%  # Remove rows where value is zero
   select(-matches("^X(\\.\\d+)?$"))  # Remove unwanted columns named X, X.1, etc.
 
