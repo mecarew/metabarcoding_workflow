@@ -24,87 +24,51 @@ An 'asv library' based on analysis of Miseq datasets was constructed ('Appendix_
 -   identify any ambiguous taxonomic assignments that should be considered as complexes 
 
 ```{r setup, warning=FALSE}
-# read in vetted asv library
-file_path <- "~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_library/asv_library_corrected.xlsx"
-
-# Get the names of the sheets
-sheet_names <- readxl::excel_sheets(file_path)
-
-# Read the sheets into as dataframes
-asv_lib <- readxl::read_excel(file_path, sheet = sheet_names[1])  
-
-max_p_updates <- readxl::read_excel(file_path, sheet = sheet_names[2])  # if required
-
-bin_uri_unq <- readxl::read_excel(file_path, sheet = sheet_names[3])  # if required
-
-# read in miseq vsearch data summary for updating and filtering
-
 # Reset directory
-miseq_folder <- "miseq13"
+miseq_folder <- "miseq22"
 
 # Set the directory path for files to be stored on uomshare
 uomshare <- paste0("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/", miseq_folder, "/metabarcoding_workflow")
 
 # Read the final data summary CSV
-final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_26_11_2024.csv"))
+#final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_26_11_2024.csv"))
 
 # Read the final data summary CSV
 #final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_26_02_2025.csv")) #miseq18
-#final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_15_06_2025.csv")) #miseq22
-
-final_df <- tibble(
-  kingdom = NA,
-  phylum = NA,
-  class = NA,
-  order = NA,
-  family = NA,
-  genus = NA,
-  species = NA,
-  max_p_identity = NA
-) %>%
-  bind_cols(final_df)
+final_df <- read.csv(paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_data_summary_15_06_2025.csv")) #miseq22
 ```
 
 ```{r}
-# Step 1: Identify common ASVs
-common_ids <- intersect(asv_lib$asv_code, final_df$asv_code)
+# read in updated asv library
+asv_lib <- read.csv("~/uomShare/wergStaff/MelCarew/git-data/metabarcoding_workflow/asv_source_files_MC/asv_library_corrected_Jul_25.csv")
+```
 
-# Step 2: Split original data
-df1 <- final_df %>% filter(asv_code %in% common_ids)
-df3 <- final_df %>% filter(!asv_code %in% common_ids)
+```{r}
+# select only taxonomy and match fields from asv_lib
+asv_lib_subset <- asv_lib %>%
+  select(asv_code, 
+         kingdom_new = kingdom, phylum_new = phylum, class_new = class, 
+         order_new = order, family_new = family, genus_new = genus, 
+         species_new = species, max_p_identity_new = max_p_identity)
 
-# Step 3: Join with asv_lib to get updated values
-df2 <- asv_lib %>% filter(asv_code %in% common_ids)
-
-# Step 4: Merge on asv_code (adding suffixes to distinguish columns)
-df1_updated <- df1 %>%
-  left_join(df2, by = "asv_code", suffix = c("_final", "_trunc"))
-
-# Step 5: Replace taxonomy fields and max_p_identity from truncated version
-df1_updated <- df1_updated %>%
+# join to final_df and update taxonomy fields ONLY
+final_df_updated <- final_df %>%
+  left_join(asv_lib_subset, by = "asv_code") %>%
   mutate(
-    species = species_trunc,
-    genus   = genus_trunc,
-    family  = family_trunc,
-    order   = order_trunc,
-    class   = class_trunc,
-    phylum  = phylum_trunc,
-    kingdom = kingdom_trunc,
-    max_p_identity = max_p_identity_trunc
-# max_p_identity = ifelse(
-#   is.na(max_p_identity),
-#   ifelse(max_p_identity_final != max_p_identity_trunc, max_p_identity_trunc, max_p_identity_final),
-#   max_p_identity
+    kingdom        = coalesce(kingdom_new, kingdom),
+    phylum         = coalesce(phylum_new, phylum),
+    class          = coalesce(class_new, class),
+    order          = coalesce(order_new, order),
+    family         = coalesce(family_new, family),
+    genus          = coalesce(genus_new, genus),
+    species        = coalesce(species_new, species),
+    max_p_identity = coalesce(max_p_identity_new, max_p_identity)
   ) %>%
-  select(-ends_with("_trunc"), -ends_with("_final"))  # Clean up extra columns
+  select(-ends_with("_new"))  # remove temporary columns
 
-# Step 6: Recombine with the rest of the final_df that had no update
-final_updated_df <- bind_rows(df1_updated, df3)
-
-# Step 7: Reorder columns if needed
-final_df_filled <- final_updated_df %>%
-  select(asv_code, kingdom, phylum, class, order, family, genus, species, max_p_identity, everything())
-
+# reorder columns if needed
+final_df_filled <- final_df_updated %>%
+  select(asv_code, kingdom, phylum, class, order, family, genus, species, max_p_identity, everything(), asv_seq, amplicon)
 ```
 
 ```{r}
@@ -123,23 +87,6 @@ final_df_filled <-  final_df_filled %>%
 # Update 'order' column to only include names if max threshold is above 80
 final_df_filled <-  final_df_filled %>%
   dplyr::mutate(order = if_else(max_p_identity < 85, "",order))
-```
-
-# check dataframe
-```{r}
-# Check if there are any duplicates in the asv_code column (there should NOT be)
-duplicates <- final_df_filled %>%
-  filter(duplicated(asv_code) | duplicated(asv_code, fromLast = TRUE))
-
-# Print the duplicate rows
-#print(duplicates) # You should not get a table
-
-# Check the final vsearch and filled dataframe have the same number of rows 
-if (nrow(final_df) == nrow(final_df_filled)) {
-  cat("The dataframes have the same number of rows. Proceed \n")
-} else {
-  cat("The data frames have a different number of rows. Check \n")
-}
 ```
 
 # adjust Cont names for flitering so that controls have the same names
@@ -167,8 +114,6 @@ file_name <- paste0(uomshare, "/final_data_summaries/", miseq_folder, "_vsearch_
 
 # Save the dataframe with the new file name
 write.csv(final_df_filled, file = file_name, row.names = FALSE)
-
-write.csv(final_df_filled, file = paste0(uomshare, "results/MW46_asv_lib_filled_16_6_2025.csv"), row.names = FALSE)
 ```
 ______________________________
 
@@ -413,7 +358,7 @@ write.csv(controls_long, file = cont, row.names = FALSE)
 ```
 
 ```{r}
-# for miseq22 only
+# # for miseq22 only
 sites_to_keep <- c("S21ANS16116", "A23YAR3637", "A22BT2373")
 
 filtered_final_df_samples_filtered <- filtered_final_df_samples %>%
