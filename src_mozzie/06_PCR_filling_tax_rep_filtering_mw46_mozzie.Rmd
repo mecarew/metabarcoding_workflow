@@ -34,7 +34,7 @@ mw_final_df2_filledC <- read.csv(here::here("results/final_data_summaries/MW_dat
 
 mw_final_df2_filledD <- read.csv(here::here("results/final_data_summaries/MW_data_vsearch_short_filled_summary_reruns_01_07_2025.csv"))
 
-mw_final_df1_filled <- rbind(mw_final_df1_filledA, mw_final_df1_filledB) %>% select(-SWW8SS18Hrep1, -SWW8SS18Hrep2, -SWW8SS18Irep1, -SWW8SS18Irep2)
+mw_final_df1_filled <- rbind(mw_final_df1_filledA, mw_final_df1_filledB)
 
 mw_final_df2_filled <- rbind(mw_final_df2_filledC, mw_final_df2_filledD)
 ```
